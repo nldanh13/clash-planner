@@ -25,7 +25,7 @@ npm start
 
 Ứng dụng tự mở tại http://127.0.0.1:3000.
 
-Lưu ý quan trọng: Khi chạy `npm start`, `npm run dev` hoặc `npm run preview`, Vite sẽ đóng vai trò làm backend proxy để gắn API key vào header, giấu nó khỏi trình duyệt của người dùng. Nếu bạn chạy `npm run build` để sinh file tĩnh (`dist/`), các file này sẽ không thể tự gửi API key được, bạn cần một backend riêng để làm proxy nếu muốn host bản tĩnh này lên mạng.
+Lưu ý quan trọng: Khi chạy `npm start`, `npm run dev` hoặc `npm run preview`, ứng dụng (thông qua Express server hoặc Vite proxy) sẽ đóng vai trò làm backend proxy để gắn API key vào header, giấu nó khỏi trình duyệt của người dùng. Nếu bạn chạy `npm run build` để sinh file tĩnh (`dist/`), các file này sẽ không thể tự gửi API key được; bạn BẮT BUỘC phải dùng `npm start` (tức là Express server) để vừa serve các file tĩnh vừa làm proxy API nếu muốn deploy lên Internet.
 
 ## Phạm vi dữ liệu
 
@@ -39,9 +39,7 @@ gần realtime, không phải kết nối trực tiếp với thiết bị đang
 
 ## Lưu ý kỹ thuật
 
-Ứng dụng dùng proxy cục bộ trong `vite.config.ts` vì API của War Report chỉ
-cho phép trình duyệt từ tên miền của họ gọi trực tiếp. Nếu War Report đổi API
-hoặc khóa web công khai, phần đồng bộ có thể cần được cập nhật.
+Ứng dụng dùng cấu hình proxy cục bộ chia sẻ giữa Express (`server.ts`) và Vite (`vite.config.ts`) vì API của War Report chỉ cho phép trình duyệt từ tên miền của họ gọi trực tiếp (chính sách CORS). Backend proxy này sẽ thay mặt gọi API, đính kèm `WAR_REPORT_API_KEY` và trả về JSON hợp lệ cho trình duyệt. Nếu War Report đổi API hoặc khóa web công khai, phần proxy đồng bộ có thể cần được cập nhật.
 
 ## Nhận bản zip cập nhật mới
 

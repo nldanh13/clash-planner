@@ -3,6 +3,12 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 
 async function startServer() {
+  const apiKey = process.env.WAR_REPORT_API_KEY;
+  if (!apiKey) {
+    console.error("LỖI CẤU HÌNH: Thiếu biến môi trường WAR_REPORT_API_KEY. Vui lòng thêm vào file .env.local.");
+    process.exit(1);
+  }
+
   const app = express();
   const PORT = 3000;
 
@@ -12,11 +18,6 @@ async function startServer() {
   // API Proxy Route for War Report
   app.get("/api/warreport/*all", async (req, res) => {
     try {
-      const apiKey = process.env.WAR_REPORT_API_KEY;
-      if (!apiKey) {
-        return res.status(401).json({ error: "WAR_REPORT_API_KEY is not set." });
-      }
-
       // Extract the path after /api/warreport/
       const apiPath = req.params.all;
       const targetUrl = `https://clashapi.colinschmale.dev/${apiPath}`;
