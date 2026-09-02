@@ -1,5 +1,6 @@
 import { getPresetLayout } from "./ExportUtils";
 import type { LayoutProject, PlacedBuilding } from "./types";
+import { validateLayout } from "./LayoutValidator";
 
 const STORAGE_KEY_LAYOUTS = "coc-base-layouts-v2";
 const STORAGE_KEY_ACTIVE_ID = "coc-base-active-layout-id";
@@ -98,10 +99,14 @@ export function setActiveLayoutId(id: string): void {
  * Saves or updates a specific layout project in localStorage
  */
 export function saveLayout(layout: LayoutProject): void {
+  // Validate trước khi lưu layout
+  const { validBuildings } = validateLayout(layout.buildings, layout.townHallLevel);
+  const layoutToSave = { ...layout, buildings: validBuildings };
+
   const all = getSavedLayouts();
-  const index = all.findIndex((l) => l.id === layout.id);
+  const index = all.findIndex((l) => l.id === layoutToSave.id);
   const updatedLayout: LayoutProject = {
-    ...layout,
+    ...layoutToSave,
     updatedAt: new Date().toISOString(),
   };
 

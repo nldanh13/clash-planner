@@ -2,80 +2,74 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { validateImages, validateTownHalls, validateLevels, validateCatalog } from './validator.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const cocAdminData = path.resolve(root, 'coc-admin', 'data');
 const publicData = path.resolve(root, 'public', 'data');
 
-console.log("Running coc-admin/scrape.mjs...");
-try {
-  // execSync('node coc-admin/scrape.mjs --levels', { stdio: 'inherit', cwd: root }); // This might take long or fail if it requires internet to scrape. Let's just assume we run it or just validate what's there.
-  console.log("Skipping actual scrape to save time, validating existing data...");
-} catch (e) {
-  console.error("Scraping failed.");
-  process.exit(1);
+const args = process.argv.slice(2);
+const validateOnly = args.includes('--validate-only');
+const wantLevels = args.includes('--levels');
+
+if (!validateOnly) {
+  console.log("Running coc-admin/scrape.mjs...");
+  const scrapeArgs = wantLevels ? ['--levels'] : [];
+  try {
+    execSync(`node coc-admin/scrape.mjs ${scrapeArgs.join(' ')}`, { stdio: 'inherit', cwd: root });
+  } catch (e) {
+    console.error("❌ Scraping failed.");
+    process.exit(1);
+  }
+} else {
+  console.log("Skipping scrape (--validate-only). Validating existing data in coc-admin/data...");
 }
 
-// 1. Validation logic
-function validateImages(data) {
-  if (typeof data !== 'object' || data === null) return false;
-  return Object.values(data).every(v => typeof v === 'string' && v.startsWith('http'));
-}
-
-function validateTownHalls(data) {
-  if (!Array.isArray(data)) return false;
-  return data.every(th => 
-    typeof th.level === 'number' &&
-    typeof th.title === 'string' &&
-    typeof th.unlocks === 'object'
-  );
-}
-
-function validateLevels(data) {
-  if (typeof data !== 'object' || data === null) return false;
-  return Object.values(data).every(arr => 
-    Array.isArray(arr) && arr.every(row => 
-      typeof row.level === 'number' &&
-      typeof row.cost === 'number' &&
-      typeof row.timeHours === 'number'
-    )
-  );
-}
-
-const schemas = {
+const requiredFiles = {
   'images.json': validateImages,
+  'catalog.json': validateCatalog,
   'townhalls.json': validateTownHalls,
+};
+
+const optionalFiles = {
   'levels.json': validateLevels,
 };
 
 let allValid = true;
+const pendingWrites = [];
 
-for (const [file, validator] of Object.entries(schemas)) {
+// Helper to check and validate a single file
+function processFile(file, validator, isRequired) {
   const srcFile = path.resolve(cocAdminData, file);
   if (!fs.existsSync(srcFile)) {
-    console.warn(`File ${file} is missing in coc-admin/data/`);
-    continue;
+    if (isRequired) {
+      console.error(`❌ Required file ${file} is missing in coc-admin/data/.`);
+      allValid = false;
+    }
+    return;
   }
   
   try {
     const raw = fs.readFileSync(srcFile, 'utf-8');
     const data = JSON.parse(raw);
     
-    // Add metadata if not present
+    // Add metadata
     const metaData = Array.isArray(data) ? { items: data } : { ...data };
     metaData._meta = {
       source: "coc.guide",
       updatedAt: new Date().toISOString(),
       version: "1.0.0"
     };
-
+    
     const dataToValidate = Array.isArray(data) ? data : (data.items || data);
     
     if (validator(dataToValidate)) {
       console.log(`✅ ${file} is valid.`);
-      if (!fs.existsSync(publicData)) fs.mkdirSync(publicData, { recursive: true });
-      fs.writeFileSync(path.resolve(publicData, file), JSON.stringify(metaData, null, 2));
+      pendingWrites.push({
+        file,
+        content: JSON.stringify(metaData, null, 2)
+      });
     } else {
       console.error(`❌ ${file} validation failed. Format is incorrect.`);
       allValid = false;
@@ -86,9 +80,58 @@ for (const [file, validator] of Object.entries(schemas)) {
   }
 }
 
+// 1. Process Required Files
+for (const [file, validator] of Object.entries(requiredFiles)) {
+  processFile(file, validator, true);
+}
+
+// 2. Process Optional Files
+for (const [file, validator] of Object.entries(optionalFiles)) {
+  processFile(file, validator, false);
+}
+
 if (!allValid) {
-  console.error("Some files failed validation. public/data was not fully updated.");
+  console.error("❌ Validation failed. public/data/ was not updated.");
   process.exit(1);
-} else {
-  console.log("Data successfully validated and copied to public/data/");
+}
+
+console.log("All files passed validation. Updating public/data/...");
+
+// 3. Atomically write to public/data using a temporary directory in the same filesystem
+try {
+  const localTmpBase = path.resolve(root, '.tmp');
+  if (!fs.existsSync(localTmpBase)) {
+    fs.mkdirSync(localTmpBase, { recursive: true });
+  }
+  const tmpDir = fs.mkdtempSync(path.join(localTmpBase, 'coc-data-'));
+  
+  // Start with a copy of existing public/data so we don't lose anything not touched by this update
+  if (fs.existsSync(publicData)) {
+    fs.cpSync(publicData, tmpDir, { recursive: true });
+  }
+  
+  // Write updated files to tmpDir
+  for (const { file, content } of pendingWrites) {
+    fs.writeFileSync(path.join(tmpDir, file), content);
+  }
+  
+  // Atomic swap
+  const oldData = path.resolve(root, 'public', 'data_old_' + Date.now());
+  if (fs.existsSync(publicData)) {
+    fs.renameSync(publicData, oldData);
+  }
+  fs.renameSync(tmpDir, publicData);
+  
+  // Cleanup old data and temp dirs
+  if (fs.existsSync(oldData)) {
+    fs.rmSync(oldData, { recursive: true, force: true });
+  }
+  if (fs.existsSync(localTmpBase)) {
+    fs.rmSync(localTmpBase, { recursive: true, force: true });
+  }
+  
+  console.log("✅ Data successfully updated in public/data/.");
+} catch (e) {
+  console.error("❌ Failed to write to public/data/:", e.message);
+  process.exit(1);
 }

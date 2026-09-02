@@ -27,6 +27,7 @@ import {
   serializeLayout,
 } from "./layoutStorage";
 import type { LayoutProject } from "./types";
+import { validateLayout } from "./LayoutValidator";
 
 interface LayoutManagerModalProps {
   isOpen: boolean;
@@ -129,6 +130,12 @@ export function LayoutManagerModal({
     try {
       const text = await file.text();
       const parsed = parseImportedLayoutJSON(text);
+      const validation = validateLayout(parsed.buildings, parsed.townHallLevel);
+      if (validation.issues.length > 0) {
+        const errors = validation.issues.map(i => i.message).join("\n");
+        alert("Tệp JSON không hợp lệ:\n" + errors);
+        return;
+      }
       saveLayout(parsed);
       refreshList();
       onSelectLayout(parsed);

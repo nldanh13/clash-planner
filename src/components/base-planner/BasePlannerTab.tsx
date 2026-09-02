@@ -3,7 +3,7 @@ import {
   AlertTriangle,
   Award,
   Castle,
-  CheckCircle2,
+  Check, CheckCircle2,
   Coins,
   Crown,
   Download,
@@ -32,7 +32,8 @@ import { DefenseScorePanel } from "./DefenseScorePanel";
 import { InventorySidebar } from "./InventorySidebar";
 import { LayoutManagerModal } from "./LayoutManagerModal";
 import { TacticalToolbar } from "./TacticalToolbar";
-import { getAllBuildingLimits, validateLayoutAgainstLimits } from "./buildingLimits";
+import { getAllBuildingLimits } from "./buildingLimits";
+import { validateLayout } from "./LayoutValidator";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { evaluateBaseDefense } from "./defenseScorer";
 import {
@@ -79,7 +80,16 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   const [autoSaveTime, setAutoSaveTime] = useState<string | null>(() =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
-  const [pendingTHChange, setPendingTHChange] = useState<{ newTH: number; validBuildings: PlacedBuilding[]; issues: string[] } | null>(null);
+  const [pendingRecovery, setPendingRecovery] = useState<{ layout: LayoutProject; validBuildings: import("./types").PlacedBuilding[]; issues: import("./LayoutValidator").ValidationIssue[] } | null>(null);
+  const [pendingTHChange, setPendingTHChange] = useState<{ newTH: number; validBuildings: PlacedBuilding[]; issues: import("./LayoutValidator").ValidationIssue[] } | null>(null);
+
+  useEffect(() => {
+    // Check initial layout for validation issues (localStorage migration)
+    const res = validateLayout(activeLayout.buildings, activeLayout.townHallLevel);
+    if (!res.isValid || res.hasWarnings) {
+      setPendingRecovery({ layout: activeLayout, validBuildings: res.validBuildings, issues: res.issues });
+    }
+  }, []);
 
   const [settings, setSettings] = useState<TacticalSettings>({
     showRanges: "selected",
@@ -180,9 +190,9 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
     const safe = Math.max(1, Math.min(18, newTH));
     
     // Check validation against new limits
-    const { isValid, validBuildings, issues } = validateLayoutAgainstLimits(buildings, safe);
+    const { isValid, validBuildings, issues } = validateLayout(buildings, safe);
 
-    if (!isValid && safe < townHallLevel) {
+    if ((!isValid || issues.length > 0) && safe < townHallLevel) {
       // Show confirmation prompt
       setPendingTHChange({ newTH: safe, validBuildings, issues });
       return;
@@ -208,6 +218,15 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
 
   // Switch Active Layout from Project Manager
   const handleSelectLayout = (layout: LayoutProject) => {
+    const res = validateLayout(layout.buildings, layout.townHallLevel);
+    if (!res.isValid || res.hasWarnings) {
+      setPendingRecovery({ layout, validBuildings: res.validBuildings, issues: res.issues });
+      return;
+    }
+    applySelectedLayout(layout);
+  };
+
+  const applySelectedLayout = (layout: LayoutProject) => {
     setActiveLayout(layout);
     setActiveLayoutId(layout.id);
     setTownHallLevel(layout.townHallLevel);
@@ -395,6 +414,52 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
         autoSaveTime={autoSaveTime}
       />
 
+      {/* Recovery / Migration Modal */}
+      {pendingRecovery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-[#1e272e] border border-[#ffaf40] p-6 rounded-lg max-w-lg w-full shadow-xl">
+            <h2 className="text-xl font-bold text-[#ffaf40] flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-6 h-6" /> Phát hiện lỗi dữ liệu Layout
+            </h2>
+            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
+              Bản đồ <strong>{pendingRecovery.layout.name}</strong> chứa các dữ liệu không hợp lệ (có thể do nhập file lỗi, khác phiên bản, hoặc thay đổi giới hạn Town Hall).
+            </p>
+            <ul className="text-xs text-gray-400 mb-6 bg-black/40 p-3 rounded h-32 overflow-y-auto space-y-1">
+              {pendingRecovery.issues.map((issue, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <span className={issue.type === "critical" ? "text-[#ff3f34]" : "text-[#ffaf40]"}>•</span>
+                  {issue.message}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  const safeLayout = { ...pendingRecovery.layout, buildings: pendingRecovery.validBuildings };
+                  saveLayout(safeLayout);
+                  setPendingRecovery(null);
+                  applySelectedLayout(safeLayout);
+                }}
+                className="w-full py-2.5 bg-[#ffaf40] text-black font-semibold rounded hover:bg-opacity-90 flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4" /> Khôi phục tự động (Giữ lại công trình hợp lệ)
+              </button>
+              <button
+                onClick={() => {
+                  setPendingRecovery(null);
+                  // If we are currently loading the initial layout and we cancel, what happens?
+                  // Active layout remains unchanged but isn't applied if it was a selection.
+                  // If it was the initial load, it is already applied... wait, applySelectedLayout wasn't called.
+                }}
+                className="w-full py-2.5 bg-slate-700 text-white rounded hover:bg-slate-600 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TH Downgrade Validation Modal */}
       {pendingTHChange && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -407,7 +472,7 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
             </p>
             <ul className="text-xs text-gray-400 mb-6 bg-black/40 p-3 rounded h-32 overflow-y-auto space-y-1">
               {pendingTHChange.issues.map((issue, idx) => (
-                <li key={idx} className="flex gap-2"><span className="text-[#ff3f34]">•</span> {issue}</li>
+                <li key={idx} className="flex gap-2"><span className={issue.type === "critical" ? "text-[#ff3f34]" : "text-[#ffaf40]"}>•</span> {issue.message}</li>
               ))}
             </ul>
             <div className="flex flex-col gap-3">
