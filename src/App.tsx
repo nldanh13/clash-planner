@@ -236,7 +236,7 @@ export default function App(){
   const [pasteReport,setPasteReport]=useState<VillagePasteReport|null>(null);
   const [,bumpDbVersion]=useState(0);
   
-  useGameDatabase(()=>bumpDbVersion(v=>v+1));
+  const { warnings } = useGameDatabase(()=>bumpDbVersion(v=>v+1));
   const townHallInfo=getTownHallInfo();
 
   
@@ -420,6 +420,15 @@ export default function App(){
       <AlertTriangle/>
       <span style={{flex: 1}}>{cacheWarning}</span>
       <button onClick={clearPlayerCache} style={{padding: "4px 8px", background: "rgba(0,0,0,0.3)", border: "1px solid #ffc85740", borderRadius: "4px", color: "#ffc857", cursor: "pointer"}}>Xóa Cache</button>
+    </div>}
+    {warnings.length > 0 && <div className="error-banner" style={{marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678"}}>
+      <AlertTriangle/>
+      <div style={{flex: 1}}>
+        <strong>Cảnh báo dữ liệu:</strong>
+        <ul style={{margin: "4px 0 0 20px", fontSize: "13px"}}>
+          {warnings.map((w, i) => <li key={i}>{w}</li>)}
+        </ul>
+      </div>
     </div>}
 
     {player && tab !== "base-planner" && <>

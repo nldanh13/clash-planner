@@ -54,21 +54,11 @@ function processFile(file, validator, isRequired) {
     const raw = fs.readFileSync(srcFile, 'utf-8');
     const data = JSON.parse(raw);
     
-    // Add metadata
-    const metaData = Array.isArray(data) ? { items: data } : { ...data };
-    metaData._meta = {
-      source: "coc.guide",
-      updatedAt: new Date().toISOString(),
-      version: "1.0.0"
-    };
-    
-    const dataToValidate = Array.isArray(data) ? data : (data.items || data);
-    
-    if (validator(dataToValidate)) {
+    if (validator(data)) {
       console.log(`✅ ${file} is valid.`);
       pendingWrites.push({
         file,
-        content: JSON.stringify(metaData, null, 2)
+        content: JSON.stringify(data, null, 2)
       });
     } else {
       console.error(`❌ ${file} validation failed. Format is incorrect.`);
@@ -96,6 +86,18 @@ if (!allValid) {
 }
 
 console.log("All files passed validation. Updating public/data/...");
+
+// Generate data-manifest.json
+const manifest = {
+  source: "coc.guide",
+  updatedAt: new Date().toISOString(),
+  version: "1.0.0",
+  files: pendingWrites.map(pw => pw.file)
+};
+pendingWrites.push({
+  file: 'data-manifest.json',
+  content: JSON.stringify(manifest, null, 2)
+});
 
 // 3. Atomically write to public/data using a temporary directory in the same filesystem
 try {

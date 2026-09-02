@@ -1,0 +1,10 @@
+{
+  "source": "coc.guide",
+  "updatedAt": "2026-09-02T17:38:38.751Z",
+  "version": "1.0.0",
+  "files": [
+    "images.json",
+    "catalog.json",
+    "townhalls.json"
+  ]
+}

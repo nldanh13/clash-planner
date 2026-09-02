@@ -2,7 +2,5 @@
   "name": "Clash Path",
   "description": "Clash of Clans upgrade planner, Town Hall roadmap, and interactive 44x44 Base Planner",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }

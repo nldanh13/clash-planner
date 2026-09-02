@@ -25,6 +25,7 @@ Ghi vào thư mục `coc-admin/data` (tạm thời) và `public/data` (đích đ
   data/catalog.json   — [{ id, name, kind, owner }]
   data/townhalls.json — [{ level, title, blurb, unlocks }]
   data/levels.json    — (tuỳ chọn) Chi phí/thời gian nâng cấp THẬT từ coc.guide
+  data/data-manifest.json — { source, updatedAt, version, files } (Được tự động tạo ra chứa metadata)
 
 CẢNH BÁO VỀ --levels
 --------------------------------------------------------

@@ -140,10 +140,5 @@
   "angry-jelly": "https://assets.colinschmale.dev/warreport/troops/Angry%20Jelly.webp",
   "spirit-fox": "https://assets.colinschmale.dev/warreport/troops/Spirit%20Fox.webp",
   "sneezy": "https://assets.colinschmale.dev/warreport/troops/Sneezy.webp",
-  "greedy-raven": "https://assets.colinschmale.dev/warreport/troops/Greedy%20Raven.webp",
-  "_meta": {
-    "source": "coc.guide",
-    "updatedAt": "2026-09-02T17:33:44.066Z",
-    "version": "1.0.0"
-  }
+  "greedy-raven": "https://assets.colinschmale.dev/warreport/troops/Greedy%20Raven.webp"
 }

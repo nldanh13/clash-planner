@@ -1,418 +1,411 @@
-{
-  "items": [
-    {
-      "level": 1,
-      "title": "Khởi đầu",
-      "blurb": "Làm quen cơ chế cơ bản: xây, thu tài nguyên, tập trận đầu tiên.",
-      "unlocks": {
-        "buildings": [
-          "Town Hall",
-          "Army Camp",
-          "Barracks",
-          "Gold Mine",
-          "Gold Storage",
-          "Elixir Collector",
-          "Elixir Storage"
-        ],
-        "defenses": [
-          "Cannon"
-        ],
-        "troops": [
-          "Barbarian",
-          "Archer",
-          "Giant"
-        ]
-      }
-    },
-    {
-      "level": 2,
-      "title": "Phòng thủ đầu tiên",
-      "blurb": "Tường và Archer Tower buộc bạn phải nghĩ đến bố trí làng lần đầu tiên.",
-      "unlocks": {
-        "buildings": [
-          "Clan Castle",
-          "Tường (Wall)"
-        ],
-        "defenses": [
-          "Archer Tower"
-        ],
-        "troops": [
-          "Goblin"
-        ]
-      }
-    },
-    {
-      "level": 3,
-      "title": "Gia nhập hội",
-      "blurb": "Laboratory mở ra nhánh nâng cấp quân độc lập với công trình.",
-      "unlocks": {
-        "buildings": [
-          "Laboratory"
-        ],
-        "defenses": [
-          "Mortar"
-        ],
-        "traps": [
-          "Bomb"
-        ]
-      }
-    },
-    {
-      "level": 4,
-      "title": "Trên không & phá tường",
-      "blurb": "Air Defense và hai đơn vị chuyên dụng đầu tiên xuất hiện.",
-      "unlocks": {
-        "defenses": [
-          "Air Defense"
-        ],
-        "traps": [
-          "Spring Trap"
-        ],
-        "troops": [
-          "Balloon",
-          "Wall Breaker"
-        ]
-      }
-    },
-    {
-      "level": 5,
-      "title": "Phép thuật",
-      "blurb": "Spell Factory và Lightning Spell mở kỷ nguyên dùng phép trong tấn công.",
-      "unlocks": {
-        "buildings": [
-          "Spell Factory"
-        ],
-        "defenses": [
-          "Wizard Tower"
-        ],
-        "traps": [
-          "Air Bomb"
-        ],
-        "troops": [
-          "Wizard"
-        ],
-        "spells": [
-          "Lightning Spell"
-        ]
-      }
-    },
-    {
-      "level": 6,
-      "title": "Kiểm soát trên không",
-      "blurb": "Air Sweeper đổi hướng quân bay, Healing Spell kéo dài đội hình đẩy.",
-      "unlocks": {
-        "defenses": [
-          "Air Sweeper"
-        ],
-        "traps": [
-          "Giant Bomb"
-        ],
-        "troops": [
-          "Healer"
-        ],
-        "spells": [
-          "Healing Spell"
-        ]
-      }
-    },
-    {
-      "level": 7,
-      "title": "Hero & Dark Elixir",
-      "blurb": "Hero đầu tiên xuất hiện cùng cả một nhánh tài nguyên phụ mới.",
-      "unlocks": {
-        "buildings": [
-          "Dark Barracks",
-          "Dark Elixir Drill",
-          "Dark Elixir Storage",
-          "Hero Hall"
-        ],
-        "defenses": [
-          "Hidden Tesla"
-        ],
-        "traps": [
-          "Seeking Air Mine"
-        ],
-        "troops": [
-          "Dragon",
-          "Hog Rider",
-          "Minion"
-        ],
-        "spells": [
-          "Rage Spell"
-        ],
-        "heroes": [
-          "Barbarian King"
-        ]
-      }
-    },
-    {
-      "level": 8,
-      "title": "Archer Queen & Blacksmith",
-      "blurb": "Hero thứ hai và hệ thống trang bị hero (Blacksmith) bắt đầu từ đây.",
-      "unlocks": {
-        "buildings": [
-          "Blacksmith",
-          "Dark Spell Factory"
-        ],
-        "defenses": [
-          "Bomb Tower"
-        ],
-        "traps": [
-          "Skeleton Trap"
-        ],
-        "troops": [
-          "Golem",
-          "P.E.K.K.A",
-          "Valkyrie"
-        ],
-        "spells": [
-          "Earthquake Spell",
-          "Poison Spell"
-        ],
-        "heroes": [
-          "Archer Queen"
-        ]
-      }
-    },
-    {
-      "level": 9,
-      "title": "Minion Prince & X-Bow",
-      "blurb": "Hero thứ ba cùng loạt phép hỗ trợ chiến thuật (Freeze, Haste, Jump).",
-      "unlocks": {
-        "defenses": [
-          "X-Bow"
-        ],
-        "troops": [
-          "Baby Dragon",
-          "Lava Hound",
-          "Witch"
-        ],
-        "spells": [
-          "Freeze Spell",
-          "Haste Spell",
-          "Jump Spell",
-          "Skeleton Spell"
-        ],
-        "heroes": [
-          "Minion Prince"
-        ]
-      }
-    },
-    {
-      "level": 10,
-      "title": "Inferno",
-      "blurb": "Inferno Tower là bước ngoặt phòng thủ — bắt đầu kỷ nguyên phòng thủ khó nhằn.",
-      "unlocks": {
-        "defenses": [
-          "Inferno Tower"
-        ],
-        "troops": [
-          "Bowler",
-          "Miner"
-        ],
-        "spells": [
-          "Bat Spell",
-          "Clone Spell"
-        ]
-      }
-    },
-    {
-      "level": 11,
-      "title": "Grand Warden",
-      "blurb": "Hero hỗ trợ đầu tiên (buff/debuff theo vùng) cùng Eagle Artillery.",
-      "unlocks": {
-        "defenses": [
-          "Eagle Artillery"
-        ],
-        "traps": [
-          "Tornado Trap"
-        ],
-        "troops": [
-          "Electro Dragon",
-          "Ice Golem"
-        ],
-        "spells": [
-          "Invisibility Spell"
-        ],
-        "heroes": [
-          "Grand Warden"
-        ]
-      }
-    },
-    {
-      "level": 12,
-      "title": "Siege Workshop",
-      "blurb": "Máy công thành (siege machine) đầu tiên — thay đổi cách donate và mở đường.",
-      "unlocks": {
-        "buildings": [
-          "Workshop"
-        ],
-        "troops": [
-          "Yeti",
-          "Headhunter"
-        ],
-        "spells": [
-          "Overgrowth Spell"
-        ],
-        "siege": [
-          "Wall Wrecker",
-          "Battle Blimp",
-          "Stone Slammer"
-        ]
-      }
-    },
-    {
-      "level": 13,
-      "title": "Royal Champion",
-      "blurb": "Hero cận chiến tầm xa thứ tư, thêm 2 máy công thành mới.",
-      "unlocks": {
-        "defenses": [
-          "Scattershot"
-        ],
-        "troops": [
-          "Dragon Rider",
-          "Apprentice Warden"
-        ],
-        "spells": [
-          "Recall Spell"
-        ],
-        "siege": [
-          "Log Launcher",
-          "Siege Barracks"
-        ],
-        "heroes": [
-          "Royal Champion"
-        ]
-      }
-    },
-    {
-      "level": 14,
-      "title": "Hero Pets",
-      "blurb": "Pet House mở khóa 4 pet đầu tiên để ghép cùng hero.",
-      "unlocks": {
-        "buildings": [
-          "Pet House"
-        ],
-        "troops": [
-          "Druid",
-          "Electro Titan"
-        ],
-        "spells": [
-          "Ice Block Spell"
-        ],
-        "siege": [
-          "Flame Flinger"
-        ],
-        "pets": [
-          "L.A.S.S.I",
-          "Electro Owl",
-          "Mighty Yak",
-          "Unicorn"
-        ],
-        "note": "Builder's Hut cũng nâng lên cấp 4 ở TH này."
-      }
-    },
-    {
-      "level": 15,
-      "title": "Monolith",
-      "blurb": "Hero thứ năm (Dragon Duke) cùng 2 phòng thủ mới và 4 pet tiếp theo.",
-      "unlocks": {
-        "defenses": [
-          "Monolith",
-          "Spell Tower"
-        ],
-        "troops": [
-          "Root Rider",
-          "Furnace"
-        ],
-        "spells": [
-          "Revive Spell"
-        ],
-        "siege": [
-          "Battle Drill"
-        ],
-        "heroes": [
-          "Dragon Duke"
-        ],
-        "pets": [
-          "Diggy",
-          "Frosty",
-          "Phoenix",
-          "Poison Lizard"
-        ]
-      }
-    },
-    {
-      "level": 16,
-      "title": "Merged Defenses",
-      "blurb": "Cơ chế ghép phòng thủ cũ thành phòng thủ mới — cần thiết kế lại layout.",
-      "unlocks": {
-        "defenses": [
-          "Multi-Archer Tower",
-          "Ricochet Cannon"
-        ],
-        "troops": [
-          "Ruin Witch",
-          "Thrower"
-        ],
-        "siege": [
-          "Troop Launcher"
-        ],
-        "pets": [
-          "Angry Jelly",
-          "Spirit Fox"
-        ],
-        "note": "Multi-Archer Tower/Ricochet Cannon được ghép từ các phòng thủ cấp thấp hơn, không xây mới hoàn toàn."
-      }
-    },
-    {
-      "level": 17,
-      "title": "Inferno Artillery",
-      "blurb": "Thêm phòng thủ hướng bắn thủ công và máy công thành mới.",
-      "unlocks": {
-        "buildings": [
-          "Multi-Gear Tower"
-        ],
-        "defenses": [
-          "Firespitter"
-        ],
-        "traps": [
-          "Giga Bomb"
-        ],
-        "siege": [
-          "Sky Wagon"
-        ],
-        "pets": [
-          "Sneezy"
-        ],
-        "note": "Ruin Witch cũng nâng lên cấp 3 ở TH này."
-      }
-    },
-    {
-      "level": 18,
-      "title": "Guardians",
-      "blurb": "Hệ thống Guardian và phòng thủ cấp cao nhất hiện tại — TH tối đa.",
-      "unlocks": {
-        "buildings": [
-          "Crafting Station",
-          "Revenge Tower",
-          "Super Wizard Tower"
-        ],
-        "guardians": [
-          "Logger",
-          "Longshot",
-          "Smasher"
-        ],
-        "pets": [
-          "Greedy Raven"
-        ],
-        "note": "Guardian là hệ thống cấu hình theo chiến thuật, không phải công trình nâng cấp tuyến tính."
-      }
+[
+  {
+    "level": 1,
+    "title": "Khởi đầu",
+    "blurb": "Làm quen cơ chế cơ bản: xây, thu tài nguyên, tập trận đầu tiên.",
+    "unlocks": {
+      "buildings": [
+        "Town Hall",
+        "Army Camp",
+        "Barracks",
+        "Gold Mine",
+        "Gold Storage",
+        "Elixir Collector",
+        "Elixir Storage"
+      ],
+      "defenses": [
+        "Cannon"
+      ],
+      "troops": [
+        "Barbarian",
+        "Archer",
+        "Giant"
+      ]
     }
-  ],
-  "_meta": {
-    "source": "coc.guide",
-    "updatedAt": "2026-09-02T17:33:44.070Z",
-    "version": "1.0.0"
+  },
+  {
+    "level": 2,
+    "title": "Phòng thủ đầu tiên",
+    "blurb": "Tường và Archer Tower buộc bạn phải nghĩ đến bố trí làng lần đầu tiên.",
+    "unlocks": {
+      "buildings": [
+        "Clan Castle",
+        "Tường (Wall)"
+      ],
+      "defenses": [
+        "Archer Tower"
+      ],
+      "troops": [
+        "Goblin"
+      ]
+    }
+  },
+  {
+    "level": 3,
+    "title": "Gia nhập hội",
+    "blurb": "Laboratory mở ra nhánh nâng cấp quân độc lập với công trình.",
+    "unlocks": {
+      "buildings": [
+        "Laboratory"
+      ],
+      "defenses": [
+        "Mortar"
+      ],
+      "traps": [
+        "Bomb"
+      ]
+    }
+  },
+  {
+    "level": 4,
+    "title": "Trên không & phá tường",
+    "blurb": "Air Defense và hai đơn vị chuyên dụng đầu tiên xuất hiện.",
+    "unlocks": {
+      "defenses": [
+        "Air Defense"
+      ],
+      "traps": [
+        "Spring Trap"
+      ],
+      "troops": [
+        "Balloon",
+        "Wall Breaker"
+      ]
+    }
+  },
+  {
+    "level": 5,
+    "title": "Phép thuật",
+    "blurb": "Spell Factory và Lightning Spell mở kỷ nguyên dùng phép trong tấn công.",
+    "unlocks": {
+      "buildings": [
+        "Spell Factory"
+      ],
+      "defenses": [
+        "Wizard Tower"
+      ],
+      "traps": [
+        "Air Bomb"
+      ],
+      "troops": [
+        "Wizard"
+      ],
+      "spells": [
+        "Lightning Spell"
+      ]
+    }
+  },
+  {
+    "level": 6,
+    "title": "Kiểm soát trên không",
+    "blurb": "Air Sweeper đổi hướng quân bay, Healing Spell kéo dài đội hình đẩy.",
+    "unlocks": {
+      "defenses": [
+        "Air Sweeper"
+      ],
+      "traps": [
+        "Giant Bomb"
+      ],
+      "troops": [
+        "Healer"
+      ],
+      "spells": [
+        "Healing Spell"
+      ]
+    }
+  },
+  {
+    "level": 7,
+    "title": "Hero & Dark Elixir",
+    "blurb": "Hero đầu tiên xuất hiện cùng cả một nhánh tài nguyên phụ mới.",
+    "unlocks": {
+      "buildings": [
+        "Dark Barracks",
+        "Dark Elixir Drill",
+        "Dark Elixir Storage",
+        "Hero Hall"
+      ],
+      "defenses": [
+        "Hidden Tesla"
+      ],
+      "traps": [
+        "Seeking Air Mine"
+      ],
+      "troops": [
+        "Dragon",
+        "Hog Rider",
+        "Minion"
+      ],
+      "spells": [
+        "Rage Spell"
+      ],
+      "heroes": [
+        "Barbarian King"
+      ]
+    }
+  },
+  {
+    "level": 8,
+    "title": "Archer Queen & Blacksmith",
+    "blurb": "Hero thứ hai và hệ thống trang bị hero (Blacksmith) bắt đầu từ đây.",
+    "unlocks": {
+      "buildings": [
+        "Blacksmith",
+        "Dark Spell Factory"
+      ],
+      "defenses": [
+        "Bomb Tower"
+      ],
+      "traps": [
+        "Skeleton Trap"
+      ],
+      "troops": [
+        "Golem",
+        "P.E.K.K.A",
+        "Valkyrie"
+      ],
+      "spells": [
+        "Earthquake Spell",
+        "Poison Spell"
+      ],
+      "heroes": [
+        "Archer Queen"
+      ]
+    }
+  },
+  {
+    "level": 9,
+    "title": "Minion Prince & X-Bow",
+    "blurb": "Hero thứ ba cùng loạt phép hỗ trợ chiến thuật (Freeze, Haste, Jump).",
+    "unlocks": {
+      "defenses": [
+        "X-Bow"
+      ],
+      "troops": [
+        "Baby Dragon",
+        "Lava Hound",
+        "Witch"
+      ],
+      "spells": [
+        "Freeze Spell",
+        "Haste Spell",
+        "Jump Spell",
+        "Skeleton Spell"
+      ],
+      "heroes": [
+        "Minion Prince"
+      ]
+    }
+  },
+  {
+    "level": 10,
+    "title": "Inferno",
+    "blurb": "Inferno Tower là bước ngoặt phòng thủ — bắt đầu kỷ nguyên phòng thủ khó nhằn.",
+    "unlocks": {
+      "defenses": [
+        "Inferno Tower"
+      ],
+      "troops": [
+        "Bowler",
+        "Miner"
+      ],
+      "spells": [
+        "Bat Spell",
+        "Clone Spell"
+      ]
+    }
+  },
+  {
+    "level": 11,
+    "title": "Grand Warden",
+    "blurb": "Hero hỗ trợ đầu tiên (buff/debuff theo vùng) cùng Eagle Artillery.",
+    "unlocks": {
+      "defenses": [
+        "Eagle Artillery"
+      ],
+      "traps": [
+        "Tornado Trap"
+      ],
+      "troops": [
+        "Electro Dragon",
+        "Ice Golem"
+      ],
+      "spells": [
+        "Invisibility Spell"
+      ],
+      "heroes": [
+        "Grand Warden"
+      ]
+    }
+  },
+  {
+    "level": 12,
+    "title": "Siege Workshop",
+    "blurb": "Máy công thành (siege machine) đầu tiên — thay đổi cách donate và mở đường.",
+    "unlocks": {
+      "buildings": [
+        "Workshop"
+      ],
+      "troops": [
+        "Yeti",
+        "Headhunter"
+      ],
+      "spells": [
+        "Overgrowth Spell"
+      ],
+      "siege": [
+        "Wall Wrecker",
+        "Battle Blimp",
+        "Stone Slammer"
+      ]
+    }
+  },
+  {
+    "level": 13,
+    "title": "Royal Champion",
+    "blurb": "Hero cận chiến tầm xa thứ tư, thêm 2 máy công thành mới.",
+    "unlocks": {
+      "defenses": [
+        "Scattershot"
+      ],
+      "troops": [
+        "Dragon Rider",
+        "Apprentice Warden"
+      ],
+      "spells": [
+        "Recall Spell"
+      ],
+      "siege": [
+        "Log Launcher",
+        "Siege Barracks"
+      ],
+      "heroes": [
+        "Royal Champion"
+      ]
+    }
+  },
+  {
+    "level": 14,
+    "title": "Hero Pets",
+    "blurb": "Pet House mở khóa 4 pet đầu tiên để ghép cùng hero.",
+    "unlocks": {
+      "buildings": [
+        "Pet House"
+      ],
+      "troops": [
+        "Druid",
+        "Electro Titan"
+      ],
+      "spells": [
+        "Ice Block Spell"
+      ],
+      "siege": [
+        "Flame Flinger"
+      ],
+      "pets": [
+        "L.A.S.S.I",
+        "Electro Owl",
+        "Mighty Yak",
+        "Unicorn"
+      ],
+      "note": "Builder's Hut cũng nâng lên cấp 4 ở TH này."
+    }
+  },
+  {
+    "level": 15,
+    "title": "Monolith",
+    "blurb": "Hero thứ năm (Dragon Duke) cùng 2 phòng thủ mới và 4 pet tiếp theo.",
+    "unlocks": {
+      "defenses": [
+        "Monolith",
+        "Spell Tower"
+      ],
+      "troops": [
+        "Root Rider",
+        "Furnace"
+      ],
+      "spells": [
+        "Revive Spell"
+      ],
+      "siege": [
+        "Battle Drill"
+      ],
+      "heroes": [
+        "Dragon Duke"
+      ],
+      "pets": [
+        "Diggy",
+        "Frosty",
+        "Phoenix",
+        "Poison Lizard"
+      ]
+    }
+  },
+  {
+    "level": 16,
+    "title": "Merged Defenses",
+    "blurb": "Cơ chế ghép phòng thủ cũ thành phòng thủ mới — cần thiết kế lại layout.",
+    "unlocks": {
+      "defenses": [
+        "Multi-Archer Tower",
+        "Ricochet Cannon"
+      ],
+      "troops": [
+        "Ruin Witch",
+        "Thrower"
+      ],
+      "siege": [
+        "Troop Launcher"
+      ],
+      "pets": [
+        "Angry Jelly",
+        "Spirit Fox"
+      ],
+      "note": "Multi-Archer Tower/Ricochet Cannon được ghép từ các phòng thủ cấp thấp hơn, không xây mới hoàn toàn."
+    }
+  },
+  {
+    "level": 17,
+    "title": "Inferno Artillery",
+    "blurb": "Thêm phòng thủ hướng bắn thủ công và máy công thành mới.",
+    "unlocks": {
+      "buildings": [
+        "Multi-Gear Tower"
+      ],
+      "defenses": [
+        "Firespitter"
+      ],
+      "traps": [
+        "Giga Bomb"
+      ],
+      "siege": [
+        "Sky Wagon"
+      ],
+      "pets": [
+        "Sneezy"
+      ],
+      "note": "Ruin Witch cũng nâng lên cấp 3 ở TH này."
+    }
+  },
+  {
+    "level": 18,
+    "title": "Guardians",
+    "blurb": "Hệ thống Guardian và phòng thủ cấp cao nhất hiện tại — TH tối đa.",
+    "unlocks": {
+      "buildings": [
+        "Crafting Station",
+        "Revenge Tower",
+        "Super Wizard Tower"
+      ],
+      "guardians": [
+        "Logger",
+        "Longshot",
+        "Smasher"
+      ],
+      "pets": [
+        "Greedy Raven"
+      ],
+      "note": "Guardian là hệ thống cấu hình theo chiến thuật, không phải công trình nâng cấp tuyến tính."
+    }
   }
-}
+]
