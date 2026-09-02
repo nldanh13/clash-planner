@@ -1,0 +1,8 @@
+{
+  "name": "Clash Path",
+  "description": "Clash of Clans upgrade planner and Town Hall roadmap tracker",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

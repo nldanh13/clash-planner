@@ -8,6 +8,9 @@ const WAR_REPORT_WEB_KEY = "A4U6KQYBG64+Fn2aQYjEFiip";
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: "0.0.0.0",
+    port: 3000,
+    allowedHosts: true,
     proxy: {
       "/warreport": {
         target: "https://clashapi.colinschmale.dev",
