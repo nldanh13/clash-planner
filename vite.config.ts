@@ -6,8 +6,7 @@ export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   if (command !== 'build' && !env.WAR_REPORT_API_KEY) {
-    console.error("LỖI CẤU HÌNH: Thiếu biến môi trường WAR_REPORT_API_KEY. Vui lòng thêm vào file .env.local.");
-    process.exit(1);
+    console.warn("CẢNH BÁO: Thiếu biến môi trường WAR_REPORT_API_KEY. Tính năng API sẽ không hoạt động đầy đủ.");
   }
 
   const proxyConfig = {

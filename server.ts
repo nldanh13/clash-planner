@@ -5,8 +5,7 @@ import { createServer as createViteServer } from "vite";
 async function startServer() {
   const apiKey = process.env.WAR_REPORT_API_KEY;
   if (!apiKey) {
-    console.error("LỖI CẤU HÌNH: Thiếu biến môi trường WAR_REPORT_API_KEY. Vui lòng thêm vào file .env.local.");
-    process.exit(1);
+    console.warn("CẢNH BÁO: Thiếu biến môi trường WAR_REPORT_API_KEY. Các yêu cầu API sẽ thất bại.");
   }
 
   const app = express();
@@ -17,6 +16,10 @@ async function startServer() {
 
   // API Proxy Route for War Report
   app.get("/api/warreport/*all", async (req, res) => {
+    if (!apiKey) {
+      return res.status(503).json({ error: "Service temporarily unavailable (WAR_REPORT_API_KEY missing)" });
+    }
+    
     try {
       // Extract the path after /api/warreport/
       const apiPath = req.params.all;
