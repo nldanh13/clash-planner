@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle, Bomb, Castle, Check, ClipboardPaste, Coins, Crosshair,
-  Clock3, Crown, Droplet, Flame, FlaskConical, Gem, Hammer, Info, LoaderCircle, Lock, Moon, PawPrint, RefreshCw,
+  Clock3, Crown, Droplet, Flame, FlaskConical, Gem, Hammer, Info, LayoutGrid, LoaderCircle, Lock, Moon, PawPrint, RefreshCw,
   Search, ShieldCheck, Skull, Sparkles, Swords, Target, Tent, Trophy, Truck, Users, Wind, Wrench, Zap
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -9,8 +9,12 @@ import type { Player } from "./types";
 import { type TownHallInfo, type TownHallUnlocks, townHallInfo as townHallInfoDefault } from "./townHallData";
 import { type DataStatus, type Resource, type UpgradeItem, type UpgradeLane, upgradeItems, upgradeSources } from "./upgradeData";
 import { villageDataIdMap } from "./villageDataMap";
+import { BasePlannerTab } from "./components/BasePlannerTab";
+
+export type Tab = "overview" | "planner" | "roadmap" | "base-planner";
 
 type VillagePasteChange = { id:string; name:string; kind:UpgradeItem["kind"]; before:number; after:number };
+
 type VillagePasteData = { levels:Map<number,number>; builderBaseIds:Set<number>; total:number };
 type VillagePasteReport = {
   error?:string;
@@ -72,8 +76,6 @@ function extractDataLevels(raw:string):VillagePasteData{
   walk(parsed,[]);
   return {levels,builderBaseIds,total};
 }
-
-type Tab = "overview"|"planner"|"roadmap";
 
 const ASSETS="https://assets.colinschmale.dev/warreport";
 const thImage=(th:number)=>`/town-halls/th-${Math.max(1,Math.min(18,th))}.png`;
@@ -735,6 +737,9 @@ export default function App(){
       <button className={tab==="overview"?"active":""} onClick={()=>setTab("overview")}>Hồ sơ người chơi</button>
       <button className={tab==="planner"?"active":""} onClick={()=>setTab("planner")}>Upgrade Tracker</button>
       <button className={tab==="roadmap"?"active":""} onClick={()=>setTab("roadmap")}>Roadmap TH1–18</button>
+      <button className={tab==="base-planner"?"active":""} onClick={()=>setTab("base-planner")}>
+        Base Planner (Lưới 44x44)
+      </button>
     </nav>
 
     {tab==="overview"&&(!player?<section className="empty-banner">
@@ -1068,6 +1073,8 @@ export default function App(){
           </div>
         </section>;
       })())}
+
+      {tab==="base-planner"&&<BasePlannerTab initialTownHall={player?.townHallLevel||guestTownHall||11}/>}
     <footer><span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span><span>Tiến độ thủ công lưu riêng theo từng Player Tag</span><span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span></footer>
   </main>
 }
