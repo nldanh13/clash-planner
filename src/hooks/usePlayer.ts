@@ -2,23 +2,18 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { Player } from "../types";
 import { fetchPlayer } from "../services/warReportApi";
 import { readStoredRecord, writeStoredRecord } from "../storage/playerStorage";
+import { normalizeTag } from "../utils/formatters";
 
 export function usePlayer() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => localStorage.getItem("coc-last-tag") || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [cacheWarning, setCacheWarning] = useState("");
   const [player, setPlayer] = useState<Player | null>(null);
-  const [history, setHistory] = useState<{ tag: string; name: string }[]>(() => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem("playerHistory") || "[]");
-      if (Array.isArray(parsed)) return parsed;
-    } catch {
-      localStorage.removeItem("playerHistory");
-    }
-    return [];
-  });
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
   const [villageData, setVillageData] = useState<Record<string, Record<string, number>>>(() =>
     readStoredRecord<Record<string, number>>("villageDataV2")
@@ -32,39 +27,124 @@ export function usePlayer() {
     });
   }, []);
 
-  const load = useCallback(
-    async (rawTag = input) => {
-      if (rawTag.length < 4) {
-        setError("Player Tag chưa hợp lệ.");
-        return;
-      }
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-      abortControllerRef.current = new AbortController();
+  const clearPlayerCache = useCallback(() => {
+    if (player?.tag) {
+      localStorage.removeItem(`coc-cache-${player.tag}`);
+      localStorage.removeItem(`coc-cache-time-${player.tag}`);
+      setCacheWarning("Đã xóa dữ liệu lưu trên máy cho tài khoản này.");
+    }
+  }, [player]);
 
-      setLoading(true);
-      setError("");
-      setCacheWarning("");
-      try {
-        const data = await fetchPlayer(rawTag, abortControllerRef.current.signal);
-        setPlayer(data);
-        const cachedStr = data.clan ? data.clan.name : "";
-        if (cachedStr && cachedStr.includes("(cached)")) {
-          setCacheWarning("Dữ liệu được tải từ bộ đệm (cache). Có thể không phải thông tin mới nhất.");
-        }
-        setHistory((prev) => {
-          const filtered = prev.filter((h) => h.tag !== data.tag);
-          const next = [{ tag: data.tag, name: data.name }, ...filtered].slice(0, 5);
-          localStorage.setItem("playerHistory", JSON.stringify(next));
-          return next;
-        });
-      } catch (e: any) {
-        if (e.name !== "AbortError") setError(e.message || "Lỗi không xác định.");
-      } finally {
-        setLoading(false);
+  const load = useCallback(async (rawTag = input) => {
+    const tag = normalizeTag(rawTag);
+    if (tag.length < 4) {
+      setError("Player Tag chưa hợp lệ.");
+      return;
+    }
+
+    if (abortControllerRef.current) abortControllerRef.current.abort("user_aborted");
+    if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    setError("");
+    setCacheWarning("");
+
+    timeoutIdRef.current = setTimeout(() => {
+      controller.abort("timeout");
+    }, 15000);
+
+    try {
+      const data = await fetchPlayer(tag, controller.signal);
+      
+      if (abortControllerRef.current !== controller) return;
+
+      setPlayer(data);
+      setInput(data.tag);
+      const now = new Date();
+      setSyncedAt(now);
+
+      localStorage.setItem("coc-last-tag", data.tag);
+      localStorage.setItem(`coc-cache-${data.tag}`, JSON.stringify(data));
+      localStorage.setItem(`coc-cache-time-${data.tag}`, now.getTime().toString());
+    } catch (e: unknown) {
+      if (abortControllerRef.current !== controller) return;
+      
+      let isTimeout = false;
+      let isUserAborted = false;
+      
+      if (e instanceof Error && e.name === "AbortError") {
+        const reason = controller.signal.reason;
+        if (reason === "timeout") isTimeout = true;
+        if (reason === "user_aborted") isUserAborted = true;
       }
-    },
-    [input]
-  );
+      
+      if (isUserAborted) return; // ignore completely if user aborted
+
+      const message = isTimeout 
+        ? "Yêu cầu quá hạn (timeout). Máy chủ không phản hồi." 
+        : (e instanceof Error ? e.message : "Không thể kết nối đến máy chủ.");
+
+      const cached = localStorage.getItem(`coc-cache-${tag}`);
+      const cachedTimeRaw = localStorage.getItem(`coc-cache-time-${tag}`);
+
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached) as Player;
+          if (!parsed || typeof parsed !== "object" || !Number.isFinite(parsed.townHallLevel)) {
+            throw new Error("Cache hỏng");
+          }
+          
+          setPlayer({
+            ...parsed,
+            heroes: Array.isArray(parsed.heroes) ? parsed.heroes : [],
+            troops: Array.isArray(parsed.troops) ? parsed.troops : [],
+            spells: Array.isArray(parsed.spells) ? parsed.spells : [],
+            heroEquipment: Array.isArray(parsed.heroEquipment) ? parsed.heroEquipment : []
+          });
+          
+          setError(message);
+          let timeMsg = "hiện chưa rõ";
+          if (cachedTimeRaw) {
+            const cachedTime = new Date(parseInt(cachedTimeRaw, 10));
+            timeMsg = cachedTime.toLocaleString("vi-VN");
+            const ageHours = (Date.now() - cachedTime.getTime()) / (1000 * 60 * 60);
+            if (ageHours > 24) {
+              timeMsg += ` (hơn ${Math.floor(ageHours)} giờ trước, dữ liệu rất cũ)`;
+            }
+            setSyncedAt(cachedTime);
+          } else {
+            setSyncedAt(null);
+          }
+          setCacheWarning(`Đang dùng dữ liệu lưu trên máy từ lúc ${timeMsg}.`);
+        } catch {
+          localStorage.removeItem(`coc-cache-${tag}`);
+          localStorage.removeItem(`coc-cache-time-${tag}`);
+          setError(message + " Bản lưu trên máy bị hỏng và đã tự động được xóa.");
+        }
+      } else {
+        setError(message);
+      }
+    } finally {
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+        abortControllerRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    }
+  }, [input]);
+
+  useEffect(() => {
+    const lastTag = localStorage.getItem("coc-last-tag");
+    if (lastTag) {
+      load(lastTag);
+    }
+  }, []);
 
   return {
     input,
@@ -73,9 +153,9 @@ export function usePlayer() {
     error,
     cacheWarning,
     player,
-    setPlayer,
-    history,
+    syncedAt,
     load,
+    clearPlayerCache,
     villageData,
     saveVillageData,
   };

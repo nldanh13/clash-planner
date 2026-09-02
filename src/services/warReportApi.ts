@@ -30,10 +30,10 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
     warStars: clampInteger(payload.warStars, 0, 100000, 0),
     attackWins: clampInteger(payload.attackWins, 0, 100000, 0),
     defenseWins: clampInteger(payload.defenseWins, 0, 100000, 0),
-    heroes: Array.isArray(payload.heroes) ? payload.heroes : [],
-    troops: Array.isArray(payload.troops) ? payload.troops : [],
-    spells: Array.isArray(payload.spells) ? payload.spells : [],
-    heroEquipment: Array.isArray(payload.heroEquipment) ? payload.heroEquipment : [],
+    heroes: Array.isArray(payload.heroes) ? payload.heroes.filter(u => u && typeof u.name === "string" && typeof u.level === "number" && typeof u.maxLevel === "number") : [],
+    troops: Array.isArray(payload.troops) ? payload.troops.filter(u => u && typeof u.name === "string" && typeof u.level === "number" && typeof u.maxLevel === "number") : [],
+    spells: Array.isArray(payload.spells) ? payload.spells.filter(u => u && typeof u.name === "string" && typeof u.level === "number" && typeof u.maxLevel === "number") : [],
+    heroEquipment: Array.isArray(payload.heroEquipment) ? payload.heroEquipment.filter(u => u && typeof u.name === "string" && typeof u.level === "number" && typeof u.maxLevel === "number") : [],
     clan: typeof payload.clan === "object" && payload.clan ? payload.clan : undefined,
   };
   return data;

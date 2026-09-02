@@ -1,3 +1,4 @@
+import { usePlayer } from "./hooks/usePlayer";
 import { thImage } from "./components/SmartArt";
 import { SmartArt, CostBadges, resourceIcon, resourceClass } from "./components/SmartArt";
 import { normalizeTag, pct, fmtNumber, fmtTime, fmtCost, emptyCosts, addCosts, itemKindLabel, dataStatusLabel, dataStatusDetail } from "./utils/formatters";
@@ -221,10 +222,8 @@ function RosterGroup({title,subtitle,items,player,manualLevels}:{title:string;su
 }
 
 export default function App(){
-  const [input,setInput]=useState(()=>localStorage.getItem("coc-last-tag")||"");
-  const [player,setPlayer]=useState<Player|null>(null);
-  const [loading,setLoading]=useState(false),[error,setError]=useState(""),[syncedAt,setSyncedAt]=useState<Date|null>(null);
-  const [tab,setTab]=useState<Tab>("overview"),[roadTH,setRoadTH]=useState(11);
+  const { input, setInput, player, loading, error, cacheWarning, syncedAt, clearPlayerCache, load: loadPlayer } = usePlayer();
+    const [tab,setTab]=useState<Tab>("overview"),[roadTH,setRoadTH]=useState(11);
   const [calcMode,setCalcMode]=useState<"suggest"|"town-hall"|"single">("suggest"),[plannerKind,setPlannerKind]=useState<UpgradeItem["kind"]|"all">("all");
   const [plannerItemId,setPlannerItemId]=useState("barbarian-king"),[targetLevel,setTargetLevel]=useState(100),[maxTownHall,setMaxTownHall]=useState(18),[builderCount,setBuilderCount]=useState(5);
   const [guestTownHall,setGuestTownHall]=useState(()=>{const saved=Number(localStorage.getItem("coc-guest-townhall"));return Number.isFinite(saved)&&saved>=1&&saved<=18?saved:8});
@@ -236,103 +235,19 @@ export default function App(){
   const [pasteText,setPasteText]=useState("");
   const [pasteReport,setPasteReport]=useState<VillagePasteReport|null>(null);
   const [,bumpDbVersion]=useState(0);
-  const [cacheWarning,setCacheWarning]=useState("");
-  const abortControllerRef=useRef<AbortController|null>(null);
   
   useGameDatabase(()=>bumpDbVersion(v=>v+1));
   const townHallInfo=getTownHallInfo();
 
-  async function loadPlayer(raw=input){
-    const tag=normalizeTag(raw);
-    if(tag.length<4){setError("Player Tag chưa hợp lệ.");return}
-    
-    if(abortControllerRef.current) abortControllerRef.current.abort();
-    abortControllerRef.current = new AbortController();
-    
-    setLoading(true);setError("");setCacheWarning("");
-    try{
-      const res=await fetch(`/warreport/v1/players/${encodeURIComponent(tag)}`,{
-        cache:"no-store",
-        signal: abortControllerRef.current.signal
-      });
-      if(!res.ok){
-        if(res.status===404)throw new Error("Không tìm thấy người chơi. Hãy kiểm tra lại Player Tag.");
-        if(res.status===401||res.status===403)throw new Error("War Report đã thay đổi quyền hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (WAR_REPORT_API_KEY).");
-        if(res.status===502)throw new Error("Proxy không thể kết nối đến War Report. Hãy chắc chắn bạn đã cấu hình backend proxy.");
-        throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
-      }
-      const payload=await res.json() as Partial<Player>;
-      if(!payload||typeof payload!=="object"||!Number.isFinite(payload.townHallLevel))throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
-      const data:Player={
-        ...payload,
-        tag:typeof payload.tag==="string"?normalizeTag(payload.tag):tag,
-        name:typeof payload.name==="string"?payload.name:"Người chơi",
-        townHallLevel:clampInteger(payload.townHallLevel,1,18,1),
-        expLevel:clampInteger(payload.expLevel,0,1000,0),
-        trophies:clampInteger(payload.trophies,0,100000,0),
-        bestTrophies:clampInteger(payload.bestTrophies,0,100000,0),
-        warStars:clampInteger(payload.warStars,0,100000,0),
-        attackWins:clampInteger(payload.attackWins,0,100000,0),
-        defenseWins:clampInteger(payload.defenseWins,0,100000,0),
-        heroes:Array.isArray(payload.heroes)?payload.heroes:[],
-        troops:Array.isArray(payload.troops)?payload.troops:[],
-        spells:Array.isArray(payload.spells)?payload.spells:[],
-        heroEquipment:Array.isArray(payload.heroEquipment)?payload.heroEquipment:[]
-      };
-      setPlayer(data);setInput(data.tag);setRoadTH(data.townHallLevel);setMaxTownHall(data.townHallLevel);
-      const now = new Date();
-      setSyncedAt(now);
-      localStorage.setItem("coc-last-tag",data.tag);
-      localStorage.setItem(`coc-cache-${data.tag}`,JSON.stringify(data));
-      localStorage.setItem(`coc-cache-time-${data.tag}`,now.getTime().toString());
-    }catch(e: any){
-      if(e.name === 'AbortError') return; // Bỏ qua nếu bị huỷ
-      const message=e instanceof Error?e.message:"Không thể kết nối đến máy chủ, yêu cầu bị quá hạn hoặc bị gián đoạn.";
-      const cached=localStorage.getItem(`coc-cache-${tag}`);
-      const cachedTimeRaw=localStorage.getItem(`coc-cache-time-${tag}`);
-      if(cached){
-        try{
-          const parsed=JSON.parse(cached) as Player;
-          if(!parsed||typeof parsed!=="object"||!Number.isFinite(parsed.townHallLevel))throw new Error("Cache hỏng");
-          setPlayer({...parsed,heroes:Array.isArray(parsed.heroes)?parsed.heroes:[],troops:Array.isArray(parsed.troops)?parsed.troops:[],spells:Array.isArray(parsed.spells)?parsed.spells:[],heroEquipment:Array.isArray(parsed.heroEquipment)?parsed.heroEquipment:[]});
-          setError(message);
-          
-          let timeMsg = "hiện chưa rõ";
-          if (cachedTimeRaw) {
-             const cachedTime = new Date(parseInt(cachedTimeRaw, 10));
-             timeMsg = cachedTime.toLocaleString("vi-VN");
-             const ageHours = (Date.now() - cachedTime.getTime()) / (1000 * 60 * 60);
-             if (ageHours > 24) {
-                 timeMsg += ` (hơn ${Math.floor(ageHours)} giờ trước, dữ liệu rất cũ)`;
-             }
-             setSyncedAt(cachedTime);
-          } else {
-             setSyncedAt(null);
-          }
-          setCacheWarning(`Đang dùng dữ liệu lưu trên máy từ lúc ${timeMsg}.`);
-        }catch{
-          localStorage.removeItem(`coc-cache-${tag}`);
-          localStorage.removeItem(`coc-cache-time-${tag}`);
-          setError(message+" Bản lưu trên máy bị hỏng và đã tự động được xóa.");
-        }
-      }else setError(message);
-    }finally{
-      setLoading(false);
-      abortControllerRef.current = null;
+  
+
+  
+  useEffect(() => {
+    if (player?.townHallLevel) {
+      setRoadTH(player.townHallLevel);
+      setMaxTownHall(player.townHallLevel);
     }
-  }
-
-  function clearPlayerCache() {
-    if(!player) return;
-    localStorage.removeItem(`coc-cache-${player.tag}`);
-    localStorage.removeItem(`coc-cache-time-${player.tag}`);
-    setCacheWarning("Đã xóa dữ liệu lưu trên máy cho tài khoản này.");
-  }
-
-  useEffect(()=>{
-    const lastTag = localStorage.getItem("coc-last-tag");
-    if(lastTag) loadPlayer(lastTag);
-  },[]);
+  }, [player]);
   useEffect(()=>{localStorage.setItem("coc-manual-levels",JSON.stringify(manualLevels))},[manualLevels]);
   useEffect(()=>{localStorage.setItem("coc-playstyle",playstyle)},[playstyle]);
   useEffect(()=>{localStorage.setItem("coc-attack-focus",attackFocus)},[attackFocus]);
