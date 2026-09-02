@@ -5,17 +5,18 @@
   "type": "module",
   "scripts": {
     "update-data": "node scripts/update-data.mjs",
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "tsx server.ts",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "build": "vite build",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "lint": "tsc --noEmit",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
-    "start": "vite --host 0.0.0.0 --port 3000"
+    "start": "node dist/server.cjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "express": "^5.2.1",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -26,10 +27,13 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",
+    "tsx": "^4.23.13",
     "vitest": "^4.1.11"
   }
 }

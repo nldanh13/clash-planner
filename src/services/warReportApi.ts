@@ -4,7 +4,7 @@ import { clampInteger } from "../utils/villageImport";
 
 export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise<Player> {
   const tag = normalizeTag(rawTag);
-  const res = await fetch(`/warreport/v1/players/${encodeURIComponent(tag)}`, {
+  const res = await fetch(`/api/warreport/v1/players/${encodeURIComponent(tag)}`, {
     cache: "no-store",
     signal,
   });

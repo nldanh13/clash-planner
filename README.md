@@ -7,9 +7,11 @@ realtime qua API mà War Report đang sử dụng.
 
 Dự án này sử dụng API của bên thứ 3 nên yêu cầu một API key được cung cấp thông qua biến môi trường.
 
-1. Tạo file `.env` (hoặc `.env.local`) từ `.env.example`:
-   `cp .env.example .env`
-2. Điền khóa API vào biến `WAR_REPORT_API_KEY`.
+1. Tạo file `.env.local` (hoặc `.env`) từ `.env.example`:
+   `cp .env.example .env.local`
+2. Điền khóa API vào biến `WAR_REPORT_API_KEY`. (Chú ý: KHÔNG bao giờ commit file `.env.local` chứa khóa thật lên git).
+
+> **Lưu ý Bảo mật**: Khóa API cũ (thật) đã từng bị lộ trong file `.env.example` trước đó và có thể vẫn còn tồn tại trong lịch sử commit của Git. Để đảm bảo an toàn tuyệt đối, bạn NÊN thu hồi (revoke) khóa bị lộ từ phía nhà cung cấp (War Report) và tạo một khóa API hoàn toàn mới để thay thế.
 
 ## Chạy trên Windows
 
