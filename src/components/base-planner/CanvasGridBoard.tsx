@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Flame,
+  Info,
   Move,
   RotateCw,
   ShieldAlert,
@@ -16,7 +20,7 @@ import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
-  onUpdateBuildings: (newBuildings: PlacedBuilding[]) => void;
+  onUpdateBuildings: (newBuildings: PlacedBuilding[], replace?: boolean) => void;
   selectedDefId: string | null;
   onClearSelectedDef: () => void;
   selectedPlacedId: string | null;
@@ -56,6 +60,9 @@ export function CanvasGridBoard({
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isPaintingWalls, setIsPaintingWalls] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
+  const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(true);
+  const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(false);
+  const [isChainAlertExpanded, setIsChainAlertExpanded] = useState(true);
 
   // Scaled dimensions
   const cellSize = Math.round(CELL_SIZE_PX * zoomLevel);
@@ -125,6 +132,8 @@ export function CanvasGridBoard({
     [cellSize]
   );
 
+  const dragActionCommittedRef = useRef(false);
+
   // Fast Wall placement using O(1) matrix check
   const tryPaintWallFast = useCallback(
     (x: number, y: number) => {
@@ -141,7 +150,10 @@ export function CanvasGridBoard({
         x,
         y,
       };
-      onUpdateBuildings([...buildings, newWall]);
+      
+      const replace = dragActionCommittedRef.current;
+      onUpdateBuildings([...buildings, newWall], replace);
+      dragActionCommittedRef.current = true;
     },
     [buildingLimits, buildings, occupancyMatrix, onUpdateBuildings, placedCounts]
   );
@@ -151,7 +163,10 @@ export function CanvasGridBoard({
     (x: number, y: number) => {
       const target = getBuildingAtCell(occupancyMatrix, x, y);
       if (target) {
-        onUpdateBuildings(buildings.filter((b) => b.instanceId !== target.instanceId));
+        const replace = dragActionCommittedRef.current;
+        onUpdateBuildings(buildings.filter((b) => b.instanceId !== target.instanceId), replace);
+        dragActionCommittedRef.current = true;
+        
         if (selectedPlacedId === target.instanceId) {
           onSelectPlacedId(null);
         }
@@ -159,6 +174,22 @@ export function CanvasGridBoard({
     },
     [buildings, occupancyMatrix, onSelectPlacedId, onUpdateBuildings, selectedPlacedId]
   );
+
+  const { invalidBuildings } = React.useMemo(() => {
+     // We need validateLayoutAgainstLimits here, so let's just do a quick loop
+     const counts: Record<string, number> = {};
+     const invalid = new Set<string>();
+     for (const b of buildings) {
+        const limit = buildingLimits[b.buildingId] || 0;
+        const c = counts[b.buildingId] || 0;
+        if (limit === 0 || c >= limit) {
+           invalid.add(b.instanceId);
+        } else {
+           counts[b.buildingId] = c + 1;
+        }
+     }
+     return { invalidBuildings: invalid };
+  }, [buildings, buildingLimits]);
 
   // ==========================================
   // HTML5 CANVAS 2D RENDER LOOP (60 FPS)
@@ -259,13 +290,14 @@ export function CanvasGridBoard({
       const ph = def.height * cellSize;
       const isSelected = selectedPlacedId === b.instanceId;
       const isVulnerable = vulnerableIds.has(b.instanceId);
+      const isInvalid = invalidBuildings.has(b.instanceId);
 
       // Shadow
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.fillRect(px + 2, py + 3, pw - 4, ph - 4);
 
       // Building Box
-      ctx.fillStyle = def.color || "#34495e";
+      ctx.fillStyle = isInvalid ? "#7f8c8d" : (def.color || "#34495e");
       ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
 
       // Border & Selection Highlight
@@ -273,6 +305,12 @@ export function CanvasGridBoard({
         ctx.strokeStyle = "#ffc857";
         ctx.lineWidth = 2.5;
         ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
+      } else if (isInvalid) {
+        ctx.strokeStyle = "#e84118";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([4, 2]);
+        ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
+        ctx.setLineDash([]);
       } else if (isVulnerable && settings.showChainLightning) {
         ctx.strokeStyle = "#ff4757";
         ctx.lineWidth = 2;
@@ -281,6 +319,19 @@ export function CanvasGridBoard({
         ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
         ctx.lineWidth = 1.2;
         ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
+      }
+
+      // Invalid Warning Icon (Draw a red circle with '!')
+      if (isInvalid) {
+        ctx.fillStyle = "#e84118";
+        ctx.beginPath();
+        ctx.arc(px + pw - 8, py + 8, 7, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("!", px + pw - 8, py + 8);
       }
 
       // Building Label (Name & Coord)
@@ -457,9 +508,11 @@ export function CanvasGridBoard({
   // ==========================================
   // MOUSE & POINTER EVENTS (O(1) FAST)
   // ==========================================
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return; // Left click only
     setIsPointerDown(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragActionCommittedRef.current = false;
 
     const coord = getTileFromEvent(e);
     if (!coord) return;
@@ -525,7 +578,7 @@ export function CanvasGridBoard({
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const coord = getTileFromEvent(e);
     setHoverCoord(coord);
 
@@ -566,10 +619,11 @@ export function CanvasGridBoard({
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsPointerDown(false);
     setIsPaintingWalls(false);
     setIsErasing(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
 
     if (activeDrag) {
       if (activeDrag.isValid) {
@@ -633,7 +687,9 @@ export function CanvasGridBoard({
 
     const max = buildingLimits[def.id] || 0;
     const current = placedCounts[def.id] || 0;
-    if (current >= max && max > 0) {
+    
+    // Ngăn chặn đặt nếu giới hạn = 0 hoặc đã đạt tối đa
+    if (max === 0 || current >= max) {
       setActiveDrag(null);
       return;
     }
@@ -659,49 +715,198 @@ export function CanvasGridBoard({
     onSelectPlacedId(null);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (!selectedPlacedId) return;
+
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      handleRemoveSelected();
+      return;
+    }
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault();
+      const target = buildings.find(b => b.instanceId === selectedPlacedId);
+      if (!target) return;
+
+      const def = BUILDINGS_BY_ID.get(target.buildingId);
+      if (!def) return;
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === "ArrowUp") dy = -1;
+      if (e.key === "ArrowDown") dy = 1;
+      if (e.key === "ArrowLeft") dx = -1;
+      if (e.key === "ArrowRight") dx = 1;
+
+      const newX = target.x + dx;
+      const newY = target.y + dy;
+
+      if (newX < 0 || newY < 0 || newX + def.width > GRID_SIZE || newY + def.height > GRID_SIZE) return;
+
+      const { valid } = canPlaceBuildingFast(occupancyMatrix, target.buildingId, newX, newY, target.instanceId);
+      if (valid) {
+        const updated = buildings.map(b => b.instanceId === selectedPlacedId ? { ...b, x: newX, y: newY } : b);
+        onUpdateBuildings(updated);
+      }
+    }
+  };
+
   return (
-    <div className="grid-canvas-viewport" ref={containerRef}>
-      {/* Alert Banner for Chain Lightning Hazards */}
+    <div className="grid-canvas-viewport relative" ref={containerRef}>
+      {/* SMART COMPACT ALERT: Chain Lightning Hazards (Top-Left Floating Toast) */}
       {settings.showChainLightning && chainAnalysis.dangerPairs.length > 0 && (
-        <div className="chain-alert-banner">
-          <Zap />
-          <span>
-            <b>Phát hiện {chainAnalysis.dangerPairs.length} vị trí có nguy cơ sét lan:</b>{" "}
-            {chainAnalysis.criticalCount} cặp công trình cách ≤ 1 ô (nguy hiểm) và{" "}
-            {chainAnalysis.warningCount} cặp cách 2 ô (E-Dragon chain). Hãy dãn cách ≥ 3 ô!
-          </span>
+        <div className="absolute top-4 left-4 z-30 transition-all">
+          {isChainAlertDismissed ? (
+            <button
+              onClick={() => setIsChainAlertDismissed(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-950/85 backdrop-blur-md border border-rose-500/50 text-rose-300 hover:text-white shadow-xl text-xs font-bold transition-all hover:scale-105"
+              title="Nhấn để mở lại cảnh báo sét lan"
+            >
+              <Zap className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span>{chainAnalysis.dangerPairs.length} vị trí sét lan</span>
+            </button>
+          ) : (
+            <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-slate-950/85 backdrop-blur-md border border-rose-500/50 text-slate-200 shadow-2xl max-w-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                    <Zap className="w-3.5 h-3.5 animate-pulse" />
+                  </div>
+                  <strong className="text-xs text-rose-300 font-extrabold">
+                    Nguy cơ Sét lan (≤2 ô)
+                  </strong>
+                  <span className="bg-rose-600 text-white font-black text-[9.5px] px-2 py-0.5 rounded-full font-mono">
+                    {chainAnalysis.dangerPairs.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsChainAlertExpanded(!isChainAlertExpanded)}
+                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    title={isChainAlertExpanded ? "Thu gọn" : "Mở rộng"}
+                    aria-label={isChainAlertExpanded ? "Thu gọn cảnh báo sét" : "Mở rộng cảnh báo sét"}
+                  >
+                    {isChainAlertExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => setIsChainAlertDismissed(true)}
+                    className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                    title="Đóng thông báo"
+                    aria-label="Đóng thông báo cảnh báo sét"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {isChainAlertExpanded && (
+                <div className="text-[11px] text-slate-300 leading-snug pt-1 border-t border-slate-800/80">
+                  <p>
+                    <b className="text-rose-400">{chainAnalysis.criticalCount}</b> cặp cách ≤ 1 ô (nguy hiểm) &amp;{" "}
+                    <b className="text-amber-400">{chainAnalysis.warningCount}</b> cặp cách 2 ô (E-Dragon chain).
+                  </p>
+                  <span className="text-[10px] text-slate-400 italic block mt-1">
+                    Gợi ý: Dãn cách các trụ phòng thủ chủ lực ≥ 3 ô để vô hiệu hóa chuỗi sét.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Heatmap Legend Bar (if heatmap is active) */}
+      {/* FLOATING HUD: Firepower Heatmap & Quadrants Balance (Top-Right Floating HUD) */}
       {settings.showHeatmap && heatmapData && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 mb-2 w-full max-w-[800px] bg-[#09151e] border border-[#2b4154] rounded-lg text-[10px] text-slate-300">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-cyan-400">Mật độ hỏa lực:</span>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-blue-500/80" />
-              <span className="text-[9px]">Thấp</span>
+        <div className="absolute top-4 right-4 z-30 transition-all">
+          <div className="p-3 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-700/60 text-slate-200 shadow-2xl max-w-xs sm:max-w-sm flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+                  <Flame className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex flex-col">
+                  <strong className="text-xs text-orange-300 font-extrabold tracking-wide">
+                    Mật độ Hỏa lực
+                  </strong>
+                  <span className="text-[9.5px] text-slate-400 font-medium">
+                    Phân tích phủ sóng phòng thủ
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsHeatmapHudExpanded(!isHeatmapHudExpanded)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title={isHeatmapHudExpanded ? "Thu gọn" : "Mở rộng"}
+                aria-label={isHeatmapHudExpanded ? "Thu gọn mật độ hỏa lực" : "Mở rộng mật độ hỏa lực"}
+              >
+                {isHeatmapHudExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-emerald-500/80" />
-              <span className="text-[9px]">Vừa</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-amber-400/90" />
-              <span className="text-[9px]">Cao</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-red-600" />
-              <span className="text-[9px]">Điểm nóng (Hot Zone)</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span>
-              Vùng mù ngoài rìa: <b className="text-amber-300">{heatmapData.blindSpotsPercent}%</b>
-            </span>
-            <span>
-              Phủ sóng 4 góc: <b className="text-cyan-300">NW:{heatmapData.quadrantBalance.nw}% NE:{heatmapData.quadrantBalance.ne}% SW:{heatmapData.quadrantBalance.sw}% SE:{heatmapData.quadrantBalance.se}%</b>
-            </span>
+
+            {isHeatmapHudExpanded ? (
+              <div className="flex flex-col gap-2.5 pt-0.5">
+                {/* 4-level Color Legend */}
+                <div className="grid grid-cols-4 gap-1.5 text-[10px]">
+                  <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-blue-500/80 shrink-0" />
+                    <span className="text-[9.5px] text-slate-300">Thấp</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/80 shrink-0" />
+                    <span className="text-[9.5px] text-slate-300">Vừa</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shrink-0" />
+                    <span className="text-[9.5px] text-slate-300">Cao</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-600 shrink-0" />
+                    <span className="text-[9.5px] text-red-300 font-bold">Hot</span>
+                  </div>
+                </div>
+
+                {/* Metrics: Blind Spots + Quadrant Balance */}
+                <div className="flex items-center justify-between text-[10.5px] pt-1 border-t border-slate-850">
+                  <span className="text-slate-400">Vùng mù ngoài rìa:</span>
+                  <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-500/30">
+                    {heatmapData.blindSpotsPercent}%
+                  </span>
+                </div>
+
+                {/* Quadrants */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    Cân bằng hỏa lực 4 hướng:
+                  </span>
+                  <div className="grid grid-cols-4 gap-1 text-[9.5px] font-mono text-center">
+                    <div className="bg-slate-900/80 py-0.5 rounded border border-slate-800">
+                      <span className="text-slate-500 text-[8.5px] block">NW</span>
+                      <b className="text-cyan-300">{heatmapData.quadrantBalance.nw}%</b>
+                    </div>
+                    <div className="bg-slate-900/80 py-0.5 rounded border border-slate-800">
+                      <span className="text-slate-500 text-[8.5px] block">NE</span>
+                      <b className="text-cyan-300">{heatmapData.quadrantBalance.ne}%</b>
+                    </div>
+                    <div className="bg-slate-900/80 py-0.5 rounded border border-slate-800">
+                      <span className="text-slate-500 text-[8.5px] block">SW</span>
+                      <b className="text-cyan-300">{heatmapData.quadrantBalance.sw}%</b>
+                    </div>
+                    <div className="bg-slate-900/80 py-0.5 rounded border border-slate-800">
+                      <span className="text-slate-500 text-[8.5px] block">SE</span>
+                      <b className="text-cyan-300">{heatmapData.quadrantBalance.se}%</b>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 text-[10px] text-slate-300 pt-0.5 font-mono">
+                <span>Vùng mù: <b className="text-amber-300">{heatmapData.blindSpotsPercent}%</b></span>
+                <span>NW:{heatmapData.quadrantBalance.nw}% SE:{heatmapData.quadrantBalance.se}%</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -709,16 +914,21 @@ export function CanvasGridBoard({
       {/* HTML5 Canvas Element */}
       <canvas
         ref={canvasRef}
-        className={`grid-canvas-board ${settings.wallBrushActive ? "brush-mode" : ""} ${
+        tabIndex={0}
+        aria-label="Bản đồ Clash of Clans"
+        role="application"
+        className={`grid-canvas-board outline-none ${settings.wallBrushActive ? "brush-mode" : ""} ${
           settings.eraserActive ? "eraser-mode" : ""
         }`}
         style={{
           width: `${boardPixelSize}px`,
           height: `${boardPixelSize}px`,
         }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onKeyDown={handleKeyDown}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       />
@@ -738,6 +948,7 @@ export function CanvasGridBoard({
               className="close-inspector-btn"
               onClick={() => onSelectPlacedId(null)}
               title="Đóng"
+              aria-label="Đóng bảng chi tiết"
             >
               <X />
             </button>
@@ -773,6 +984,7 @@ export function CanvasGridBoard({
               className="inspector-delete-btn"
               onClick={handleRemoveSelected}
               title="Xóa công trình này khỏi bản đồ"
+              aria-label="Xóa công trình"
             >
               <Trash2 />
               <span>Xóa bỏ</span>

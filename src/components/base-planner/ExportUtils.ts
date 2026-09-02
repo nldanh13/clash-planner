@@ -1,4 +1,5 @@
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
+import { validateLayoutAgainstLimits } from "./buildingLimits";
 import type { BaseLayoutData, PlacedBuilding } from "./types";
 
 /**
@@ -329,5 +330,6 @@ export function getPresetLayout(townHallLevel: number): PlacedBuilding[] {
   add("seeking-air-mine", 11, 15);
   add("seeking-air-mine", 30, 15);
 
-  return list;
+  const { validBuildings } = validateLayoutAgainstLimits(list, townHallLevel);
+  return validBuildings;
 }

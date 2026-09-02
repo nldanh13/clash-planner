@@ -4,15 +4,14 @@ import {
   Coins,
   Crown,
   Layers,
-  Plus,
   Search,
   Shield,
   Sparkles,
   Swords,
-  Trash2,
+  X,
 } from "lucide-react";
 import { BUILDINGS_CATALOG } from "./constants";
-import type { BuildingCategory, BuildingDef, PlacedBuilding } from "./types";
+import type { BuildingCategory, PlacedBuilding } from "./types";
 
 interface InventorySidebarProps {
   townHallLevel: number;
@@ -61,7 +60,7 @@ export function InventorySidebar({
   const availableItems = useMemo(() => {
     return BUILDINGS_CATALOG.filter((def) => {
       const limit = buildingLimits[def.id] || 0;
-      if (limit <= 0) return false; // Not unlocked at this TH
+      if (limit <= 0) return false;
 
       if (activeCategory !== "all" && def.category !== activeCategory) {
         return false;
@@ -96,40 +95,45 @@ export function InventorySidebar({
   }, [buildingLimits, placedCounts]);
 
   return (
-    <aside className="inventory-sidebar">
-      {/* Search & Category Tabs */}
-      <div className="inventory-header">
-        <div className="inventory-search">
-          <Search />
+    <aside className="w-full lg:w-[320px] shrink-0 flex flex-col gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-3 shadow-xl h-[calc(100vh-140px)] sticky top-20 overflow-hidden text-slate-200">
+      {/* Header: Search Box */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Tìm công trình, bẫy..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent border-none outline-none text-xs text-white placeholder-slate-500 font-medium"
           />
           {searchQuery && (
             <button
-              className="clear-search-btn"
               onClick={() => setSearchQuery("")}
+              className="text-slate-400 hover:text-white p-0.5"
               title="Xóa tìm kiếm"
             >
-              ×
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Categories Bar */}
-        <div className="inventory-tabs">
+        {/* Category Pills Slider */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const isActive = activeCategory === cat.key;
             return (
               <button
                 key={cat.key}
-                className={`inventory-tab-btn ${isActive ? "active" : ""}`}
                 onClick={() => setActiveCategory(cat.key)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm"
+                    : "bg-slate-950/50 text-slate-400 hover:text-slate-200 border border-slate-800"
+                }`}
               >
-                <Icon />
+                <Icon className="w-3 h-3" />
                 <span>{cat.label}</span>
               </button>
             );
@@ -137,46 +141,55 @@ export function InventorySidebar({
         </div>
       </div>
 
-      {/* Overview Progress Pill */}
-      <div className="inventory-status-bar">
-        <div>
+      {/* Progress & Wall Brush Banner */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-950/70 border border-slate-800 rounded-xl text-xs font-mono">
+        <div className="flex items-center gap-1 text-slate-400">
           <span>Công trình:</span>
-          <strong>
-            {totalStats.placedTotal} / {totalStats.maxTotal}
+          <strong className="text-white">
+            {totalStats.placedTotal}/{totalStats.maxTotal}
           </strong>
         </div>
-        <div className="wall-status">
+        <div className="flex items-center gap-1 text-slate-400">
           <span>Tường:</span>
-          <strong className={totalStats.wallPlaced >= totalStats.wallMax && totalStats.wallMax > 0 ? "maxed" : ""}>
-            {totalStats.wallPlaced} / {totalStats.wallMax}
+          <strong
+            className={
+              totalStats.wallPlaced >= totalStats.wallMax && totalStats.wallMax > 0
+                ? "text-emerald-400 font-black"
+                : "text-amber-300 font-bold"
+            }
+          >
+            {totalStats.wallPlaced}/{totalStats.wallMax}
           </strong>
         </div>
       </div>
 
-      {/* Special Quick Action for Wall Brush */}
+      {/* Wall Brush Mode Quick Banner */}
       {buildingLimits["wall"] > 0 && (
-        <div className="wall-brush-card">
-          <div className="wall-brush-info">
-            <strong>Chế độ vẽ Tường (Wall Brush)</strong>
-            <small>
-              Nhấn giữ và rê chuột trên bản đồ để xây hàng tường liền mạch.
-            </small>
+        <div className="flex items-center justify-between gap-2 p-2 bg-slate-950/80 border border-cyan-500/30 rounded-xl">
+          <div className="flex flex-col">
+            <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
+              <Layers className="w-3 h-3" /> Cọ vẽ Tường liên tục
+            </span>
+            <span className="text-[9.5px] text-slate-400">Kéo chuột trên map để xây tường</span>
           </div>
           <button
-            className={`wall-brush-toggle ${wallBrushActive ? "active" : ""}`}
             onClick={onToggleWallBrush}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+              wallBrushActive
+                ? "bg-cyan-500 text-slate-950 shadow-md font-black"
+                : "bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-cyan-500/40"
+            }`}
           >
-            <Layers />
-            <span>{wallBrushActive ? "Đang bật" : "Bật cọ tường"}</span>
+            {wallBrushActive ? "Bật" : "Tắt"}
           </button>
         </div>
       )}
 
-      {/* Items Grid */}
-      <div className="inventory-items-grid">
+      {/* Buildings List (Scrollable) */}
+      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-1.5">
         {availableItems.length === 0 ? (
-          <div className="inventory-empty">
-            <p>Không có công trình nào phù hợp với bộ lọc ở TH{townHallLevel}.</p>
+          <div className="p-6 text-center text-xs text-slate-500">
+            Không có công trình nào phù hợp ở TH{townHallLevel}.
           </div>
         ) : (
           availableItems.map((item) => {
@@ -189,54 +202,52 @@ export function InventorySidebar({
             return (
               <div
                 key={item.id}
-                className={`inventory-item-card ${isSelected ? "selected" : ""} ${
-                  isExhausted ? "exhausted" : ""
-                }`}
                 draggable={!isExhausted}
                 onDragStart={(e) => onStartDragNew(e, item.id)}
                 onClick={() => {
                   if (isExhausted) return;
-                  if (selectedBuildingDefId === item.id) {
-                    onSelectBuildingDef(null);
-                  } else {
-                    onSelectBuildingDef(item.id);
-                  }
+                  onSelectBuildingDef(isSelected ? null : item.id);
                 }}
-                title={`${item.name} (${item.width}x${item.height}) - Còn ${remaining}/${max}`}
+                className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all select-none ${
+                  isExhausted
+                    ? "opacity-40 bg-slate-950/30 border-slate-800/50 cursor-not-allowed"
+                    : isSelected
+                    ? "bg-slate-800/90 border-amber-400 shadow-md ring-1 ring-amber-400/50 cursor-pointer"
+                    : "bg-slate-950/60 border-slate-800/90 hover:bg-slate-800/60 hover:border-slate-700 cursor-grab active:cursor-grabbing"
+                }`}
               >
-                {/* Building Visual Thumbnail */}
+                {/* Thumb Visual Box */}
                 <div
-                  className="inventory-thumb"
-                  style={{
-                    backgroundColor: `${item.color}22`,
-                    borderColor: `${item.color}66`,
-                  }}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-inner border border-white/10"
+                  style={{ backgroundColor: item.color }}
                 >
-                  <span
-                    className="inventory-thumb-shape"
-                    style={{
-                      backgroundColor: item.color,
-                      width: `${Math.min(32, item.width * 8 + 12)}px`,
-                      height: `${Math.min(32, item.height * 8 + 12)}px`,
-                    }}
-                  >
-                    <small className="size-badge">
-                      {item.width}x{item.height}
-                    </small>
+                  <span className="bg-black/40 px-1 py-0.5 rounded text-[8.5px] font-mono">
+                    {item.width}x{item.height}
                   </span>
                 </div>
 
-                {/* Building Details */}
-                <div className="inventory-item-body">
-                  <div className="item-title-row">
-                    <strong>{item.name}</strong>
-                    {item.range && <span className="item-range-tag">Tầm: {item.range}</span>}
+                {/* Info & Counter */}
+                <div className="flex flex-col flex-1 min-w-0 gap-0.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold text-xs text-white truncate">{item.name}</span>
+                    {item.range && (
+                      <span className="text-[9px] font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.2 rounded">
+                        Tầm: {item.range}
+                      </span>
+                    )}
                   </div>
-                  <div className="item-count-row">
-                    <span className="count-label">
-                      Đã đặt: <b>{placed}</b>/{max}
+
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className="text-slate-400">
+                      Đã đặt: <b className="text-slate-200">{placed}</b>/{max}
                     </span>
-                    <span className={`remaining-badge ${isExhausted ? "none" : ""}`}>
+                    <span
+                      className={`font-bold font-mono text-[10px] px-1.5 py-0.2 rounded ${
+                        isExhausted
+                          ? "bg-slate-800 text-slate-500"
+                          : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      }`}
+                    >
                       {isExhausted ? "Hết" : `Còn ${remaining}`}
                     </span>
                   </div>
@@ -249,3 +260,5 @@ export function InventorySidebar({
     </aside>
   );
 }
+
+export default InventorySidebar;

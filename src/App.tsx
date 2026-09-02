@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { thImage } from "./components/SmartArt";
+import { SmartArt, CostBadges, resourceIcon, resourceClass } from "./components/SmartArt";
+import { normalizeTag, pct, fmtNumber, fmtTime, fmtCost, emptyCosts, addCosts, itemKindLabel, dataStatusLabel, dataStatusDetail } from "./utils/formatters";
+import { clampInteger, extractDataLevels, type VillagePasteData, type VillagePasteChange, type VillagePasteReport } from "./utils/villageImport";
+import { readStoredRecord, writeStoredRecord } from "./storage/playerStorage";
+import { useGameDatabase, getTownHallInfo } from "./hooks/useGameDatabase";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   AlertTriangle, Bomb, Castle, Check, ClipboardPaste, Coins, Crosshair,
   Clock3, Crown, Droplet, Flame, FlaskConical, Gem, Hammer, Info, LayoutGrid, LoaderCircle, Lock, Moon, PawPrint, RefreshCw,
@@ -13,277 +19,6 @@ import { BasePlannerTab } from "./components/BasePlannerTab";
 
 export type Tab = "overview" | "planner" | "roadmap" | "base-planner";
 
-type VillagePasteChange = { id:string; name:string; kind:UpgradeItem["kind"]; before:number; after:number };
-
-type VillagePasteData = { levels:Map<number,number>; builderBaseIds:Set<number>; total:number };
-type VillagePasteReport = {
-  error?:string;
-  changes?:VillagePasteChange[];
-  total?:number;
-  recognized?:number;
-  updated?:number;
-  unchanged?:number;
-  wallSkipped?:number;
-  builderBaseSkipped?:number;
-  unsupportedSkipped?:number;
-};
-
-function clampInteger(value:unknown,min:number,max:number,fallback=min){
-  const parsed=typeof value==="number"?value:Number(value);
-  if(!Number.isFinite(parsed))return fallback;
-  return Math.max(min,Math.min(max,Math.trunc(parsed)));
-}
-
-function readStoredRecord<T>(key:string):Record<string,T>{
-  try{
-    const parsed=JSON.parse(localStorage.getItem(key)||"{}");
-    if(parsed&&typeof parsed==="object"&&!Array.isArray(parsed))return parsed as Record<string,T>;
-  }catch{
-    // Xóa dữ liệu hỏng để các lần mở sau không tiếp tục đọc lại cùng lỗi.
-  }
-  localStorage.removeItem(key);
-  return {};
-}
-
-function extractDataLevels(raw:string):VillagePasteData{
-  const start=raw.indexOf("{"),end=raw.lastIndexOf("}");
-  if(start===-1||end===-1||end<=start)throw new Error("Không tìm thấy dữ liệu JSON hợp lệ trong nội dung đã dán.");
-  let parsed:unknown;
-  try{parsed=JSON.parse(raw.slice(start,end+1))}
-  catch{throw new Error("Dữ liệu dán vào không phải JSON hợp lệ. Hãy dán đúng nội dung đã Copy ở Cài đặt > More Settings > Data Export trong game.")}
-  const levels=new Map<number,number>();
-  const builderBaseIds=new Set<number>();
-  let total=0;
-  const walk=(node:unknown,path:string[])=>{
-    if(Array.isArray(node)){for(const child of node)walk(child,path);return}
-    if(node&&typeof node==="object"){
-      const obj=node as Record<string,unknown>;
-      if(typeof obj.data==="number"&&Number.isFinite(obj.data)&&typeof obj.lvl==="number"&&Number.isFinite(obj.lvl)){
-        total++;
-        const dataId=Math.trunc(obj.data),level=Math.max(0,Math.trunc(obj.lvl));
-        const isBuilderBase=path.some(key=>/builder.?base/i.test(key)||/^(buildings|traps|obstacles|decorations|decos)2$/i.test(key));
-        if(isBuilderBase)builderBaseIds.add(dataId);
-        else{
-          const prev=levels.get(dataId);
-          // Nhiều công trình cùng loại có thể khác cấp; giữ cấp thấp nhất để
-          // planner không đánh giá làng cao hơn tình trạng thực tế.
-          if(prev===undefined||level<prev)levels.set(dataId,level);
-        }
-      }
-      for(const key of Object.keys(obj))walk(obj[key],[...path,key]);
-    }
-  };
-  walk(parsed,[]);
-  return {levels,builderBaseIds,total};
-}
-
-const ASSETS="https://assets.colinschmale.dev/warreport";
-const thImage=(th:number)=>`/town-halls/th-${Math.max(1,Math.min(18,th))}.png`;
-
-// --- "Cơ sở dữ liệu" từ coc-admin ------------------------------------
-// coc-admin (project riêng, xem coc-admin/README.txt) tự động lấy dữ liệu
-// thật (ảnh, roadmap TH1-18) và ghi ra nhiều file JSON trong data/, copy
-// vào public/data/ của web app này. App fetch các file đó lúc chạy — đây
-// là nguồn dữ liệu ƯU TIÊN. Các hằng số/công thức bên dưới (cocGuideBuildingArt,
-// ASSETS...) chỉ còn vai trò dự phòng khi chưa có/không tải được file JSON,
-// để app không bao giờ vỡ hoàn toàn dù thiếu dữ liệu.
-let imageDb:Record<string,string>={};
-let townHallDb:TownHallInfo[]|null=null;
-// Bảng cấp độ THẬT do coc-admin/scrape.mjs --levels cào từ coc.guide (chi
-// phí, thời gian, TH/Laboratory yêu cầu từng cấp) — chỉ có cho công
-// trình/phòng thủ/bẫy và một phần quân/phép đã xác minh URL (xem comment
-// trong scrape.mjs). File data/levels.json là tùy chọn: nếu chưa chạy
-// scrape.mjs --levels hoặc chưa copy file này vào public/data/, app vẫn
-// chạy bình thường với số liệu ước tính có sẵn trong upgradeData.ts.
-type ScrapedLevelRow={level:number;cost:number;timeHours:number;resource?:Resource;townHall?:number;labLevel?:number};
-function mergeScrapedLevels(levelsDb:Record<string,ScrapedLevelRow[]>){
-  for(const item of upgradeItems){
-    const scraped=levelsDb[item.id];
-    if(!scraped||!scraped.length)continue;
-    const byLevel=new Map(item.levels.map(l=>[l.level,l]));
-    for(const row of scraped){
-      const existing=byLevel.get(row.level);
-      if(existing){
-        existing.cost=row.cost;
-        existing.timeHours=row.timeHours;
-        if(row.resource)existing.resource=row.resource;
-        if(row.townHall!=null)existing.townHall=row.townHall;
-      }else{
-        byLevel.set(row.level,{
-          level:row.level,
-          townHall:row.townHall??item.levels.at(-1)?.townHall??item.unlockTownHall,
-          cost:row.cost,
-          resource:row.resource??item.levels[0]?.resource??"Gold",
-          timeHours:row.timeHours
-        });
-      }
-    }
-    item.levels=[...byLevel.values()].sort((a,b)=>a.level-b.level);
-    item.dataStatus="exact";
-    item.source="Cào tự động từ coc.guide qua coc-admin/scrape.mjs --levels";
-  }
-}
-function useGameDatabase(onLoaded:()=>void){
-  useEffect(()=>{
-    let cancelled=false;
-    Promise.all([
-      fetch("/data/images.json").then(r=>r.ok?r.json():null).catch(()=>null),
-      fetch("/data/townhalls.json").then(r=>r.ok?r.json():null).catch(()=>null),
-      fetch("/data/levels.json").then(r=>r.ok?r.json():null).catch(()=>null)
-    ]).then(([images,townhalls,levelsDb])=>{
-      if(cancelled)return;
-      if(images&&typeof images==="object")imageDb=images;
-      if(Array.isArray(townhalls)&&townhalls.length)townHallDb=townhalls;
-      if(levelsDb&&typeof levelsDb==="object")mergeScrapedLevels(levelsDb);
-      onLoaded();
-    });
-    return ()=>{cancelled=true};
-  },[]);
-}
-// Ảnh thật cho công trình/phòng thủ/bẫy — đường dẫn xác minh trực tiếp từ
-// coc.guide (trang dữ liệu lấy từ file game gốc, không phải suy đoán tên
-// file như trước). Dùng làm tầng "remote" dự phòng khi data/images.json
-// chưa tải xong hoặc không có entry cho item đó; script coc-admin/scrape.mjs
-// và scripts/download-images.mjs tự tải toàn bộ danh sách này về máy để
-// dùng làm tầng "local" (ưu tiên cao nhất, không phụ thuộc mạng ngoài).
-const cocGuideBuildingArt: Record<string,string> = {
-  "army-camp":"/static/imgs/army/troop-housing-12.png","barracks":"/static/imgs/army/barrack-18.png",
-  "dark-barracks":"/static/imgs/army/dark-elixir-barrack-11.png","spell-factory":"/static/imgs/army/spell-forge-8.png",
-  "dark-spell-factory":"/static/imgs/army/mini-spell-factory-6.png","laboratory":"/static/imgs/army/laboratory-15.png",
-  "clan-castle":"/static/imgs/army/alliance-castle-13.png","blacksmith":"/static/imgs/army/smithy-9.png",
-  "workshop":"/static/imgs/army/siegeworkshop-7.png","pet-house":"/static/imgs/army/pet-shop-10.png",
-  "gold-mine":"/static/imgs/resource/gold-mine-16.png","elixir-collector":"/static/imgs/resource/elixir-pump-16.png",
-  "dark-elixir-drill":"/static/imgs/resource/dark-elixir-pump-10.png","gold-storage":"/static/imgs/resource/gold-storage-18.png",
-  "elixir-storage":"/static/imgs/resource/elixir-storage-18.png","dark-elixir-storage":"/static/imgs/resource/dark-elixir-storage-12.png",
-  "builder-hut":"/static/imgs/other/worker-building-6.png","cannon":"/static/imgs/defense/cannon-21.png",
-  "archer-tower":"/static/imgs/defense/archer-tower-21.png","mortar":"/static/imgs/defense/mortar-16.png",
-  "air-defense":"/static/imgs/defense/air-defense-15.png","wizard-tower":"/static/imgs/defense/wizard-tower-17.png",
-  "air-sweeper":"/static/imgs/defense/air-blaster-7.png","hidden-tesla":"/static/imgs/defense/tesla-tower-15.png",
-  "xbow":"/static/imgs/defense/bow-11.png","inferno-tower":"/static/imgs/defense/dark-tower-10.png",
-  "eagle-artillery":"/static/imgs/defense/ancient-artillery-7.png","scattershot":"/static/imgs/defense/scattershot-5.png",
-  "monolith":"/static/imgs/defense/monolith-3.png","spell-tower":"/static/imgs/defense/spell-tower-3.png",
-  "multi-archer-tower":"/static/imgs/defense/merged-archer-tower-3.png","ricochet-cannon":"/static/imgs/defense/merged-cannon-3.png",
-  "firespitter":"/static/imgs/defense/firespitter-2.png","wall":"/static/imgs/defense/wall-18.png",
-  "bomb":"/static/imgs/trap/mine-13.png","spring-trap":"/static/imgs/trap/ejector-5.png",
-  "air-bomb":"/static/imgs/trap/airtrap-11.png","giant-bomb":"/static/imgs/trap/superbomb-11.png",
-  "seeking-air-mine":"/static/imgs/trap/megaairtrap-7.png","skeleton-trap":"/static/imgs/trap/halloweenskels-3.png",
-  "tornado-trap":"/static/imgs/trap/tornadotrap-1.png","giga-bomb":"/static/imgs/trap/gigabomb-3.png"
-};
-// Thư mục local tương ứng từng loại item — khớp đúng với thư mục mà
-// scripts/download-images.mjs lưu file vào, và với public/buildings có sẵn.
-const localFolder=(kind:UpgradeItem["kind"]):string=>{
-  if(kind==="hero")return "heroes";
-  if(kind==="troop"||kind==="siege")return "troops";
-  if(kind==="spell")return "spells";
-  if(kind==="equipment")return "equipment";
-  if(kind==="pet")return "pets";
-  return "buildings"; // building | defense | trap | wall
-};
-const localExt=(kind:UpgradeItem["kind"])=>kind==="building"||kind==="defense"||kind==="trap"||kind==="wall"?"png":"webp";
-const localArt=(item:UpgradeItem,townHallLevel?:number)=>item.id==="town-hall"?thImage(townHallLevel??item.levels.at(-1)?.level??1):`/${localFolder(item.kind)}/${item.id}.${localExt(item.kind)}`;
-const remoteArt=(item:UpgradeItem,townHallLevel?:number):string|null=>{
-  if(item.id==="town-hall")return thImage(townHallLevel??item.levels.at(-1)?.level??1); // đã có sẵn local theo từng cấp, không cần tầng remote riêng
-  if(imageDb[item.id])return imageDb[item.id]; // từ data/images.json (coc-admin) — ưu tiên trước mặc định trong code
-  if(item.kind==="building"||item.kind==="defense"||item.kind==="trap"||item.kind==="wall"){
-    const path=cocGuideBuildingArt[item.id];
-    return path?`https://coc.guide${path}`:null;
-  }
-  const folder=item.kind==="hero"?"heroes":item.kind==="spell"?"spells":item.kind==="equipment"?"heroes/equipment":"troops";
-  return `${ASSETS}/${folder}/${encodeURIComponent(item.name)}.webp`;
-};
-// Icon minh họa riêng cho từng công trình/phòng thủ/bẫy khi chưa có ảnh thật,
-// để bảng nhìn đa dạng hơn thay vì dùng chung 1 icon cho cả nhóm.
-const buildingIconById:Record<string,LucideIcon>={
-  "army-camp":Tent,"elixir-collector":Droplet,"elixir-storage":Droplet,"gold-mine":Coins,"gold-storage":Coins,
-  "dark-elixir-drill":Moon,"dark-elixir-storage":Moon,"barracks":Swords,"dark-barracks":Swords,
-  "spell-factory":Sparkles,"dark-spell-factory":Sparkles,"laboratory":FlaskConical,"clan-castle":Castle,
-  "blacksmith":Hammer,"workshop":Wrench,"pet-house":PawPrint,
-  "builder-hut":Hammer,"cannon":Target,"archer-tower":Crosshair,"mortar":Target,"air-defense":Wind,
-  "wizard-tower":Sparkles,"air-sweeper":Wind,"hidden-tesla":Zap,"xbow":Crosshair,"inferno-tower":Flame,
-  "eagle-artillery":Crosshair,"scattershot":Target,"monolith":Gem,"spell-tower":Sparkles,
-  "multi-archer-tower":Crosshair,"ricochet-cannon":Target,"firespitter":Flame,
-  "bomb":Bomb,"spring-trap":Zap,"air-bomb":Wind,"giant-bomb":Bomb,"seeking-air-mine":Crosshair,
-  "skeleton-trap":Skull,"tornado-trap":Wind,"giga-bomb":Bomb
-};
-// Icon dự phòng theo loại (dùng khi cả local lẫn remote đều không có ảnh).
-const kindIcon:Record<UpgradeItem["kind"],LucideIcon>={
-  building:Hammer,defense:ShieldCheck,trap:Target,wall:ShieldCheck,hero:Crown,troop:Swords,spell:Sparkles,siege:Truck,equipment:ShieldCheck,pet:PawPrint
-};
-// Ảnh cho mọi loại item (công trình lẫn quân/hero/phép/trang bị/pet) — 3
-// tầng ưu tiên giống nhau cho tất cả: (1) file local trong public/<thư
-// mục>/<id>.png — tự tải bằng scripts/download-images.mjs hoặc tự bỏ ảnh
-// vào, không phụ thuộc mạng ngoài khi app chạy; (2) hotlink remote đã xác
-// minh (coc.guide cho công trình, assets.colinschmale.dev cho phần còn
-// lại) — chỉ dùng tạm khi chưa chạy script tải ảnh; (3) icon minh họa,
-// luôn có nên không bao giờ vỡ layout.
-function SmartArt({item,size,townHallLevel}:{item:UpgradeItem;size?:"sm";townHallLevel?:number}){
-  const [stage,setStage]=useState<"local"|"remote"|"icon">("local");
-  const remote=remoteArt(item,townHallLevel);
-  const Icon=buildingIconById[item.id]||kindIcon[item.kind]||Hammer;
-  const cls=`upgrade-icon ${item.kind}${size==="sm"?" sm":""}`;
-  if(stage==="icon"||(stage==="remote"&&!remote))return <span className={cls}><Icon/></span>;
-  const src=stage==="local"?localArt(item,townHallLevel):(remote as string);
-  return <img className={`upgrade-art${size==="sm"?" sm":""}`} src={src} alt={item.name} onError={()=>setStage(stage==="local"?(remote?"remote":"icon"):"icon")}/>;
-}
-const normalizeTag=(value:string)=>{
-  const cleaned=value.toUpperCase().replace(/\s/g,"").replace(/^%23/,"#");
-  return cleaned.startsWith("#")?cleaned:`#${cleaned}`;
-};
-const pct=(items:{level:number;maxLevel:number}[])=>items.length?Math.round(items.reduce((s,x)=>s+x.level/x.maxLevel,0)/items.length*100):0;
-const fmtNumber=(value:number)=>new Intl.NumberFormat("vi-VN").format(Math.round(value));
-const fmtTime=(hours:number)=>{
-  if(hours<=0)return "Không tốn thời gian";
-  const days=Math.floor(hours/24),rest=Math.round(hours%24);
-  if(days&&rest)return `${days} ngày ${rest} giờ`;
-  if(days)return `${days} ngày`;
-  return `${rest} giờ`;
-};
-const fmtCost=(costs:Partial<Record<Resource,number>>)=>Object.entries(costs).filter(([,v])=>(v||0)>0).map(([k,v])=>`${fmtNumber(v||0)} ${k}`).join(" · ")||"0";
-const emptyCosts=()=>({} as Partial<Record<Resource,number>>);
-const addCosts=(target:Partial<Record<Resource,number>>,source:Partial<Record<Resource,number>>,factor=1)=>{
-  for(const [resource,value] of Object.entries(source))target[resource as Resource]=(target[resource as Resource]||0)+(value||0)*factor;
-};
-// Icon nhỏ theo từng loại tài nguyên — dùng ở khu vực "chi phí" của Upgrade
-// Tracker để nhận ra ngay là Vàng/Elixir/Dark Elixir/loại quặng nào, đỡ phải
-// đọc chữ mỗi lần như trước.
-const resourceIcon:Record<Resource,LucideIcon>={
-  Gold:Coins,Elixir:Droplet,"Dark Elixir":Moon,
-  "Shiny Ore":Gem,"Glowy Ore":Sparkles,"Starry Ore":Zap
-};
-const resourceClass:Record<Resource,string>={
-  Gold:"res-gold",Elixir:"res-elixir","Dark Elixir":"res-dark",
-  "Shiny Ore":"res-shiny","Glowy Ore":"res-glowy","Starry Ore":"res-starry"
-};
-function CostBadges({costs}:{costs:Partial<Record<Resource,number>>}){
-  const entries=(Object.entries(costs) as [Resource,number][]).filter(([,v])=>(v||0)>0);
-  if(!entries.length)return <span className="cost-badges"><span className="cost-badge">0</span></span>;
-  return <span className="cost-badges">{entries.map(([resource,value])=>{
-    const Icon=resourceIcon[resource];
-    return <span className={`cost-badge ${resourceClass[resource]}`} key={resource}><Icon/>{fmtNumber(value||0)}</span>;
-  })}</span>;
-}
-const itemKindLabel:Record<UpgradeItem["kind"],string>={
-  building:"Công trình",
-  defense:"Phòng thủ",
-  trap:"Bẫy",
-  wall:"Tường",
-  hero:"Tướng",
-  troop:"Quân",
-  spell:"Phép",
-  siege:"Máy công thành",
-  equipment:"Trang bị",
-  pet:"Pet"
-};
-const dataStatusLabel:Record<DataStatus,string>={
-  exact:"Chính xác",
-  estimated:"Ước tính",
-  unchecked:"Chưa kiểm"
-};
-const dataStatusDetail:Record<DataStatus,string>={
-  exact:"Có thể dùng để tính kế hoạch.",
-  estimated:"Dùng để lập khung, cần thay bằng số liệu thật.",
-  unchecked:"Không đưa vào tính tổng mặc định."
-};
 // Thứ tự duyệt qua từng "nhân tố" cho Upgrade Tracker — cùng nhóm loại với
 // itemKindLabel, xếp theo thứ tự người chơi thường quan tâm (công trình nền
 // tảng trước, phòng thủ/bẫy, rồi tới quân đội).
@@ -376,7 +111,7 @@ function readStoredChoice<T extends string>(key:string,allowed:T[],fallback:T):T
   const raw=localStorage.getItem(key);
   return (allowed as string[]).includes(raw||"")?raw as T:fallback;
 }
-const plannerItems=upgradeItems.filter(item=>item.kind!=="wall"&&item.dataStatus!=="unchecked");
+const plannerItems=upgradeItems.filter(item=>item.kind!=="wall");
 const byUnlock=(a:UpgradeItem,b:UpgradeItem)=>a.unlockTownHall-b.unlockTownHall||a.name.localeCompare(b.name);
 const rosterHeroes=upgradeItems.filter(i=>i.kind==="hero").sort(byUnlock);
 const rosterTroops=upgradeItems.filter(i=>i.kind==="troop").sort(byUnlock);
@@ -462,17 +197,12 @@ function lockNoteFor(item:UpgradeItem){
   return `Cần đạt Town Hall ${item.unlockTownHall}${via} để mở khóa.`;
 }
 function RosterCard({item,player,manualLevels}:{item:UpgradeItem;player:Player;manualLevels:Record<string,number>}){
-  const [stage,setStage]=useState<"local"|"remote"|"icon">("local");
   const current=currentLevelFor(item,player,manualLevels);
   const max=item.levels.at(-1)?.level||1;
   const unlocked=player.townHallLevel>=item.unlockTownHall;
-  const remote=remoteArt(item);
-  const Icon=buildingIconById[item.id]||kindIcon[item.kind]||Hammer;
   return <article className={`roster-card${unlocked?"":" locked"}`} title={unlocked?undefined:lockNoteFor(item)}>
     <div className="roster-image">
-      {stage==="icon"||(stage==="remote"&&!remote)
-        ? <Icon/>
-        : <img src={stage==="local"?localArt(item):(remote as string)} alt={item.name} onError={()=>setStage(stage==="local"?(remote?"remote":"icon"):"icon")}/>}
+      <SmartArt item={item} />
       {!unlocked&&<span className="roster-lock"><Lock/></span>}
     </div>
     <div className="roster-copy">
@@ -491,7 +221,7 @@ function RosterGroup({title,subtitle,items,player,manualLevels}:{title:string;su
 }
 
 export default function App(){
-  const [input,setInput]=useState(()=>localStorage.getItem("coc-last-tag")||"#R0CV8RVU2");
+  const [input,setInput]=useState(()=>localStorage.getItem("coc-last-tag")||"");
   const [player,setPlayer]=useState<Player|null>(null);
   const [loading,setLoading]=useState(false),[error,setError]=useState(""),[syncedAt,setSyncedAt]=useState<Date|null>(null);
   const [tab,setTab]=useState<Tab>("overview"),[roadTH,setRoadTH]=useState(11);
@@ -506,22 +236,33 @@ export default function App(){
   const [pasteText,setPasteText]=useState("");
   const [pasteReport,setPasteReport]=useState<VillagePasteReport|null>(null);
   const [,bumpDbVersion]=useState(0);
+  const [cacheWarning,setCacheWarning]=useState("");
+  const abortControllerRef=useRef<AbortController|null>(null);
+  
   useGameDatabase(()=>bumpDbVersion(v=>v+1));
-  const townHallInfo=townHallDb||townHallInfoDefault;
+  const townHallInfo=getTownHallInfo();
 
   async function loadPlayer(raw=input){
     const tag=normalizeTag(raw);
     if(tag.length<4){setError("Player Tag chưa hợp lệ.");return}
-    setLoading(true);setError("");
+    
+    if(abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+    
+    setLoading(true);setError("");setCacheWarning("");
     try{
-      const res=await fetch(`/warreport/v1/players/${encodeURIComponent(tag)}`,{cache:"no-store"});
+      const res=await fetch(`/warreport/v1/players/${encodeURIComponent(tag)}`,{
+        cache:"no-store",
+        signal: abortControllerRef.current.signal
+      });
       if(!res.ok){
         if(res.status===404)throw new Error("Không tìm thấy người chơi. Hãy kiểm tra lại Player Tag.");
-        if(res.status===401||res.status===403)throw new Error("War Report đã thay đổi quyền truy cập API. Cần cập nhật khóa web trong vite.config.ts.");
-        throw new Error(`War Report phản hồi lỗi ${res.status}.`);
+        if(res.status===401||res.status===403)throw new Error("War Report đã thay đổi quyền hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (WAR_REPORT_API_KEY).");
+        if(res.status===502)throw new Error("Proxy không thể kết nối đến War Report. Hãy chắc chắn bạn đã cấu hình backend proxy.");
+        throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
       }
       const payload=await res.json() as Partial<Player>;
-      if(!payload||typeof payload!=="object"||!Number.isFinite(payload.townHallLevel))throw new Error("Dữ liệu người chơi từ War Report không hợp lệ.");
+      if(!payload||typeof payload!=="object"||!Number.isFinite(payload.townHallLevel))throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
       const data:Player={
         ...payload,
         tag:typeof payload.tag==="string"?normalizeTag(payload.tag):tag,
@@ -538,27 +279,60 @@ export default function App(){
         spells:Array.isArray(payload.spells)?payload.spells:[],
         heroEquipment:Array.isArray(payload.heroEquipment)?payload.heroEquipment:[]
       };
-      setPlayer(data);setInput(data.tag);setRoadTH(data.townHallLevel);setMaxTownHall(data.townHallLevel);setSyncedAt(new Date());
+      setPlayer(data);setInput(data.tag);setRoadTH(data.townHallLevel);setMaxTownHall(data.townHallLevel);
+      const now = new Date();
+      setSyncedAt(now);
       localStorage.setItem("coc-last-tag",data.tag);
       localStorage.setItem(`coc-cache-${data.tag}`,JSON.stringify(data));
-    }catch(e){
-      const message=e instanceof Error?e.message:"Không thể tải dữ liệu.";
+      localStorage.setItem(`coc-cache-time-${data.tag}`,now.getTime().toString());
+    }catch(e: any){
+      if(e.name === 'AbortError') return; // Bỏ qua nếu bị huỷ
+      const message=e instanceof Error?e.message:"Không thể kết nối đến máy chủ, yêu cầu bị quá hạn hoặc bị gián đoạn.";
       const cached=localStorage.getItem(`coc-cache-${tag}`);
+      const cachedTimeRaw=localStorage.getItem(`coc-cache-time-${tag}`);
       if(cached){
         try{
           const parsed=JSON.parse(cached) as Player;
-          if(!parsed||typeof parsed!=="object"||!Number.isFinite(parsed.townHallLevel))throw new Error("Cache không hợp lệ");
+          if(!parsed||typeof parsed!=="object"||!Number.isFinite(parsed.townHallLevel))throw new Error("Cache hỏng");
           setPlayer({...parsed,heroes:Array.isArray(parsed.heroes)?parsed.heroes:[],troops:Array.isArray(parsed.troops)?parsed.troops:[],spells:Array.isArray(parsed.spells)?parsed.spells:[],heroEquipment:Array.isArray(parsed.heroEquipment)?parsed.heroEquipment:[]});
-          setError(message+" Đang hiển thị bản lưu gần nhất trên máy.");
+          setError(message);
+          
+          let timeMsg = "hiện chưa rõ";
+          if (cachedTimeRaw) {
+             const cachedTime = new Date(parseInt(cachedTimeRaw, 10));
+             timeMsg = cachedTime.toLocaleString("vi-VN");
+             const ageHours = (Date.now() - cachedTime.getTime()) / (1000 * 60 * 60);
+             if (ageHours > 24) {
+                 timeMsg += ` (hơn ${Math.floor(ageHours)} giờ trước, dữ liệu rất cũ)`;
+             }
+             setSyncedAt(cachedTime);
+          } else {
+             setSyncedAt(null);
+          }
+          setCacheWarning(`Đang dùng dữ liệu lưu trên máy từ lúc ${timeMsg}.`);
         }catch{
           localStorage.removeItem(`coc-cache-${tag}`);
-          setError(message+" Bản lưu trên máy bị hỏng và đã được xóa.");
+          localStorage.removeItem(`coc-cache-time-${tag}`);
+          setError(message+" Bản lưu trên máy bị hỏng và đã tự động được xóa.");
         }
       }else setError(message);
-    }finally{setLoading(false)}
+    }finally{
+      setLoading(false);
+      abortControllerRef.current = null;
+    }
   }
 
-  useEffect(()=>{loadPlayer(input)},[]);
+  function clearPlayerCache() {
+    if(!player) return;
+    localStorage.removeItem(`coc-cache-${player.tag}`);
+    localStorage.removeItem(`coc-cache-time-${player.tag}`);
+    setCacheWarning("Đã xóa dữ liệu lưu trên máy cho tài khoản này.");
+  }
+
+  useEffect(()=>{
+    const lastTag = localStorage.getItem("coc-last-tag");
+    if(lastTag) loadPlayer(lastTag);
+  },[]);
   useEffect(()=>{localStorage.setItem("coc-manual-levels",JSON.stringify(manualLevels))},[manualLevels]);
   useEffect(()=>{localStorage.setItem("coc-playstyle",playstyle)},[playstyle]);
   useEffect(()=>{localStorage.setItem("coc-attack-focus",attackFocus)},[attackFocus]);
@@ -604,8 +378,14 @@ export default function App(){
   const townHallTotals=useMemo(()=>{
     const costs=emptyCosts();
     const laneHours:Record<UpgradeLane,number>={Builder:0,Laboratory:0,Blacksmith:0,"Pet House":0,Instant:0};
-    for(const row of townHallRows){addCosts(costs,row.plan.costs);laneHours[row.item.lane]+=row.plan.totalHours}
-    return {costs,laneHours,count:townHallRows.length};
+    let hasEstimated = false;
+    for(const row of townHallRows){
+        if (row.item.dataStatus === "unchecked") continue;
+        if (row.item.dataStatus === "estimated") hasEstimated = true;
+        addCosts(costs,row.plan.costs);
+        laneHours[row.item.lane]+=row.plan.totalHours;
+    }
+    return {costs,laneHours,count:townHallRows.filter(r => r.item.dataStatus !== "unchecked").length, hasEstimated};
   },[townHallRows]);
 
   // (2) "suggest": luôn khóa ở Town Hall hiện tại — cùng khoảng cách như
@@ -629,8 +409,14 @@ export default function App(){
   const suggestTotals=useMemo(()=>{
     const costs=emptyCosts();
     const laneHours:Record<UpgradeLane,number>={Builder:0,Laboratory:0,Blacksmith:0,"Pet House":0,Instant:0};
-    for(const row of suggestRows){addCosts(costs,row.plan.costs);laneHours[row.item.lane]+=row.plan.totalHours}
-    return {costs,laneHours,count:suggestRows.length};
+    let hasEstimated = false;
+    for(const row of suggestRows){
+        if (row.item.dataStatus === "unchecked") continue;
+        if (row.item.dataStatus === "estimated") hasEstimated = true;
+        addCosts(costs,row.plan.costs);
+        laneHours[row.item.lane]+=row.plan.totalHours;
+    }
+    return {costs,laneHours,count:suggestRows.filter(r => r.item.dataStatus !== "unchecked").length, hasEstimated};
   },[suggestRows]);
   const suggestTop=useMemo(()=>suggestRows.slice(0,14),[suggestRows]);
   const suggestPhases=useMemo(()=>{
@@ -705,7 +491,7 @@ export default function App(){
     }
   }
 
-  return <main className="app">
+  return <main className={`app ${tab === "base-planner" ? "base-planner-full" : ""}`}>
     <header className="topbar">
       <div className="brand"><span className="crest"><ShieldCheck/></span><div><small>CLASH PATH</small><strong>Roadmap đồng bộ War Report</strong></div></div>
       <form className="searchbox" onSubmit={e=>{e.preventDefault();loadPlayer()}}>
@@ -715,8 +501,13 @@ export default function App(){
     </header>
 
     {error&&<div className="error-banner"><AlertTriangle/><span>{error}</span></div>}
+    {cacheWarning&&<div className="error-banner" style={{marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678"}}>
+      <AlertTriangle/>
+      <span style={{flex: 1}}>{cacheWarning}</span>
+      <button onClick={clearPlayerCache} style={{padding: "4px 8px", background: "rgba(0,0,0,0.3)", border: "1px solid #ffc85740", borderRadius: "4px", color: "#ffc857", cursor: "pointer"}}>Xóa Cache</button>
+    </div>}
 
-    {player&&<>
+    {player && tab !== "base-planner" && <>
       <section className="profile-hero">
         <div className="th-art"><div className="aura"/><img src={thImage(player.townHallLevel)} alt={`Town Hall ${player.townHallLevel}`}/><span>TH<strong>{player.townHallLevel}</strong></span></div>
         <div className="profile-copy"><p>HỒ SƠ NGƯỜI CHƠI</p><h1>{player.name}</h1><h2>{player.tag} {player.clan&&<>· {player.clan.name}</>}</h2>
@@ -873,7 +664,7 @@ export default function App(){
           <p className="roster-hint"><Info/>Xếp hạng theo lối chơi bạn chọn ở trên, luôn tính tại Town Hall hiện tại (TH{effectiveTownHall}){!player&&" (giả định, vì chưa kết nối tài khoản)"}. Đổi lựa chọn phía trên là danh sách cập nhật ngay.</p>
           <div className="planner-summary">
             <article><small><Wrench/> Việc còn thiếu (tất cả)</small><strong>{suggestTotals.count}</strong><span>Để max mọi thứ ở TH{effectiveTownHall}</span></article>
-            <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={suggestTotals.costs}/></strong><span>Cộng dồn toàn bộ, không riêng danh sách gợi ý</span></article>
+            <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={suggestTotals.costs}/></strong><span>Cộng dồn toàn bộ, không riêng danh sách gợi ý</span>{suggestTotals.hasEstimated && <span className="text-yellow-400 text-xs mt-1 block">⚠️ Tổng có dùng số liệu ước tính</span>}</article>
             <article><small><Hammer/> Builder</small><strong>{fmtTime(suggestTotals.laneHours.Builder/builderCount)}</strong><span>{fmtTime(suggestTotals.laneHours.Builder)} chia cho {builderCount} thợ</span></article>
             <article><small><FlaskConical/> Laboratory</small><strong>{fmtTime(suggestTotals.laneHours.Laboratory)}</strong><span>Một hàng chờ riêng</span></article>
           </div>
@@ -890,7 +681,7 @@ export default function App(){
                 <span className={`priority-rank ${row.priority.label==="Cao"?"high":row.priority.label==="Vừa"?"mid":"low"}`}>{index+1}</span>
                 <div className="priority-icon"><SmartArt item={row.item} size="sm" townHallLevel={row.target}/></div>
                 <div>
-                  <small>{itemKindLabel[row.item.kind]} · {row.item.lane}</small>
+                  <small>{itemKindLabel[row.item.kind]} · {row.item.lane} · <span title={dataStatusDetail[row.item.dataStatus]}>{dataStatusLabel[row.item.dataStatus]}</span></small>
                   <strong>{row.item.name} <em>{row.current} → {row.target}</em></strong>
                   <p>{row.reason}</p>
                 </div>
@@ -906,7 +697,7 @@ export default function App(){
           <div className="planner-summary">
             <article><small><Castle/> Tính tới</small><strong>TH{maxTownHall}</strong><span>Mặc định = Town Hall hiện tại, kéo thanh bên dưới để đổi</span></article>
             <article><small><Wrench/> Việc còn lại</small><strong>{townHallTotals.count}</strong><span>Wall đã bỏ qua theo yêu cầu</span></article>
-            <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={townHallTotals.costs}/></strong><span>Tính theo số lượng từng loại</span></article>
+            <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={townHallTotals.costs}/></strong><span>Tính theo số lượng từng loại</span>{townHallTotals.hasEstimated && <span className="text-yellow-400 text-xs mt-1 block">⚠️ Tổng có dùng số liệu ước tính</span>}</article>
             <article><small><Hammer/> Builder</small><strong>{fmtTime(townHallTotals.laneHours.Builder/builderCount)}</strong><span>{fmtTime(townHallTotals.laneHours.Builder)} / {builderCount} thợ</span></article>
           </div>
           <div className="lane-grid">

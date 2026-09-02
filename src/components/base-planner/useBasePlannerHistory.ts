@@ -42,6 +42,14 @@ export function useBasePlannerHistory({
     [maxHistory]
   );
 
+  const replaceState = useCallback((newBuildings: PlacedBuilding[]) => {
+    setHistory((prev) => {
+      const updated = [...prev];
+      updated[currentIndexRef.current] = newBuildings;
+      return updated;
+    });
+  }, []);
+
   const setEntireState = useCallback((newBuildings: PlacedBuilding[]) => {
     setHistory([newBuildings]);
     setCurrentIndex(0);
@@ -98,6 +106,7 @@ export function useBasePlannerHistory({
   return {
     buildings: currentBuildings,
     pushState,
+    replaceState,
     setEntireState,
     undo,
     redo,

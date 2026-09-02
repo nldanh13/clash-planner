@@ -4,21 +4,32 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "update-data": "node scripts/update-data.mjs",
     "dev": "vite --host 0.0.0.0 --port 3000",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
     "build": "vite build",
     "lint": "tsc --noEmit",
-    "preview": "vite preview --host 0.0.0.0 --port 3000"
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "start": "vite --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^0.468.0",
-    "vite": "^8.0.13",
-    "typescript": "^5.9.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.13"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5"
+    "@types/react-dom": "^19.2.5",
+    "jsdom": "^30.0.1",
+    "vitest": "^4.1.11"
   }
 }

@@ -82,7 +82,7 @@ export function getTileGap(
  */
 export function scanChainLightningHazards(
   buildings: PlacedBuilding[],
-  maxGap = 2
+  maxGap = 1
 ): {
   dangerPairs: ChainDangerPair[];
   vulnerableInstanceIds: Set<string>;

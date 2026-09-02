@@ -3,6 +3,14 @@
 Web app chạy trên máy bằng `npm start`, đồng bộ hồ sơ Clash of Clans gần
 realtime qua API mà War Report đang sử dụng.
 
+## Yêu cầu môi trường
+
+Dự án này sử dụng API của bên thứ 3 nên yêu cầu một API key được cung cấp thông qua biến môi trường.
+
+1. Tạo file `.env` (hoặc `.env.local`) từ `.env.example`:
+   `cp .env.example .env`
+2. Điền khóa API vào biến `WAR_REPORT_API_KEY`.
+
 ## Chạy trên Windows
 
 1. Cài Node.js LTS: https://nodejs.org/
@@ -13,7 +21,9 @@ npm install
 npm start
 ```
 
-Ứng dụng tự mở tại http://127.0.0.1:5173.
+Ứng dụng tự mở tại http://127.0.0.1:3000.
+
+Lưu ý quan trọng: Khi chạy `npm start`, `npm run dev` hoặc `npm run preview`, Vite sẽ đóng vai trò làm backend proxy để gắn API key vào header, giấu nó khỏi trình duyệt của người dùng. Nếu bạn chạy `npm run build` để sinh file tĩnh (`dist/`), các file này sẽ không thể tự gửi API key được, bạn cần một backend riêng để làm proxy nếu muốn host bản tĩnh này lên mạng.
 
 ## Phạm vi dữ liệu
 
@@ -62,3 +72,35 @@ những chỗ đó là nội dung của riêng bạn.
 được sinh lại bằng `node scripts/generate-manifest.mjs` mỗi khi dự án được
 đóng gói thành zip mới; không cần bạn tự chạy lệnh này trừ khi tự đóng gói
 lại dự án.)
+
+## Kiến trúc thư mục
+
+- `src/components`: Các thành phần giao diện (UI components).
+  - `base-planner`: Cụm chức năng xếp base thủ công.
+- `src/hooks`: Các hook tái sử dụng.
+- `src/services`: Tích hợp API bên ngoài (War Report, Game Database).
+- `src/storage`: Quản lý lưu trữ local.
+- `src/utils`: Các hàm tiện ích (format, chuẩn hóa, ...).
+- `public/data`: Lưu trữ dữ liệu lấy từ game database.
+
+## Quy trình kiểm tra (Testing)
+
+Dự án sử dụng `vitest` để viết unit test cho các logic tính toán, import dữ liệu, và đánh giá phòng thủ.
+
+- Chạy test: `npm run test`
+- Typecheck: `npm run typecheck`
+- CI/CD được tích hợp qua GitHub Actions (cài đặt, typecheck, test, build) tự động khi có Pull Request.
+
+## Mức độ tin cậy của dữ liệu
+
+Dự án cung cấp thông tin cấp độ và chi phí bằng ba cấp độ:
+- **Chính xác (exact)**: Lấy tự động từ dữ liệu game thật. Có thể yên tâm sử dụng để lập kế hoạch.
+- **Ước tính (estimated)**: Số liệu nội suy bằng công thức tương đối, chỉ dùng để dựng khung sườn lúc chờ update. Không nên dùng cho tính toán chi tiết.
+- **Chưa kiểm tra (unchecked)**: Thường là các công trình đặc biệt (như tường) hoặc tính năng đang beta.
+
+## Cập nhật dữ liệu an toàn
+
+Để làm mới dữ liệu từ coc.guide:
+1. Chạy lệnh: `npm run update-data`
+2. Lệnh này sẽ kiểm tra schema của file `images.json`, `townhalls.json` và `levels.json`. Nếu cấu trúc thay đổi làm hỏng ứng dụng, bản cập nhật sẽ bị hủy (fallback giữ nguyên bản cũ).
+3. Sau khi xác nhận an toàn, các file JSON sẽ được đưa vào `public/data/` sẵn sàng để Web App tiêu thụ trực tiếp.

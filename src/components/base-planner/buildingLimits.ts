@@ -621,3 +621,43 @@ export function getAllBuildingLimits(thLevel: number): Record<string, number> {
   const safeTh = Math.max(1, Math.min(18, Math.trunc(thLevel) || 1));
   return TH_BUILDING_LIMITS[safeTh] || TH_BUILDING_LIMITS[1];
 }
+
+export interface ValidationResult {
+  isValid: boolean;
+  validBuildings: any[];
+  invalidBuildings: any[];
+  issues: string[];
+}
+
+export function validateLayoutAgainstLimits(buildings: any[], thLevel: number): ValidationResult {
+  const limits = getAllBuildingLimits(thLevel);
+  const currentCounts: Record<string, number> = {};
+  const validBuildings: any[] = [];
+  const invalidBuildings: any[] = [];
+  const issues = new Set<string>();
+
+  for (const b of buildings) {
+    if (!b || !b.buildingId) continue;
+    
+    const limit = limits[b.buildingId] || 0;
+    const currentCount = currentCounts[b.buildingId] || 0;
+
+    if (limit === 0) {
+      invalidBuildings.push(b);
+      issues.add(`Công trình "${b.buildingId}" chưa được mở khóa ở TH${thLevel}.`);
+    } else if (currentCount >= limit) {
+      invalidBuildings.push(b);
+      issues.add(`Công trình "${b.buildingId}" vượt quá giới hạn cho phép ở TH${thLevel} (Tối đa: ${limit}).`);
+    } else {
+      currentCounts[b.buildingId] = currentCount + 1;
+      validBuildings.push(b);
+    }
+  }
+
+  return {
+    isValid: invalidBuildings.length === 0,
+    validBuildings,
+    invalidBuildings,
+    issues: Array.from(issues)
+  };
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Award,
@@ -32,7 +32,7 @@ import { DefenseScorePanel } from "./DefenseScorePanel";
 import { InventorySidebar } from "./InventorySidebar";
 import { LayoutManagerModal } from "./LayoutManagerModal";
 import { TacticalToolbar } from "./TacticalToolbar";
-import { getAllBuildingLimits } from "./buildingLimits";
+import { getAllBuildingLimits, validateLayoutAgainstLimits } from "./buildingLimits";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { evaluateBaseDefense } from "./defenseScorer";
 import {
@@ -79,6 +79,7 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   const [autoSaveTime, setAutoSaveTime] = useState<string | null>(() =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
+  const [pendingTHChange, setPendingTHChange] = useState<{ newTH: number; validBuildings: PlacedBuilding[]; issues: string[] } | null>(null);
 
   const [settings, setSettings] = useState<TacticalSettings>({
     showRanges: "selected",
@@ -96,6 +97,7 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   const {
     buildings,
     pushState,
+    replaceState,
     setEntireState,
     undo,
     redo,
@@ -104,6 +106,8 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   } = useBasePlannerHistory({
     initialState: () => activeLayout.buildings || getPresetLayout(activeLayout.townHallLevel || initialTownHall),
   });
+
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Dynamic Building Limits for current TH
   const buildingLimits = useMemo(() => {
@@ -117,8 +121,13 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
 
   // Push buildings update and persist to active layout
   const handleUpdateBuildings = useCallback(
-    (newBuildings: PlacedBuilding[]) => {
-      pushState(newBuildings);
+    (newBuildings: PlacedBuilding[], replace: boolean = false) => {
+      if (replace) {
+        replaceState(newBuildings);
+      } else {
+        pushState(newBuildings);
+      }
+
       const updated: LayoutProject = {
         ...activeLayout,
         townHallLevel,
@@ -126,12 +135,18 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
         updatedAt: new Date().toISOString(),
       };
       setActiveLayout(updated);
-      saveLayout(updated);
-      setAutoSaveTime(
-        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      );
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+        saveLayout(updated);
+        setAutoSaveTime(
+          new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        );
+      }, 500); // 500ms debounce
     },
-    [activeLayout, pushState, townHallLevel]
+    [activeLayout, pushState, replaceState, townHallLevel]
   );
 
   // Auto-Save Interval (every 30 seconds)
@@ -163,15 +178,32 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   // Change Town Hall Level
   const handleTownHallChange = (newTH: number) => {
     const safe = Math.max(1, Math.min(18, newTH));
-    setTownHallLevel(safe);
+    
+    // Check validation against new limits
+    const { isValid, validBuildings, issues } = validateLayoutAgainstLimits(buildings, safe);
+
+    if (!isValid && safe < townHallLevel) {
+      // Show confirmation prompt
+      setPendingTHChange({ newTH: safe, validBuildings, issues });
+      return;
+    }
+
+    applyTownHallChange(safe, buildings);
+  };
+
+  const applyTownHallChange = (newTH: number, newBuildings: PlacedBuilding[]) => {
+    setTownHallLevel(newTH);
+    setEntireState(newBuildings);
     const updated: LayoutProject = {
       ...activeLayout,
-      townHallLevel: safe,
+      townHallLevel: newTH,
+      buildings: newBuildings,
       updatedAt: new Date().toISOString(),
     };
     setActiveLayout(updated);
     saveLayout(updated);
-    showToast(`Đã chuyển cấp độ sang Town Hall ${safe}.`);
+    showToast(`Đã chuyển cấp độ sang Town Hall ${newTH}.`);
+    setPendingTHChange(null);
   };
 
   // Switch Active Layout from Project Manager
@@ -339,7 +371,7 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
 
           {/* Real-Time Defense Score & Analytics Panel */}
           {settings.showDefenseScore && (
-            <div className="w-full max-w-[800px] mx-auto">
+            <div className="w-full">
               <DefenseScorePanel
                 defenseScore={defenseScoreResult}
                 onClose={() => setSettings((s) => ({ ...s, showDefenseScore: false }))}
@@ -362,6 +394,45 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
         }}
         autoSaveTime={autoSaveTime}
       />
+
+      {/* TH Downgrade Validation Modal */}
+      {pendingTHChange && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-[#1e272e] border border-[#ff3f34] p-6 rounded-lg max-w-lg w-full shadow-xl">
+            <h2 className="text-xl font-bold text-[#ff3f34] flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-6 h-6" /> Cảnh báo Hạ Cấp Town Hall
+            </h2>
+            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
+              Bạn đang chuyển xuống Town Hall {pendingTHChange.newTH}, nhưng bản đồ hiện tại đang có các công trình vượt quá giới hạn của cấp độ này.
+            </p>
+            <ul className="text-xs text-gray-400 mb-6 bg-black/40 p-3 rounded h-32 overflow-y-auto space-y-1">
+              {pendingTHChange.issues.map((issue, idx) => (
+                <li key={idx} className="flex gap-2"><span className="text-[#ff3f34]">•</span> {issue}</li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => applyTownHallChange(pendingTHChange.newTH, pendingTHChange.validBuildings)}
+                className="w-full py-2 bg-[#ff3f34] text-white font-semibold rounded hover:bg-red-700 transition-colors"
+              >
+                Xóa các công trình không hợp lệ
+              </button>
+              <button
+                onClick={() => applyTownHallChange(pendingTHChange.newTH, buildings)}
+                className="w-full py-2 bg-[#ffc048] text-black font-semibold rounded hover:bg-yellow-600 transition-colors"
+              >
+                Giữ nguyên bản đồ (Lưu cảnh báo)
+              </button>
+              <button
+                onClick={() => setPendingTHChange(null)}
+                className="w-full py-2 bg-gray-600 text-white font-semibold rounded hover:bg-gray-500 transition-colors mt-2"
+              >
+                Hủy đổi Town Hall
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

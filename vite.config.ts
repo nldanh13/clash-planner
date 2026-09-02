@@ -1,24 +1,26 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-// War Report sử dụng khóa này trong chính ứng dụng web công khai của họ.
-// Proxy chạy ở Node.js để tránh giới hạn CORS của trình duyệt.
-const WAR_REPORT_WEB_KEY = "A4U6KQYBG64+Fn2aQYjEFiip";
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const warReportApiKey = env.WAR_REPORT_API_KEY || "";
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    host: "0.0.0.0",
-    port: 3000,
-    allowedHosts: true,
-    proxy: {
-      "/warreport": {
-        target: "https://clashapi.colinschmale.dev",
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/warreport/, ""),
-        headers: { apikey: WAR_REPORT_WEB_KEY }
+  return {
+    plugins: [react(), tailwindcss()],
+    server: {
+      host: "0.0.0.0",
+      port: 3000,
+      allowedHosts: true,
+      proxy: {
+        "/warreport": {
+          target: "https://clashapi.colinschmale.dev",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/warreport/, ""),
+          headers: warReportApiKey ? { apikey: warReportApiKey } : undefined
+        }
       }
     }
-  }
+  };
 });

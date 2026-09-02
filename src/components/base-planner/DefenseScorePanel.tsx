@@ -7,15 +7,11 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  Layers,
-  Shield,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
-  Swords,
-  Zap,
+  X,
 } from "lucide-react";
-import type { DefenseScoreResult, DefenseWarning } from "./types";
+import type { DefenseScoreResult } from "./types";
 
 interface DefenseScorePanelProps {
   defenseScore: DefenseScoreResult;
@@ -29,95 +25,109 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
   const { totalScore, tier, tierTitle, tierColor, breakdown, warnings } = defenseScore;
 
   const criticalWarnings = warnings.filter((w) => w.type === "critical");
-  const otherWarnings = warnings.filter((w) => w.type !== "critical");
 
   return (
-    <div className="defense-score-card bg-[#0b1622] border border-[#263c4e] rounded-xl p-4 shadow-xl text-slate-200 flex flex-col gap-3">
+    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 shadow-2xl text-slate-200 flex flex-col gap-3 w-full transition-all">
       {/* Header with Overall Score & Tier */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#1c2e3d]">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div className="flex items-center gap-3">
+          {/* Tier Avatar Badge with Glow */}
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-lg border"
+            className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-2xl shadow-lg border-2 transition-transform hover:scale-105 select-none"
             style={{
               backgroundColor: `${tierColor}18`,
               borderColor: tierColor,
               color: tierColor,
+              boxShadow: `0 0 16px ${tierColor}30`,
             }}
           >
             {tier}
           </div>
-          <div className="flex flex-col">
+
+          <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-sm text-white tracking-wide">
-                Đánh giá Phòng thủ 3-Sao
+              <h3 className="font-extrabold text-sm sm:text-base text-white tracking-wide">
+                Điểm bố trí tham khảo
               </h3>
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider font-mono shadow-sm"
                 style={{
                   backgroundColor: `${tierColor}25`,
                   color: tierColor,
-                  border: `1px solid ${tierColor}66`,
+                  border: `1px solid ${tierColor}60`,
                 }}
               >
                 {tier}-Tier
               </span>
             </div>
-            <p className="text-[11px] font-medium text-slate-400">{tierTitle}</p>
+            <p className="text-xs font-medium text-slate-400">{tierTitle}</p>
           </div>
         </div>
 
+        {/* Overall Score Counter & Controls */}
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-2xl font-black text-white tracking-tight">
+            <div className="text-2xl sm:text-3xl font-black text-white tracking-tight font-mono">
               {totalScore.toFixed(1)}
-              <span className="text-xs text-slate-400 font-semibold">/100</span>
+              <span className="text-xs text-slate-400 font-bold ml-1">/100</span>
             </div>
-            <span className="text-[9.5px] text-emerald-400 font-bold uppercase tracking-wider">
-              Real-time Score
+            <span className="text-[9.5px] text-emerald-400 font-black uppercase tracking-wider block">
+              ● Live Engine
             </span>
           </div>
 
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg bg-[#142636] hover:bg-[#1b344a] text-slate-400 hover:text-white transition-colors"
-            title={isExpanded ? "Thu gọn" : "Mở rộng"}
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title={isExpanded ? "Thu gọn bảng đánh giá" : "Mở rộng bảng đánh giá"}
+            >
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+                title="Đóng bảng đánh giá"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {isExpanded && (
         <>
           {/* Sub Navigation Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800">
             <button
               onClick={() => setActiveTab("breakdown")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "breakdown"
-                  ? "bg-[#183144] text-cyan-400 border border-cyan-500/40"
-                  : "bg-[#0f1d2a] text-slate-400 hover:text-slate-200 border border-transparent"
+                  ? "bg-slate-800 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                  : "bg-transparent text-slate-400 hover:text-slate-200 border border-transparent"
               }`}
             >
-              <Award className="w-3.5 h-3.5" />
-              <span>Tiêu chí chấm điểm (5)</span>
+              <Award className="w-3.5 h-3.5 text-cyan-400" />
+              <span>5 Tiêu chí Đánh giá</span>
             </button>
 
             <button
               onClick={() => setActiveTab("warnings")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "warnings"
-                  ? "bg-[#183144] text-amber-400 border border-amber-500/40"
-                  : "bg-[#0f1d2a] text-slate-400 hover:text-slate-200 border border-transparent"
+                  ? "bg-slate-800 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "bg-transparent text-slate-400 hover:text-slate-200 border border-transparent"
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Cảnh báo điểm yếu</span>
+              <span>Cảnh báo &amp; Khắc phục</span>
               {warnings.length > 0 && (
                 <span
-                  className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
+                  className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-full font-mono ml-1 ${
                     criticalWarnings.length > 0
-                      ? "bg-red-500/30 text-red-300 border border-red-500/50"
+                      ? "bg-rose-500/30 text-rose-300 border border-rose-500/50"
                       : "bg-amber-500/30 text-amber-300 border border-amber-500/50"
                   }`}
                 >
@@ -127,31 +137,53 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
             </button>
           </div>
 
-          {/* Tab 1: Detailed Breakdown Bars */}
+          {/* Tab 1: Detailed Breakdown with Visual Progress Bars */}
           {activeTab === "breakdown" && (
-            <div className="flex flex-col gap-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               {Object.values(breakdown).map((cat) => {
                 const percent = Math.min(100, Math.round((cat.score / cat.maxScore) * 100));
-                const barColor =
-                  percent >= 80 ? "bg-emerald-500" : percent >= 55 ? "bg-amber-400" : "bg-red-500";
+                const barGradient =
+                  percent >= 80
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                    : percent >= 55
+                    ? "bg-gradient-to-r from-amber-500 to-yellow-400"
+                    : "bg-gradient-to-r from-rose-500 to-red-400";
+
+                const scoreLabel =
+                  percent >= 80
+                    ? "Tối ưu"
+                    : percent >= 55
+                    ? "Khá"
+                    : "Cần cải thiện";
+
+                const badgeColor =
+                  percent >= 80
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                    : percent >= 55
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "bg-rose-500/20 text-rose-300 border-rose-500/40";
 
                 return (
                   <div
                     key={cat.id}
-                    className="p-2.5 rounded-lg bg-[#0e1b26] border border-[#1e3344] flex flex-col gap-1.5"
+                    className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/90 flex flex-col gap-2 hover:border-slate-700 transition-colors"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-200">{cat.name}</span>
-                      <div className="font-extrabold text-white">
-                        {cat.score}
-                        <span className="text-slate-500 text-[10px]">/{cat.maxScore} đ</span>
+                      <span className="font-extrabold text-slate-200">{cat.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}`}>
+                          {scoreLabel}
+                        </span>
+                        <span className="font-black font-mono text-white text-xs">
+                          {percent}%
+                        </span>
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-2 rounded-full bg-[#162736] overflow-hidden">
+                    <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
                       <div
-                        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                        className={`h-full rounded-full transition-all duration-500 ${barGradient}`}
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -167,9 +199,11 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
           {activeTab === "warnings" && (
             <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
               {warnings.length === 0 ? (
-                <div className="p-4 text-center text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 rounded-lg flex items-center justify-center gap-2">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Bố cục hoàn hảo! Không phát hiện điểm mù hoặc cụm hỏa lực nguy hiểm nào.</span>
+                <div className="p-4 text-center text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-500/40 rounded-xl flex items-center justify-center gap-2.5">
+                  <ShieldCheck className="w-5 h-5" />
+                  <span className="font-semibold">
+                    Bố cục phòng thủ hoàn hảo! Không phát hiện điểm mù hoặc cụm hỏa lực nguy hiểm nào.
+                  </span>
                 </div>
               ) : (
                 warnings.map((w) => {
@@ -179,27 +213,33 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
                   return (
                     <div
                       key={w.id}
-                      className={`p-2.5 rounded-lg border text-xs flex items-start gap-2.5 ${
+                      className={`p-3 rounded-xl border text-xs flex items-start gap-3 transition-all ${
                         isCrit
-                          ? "bg-red-950/30 border-red-500/50 text-red-200"
+                          ? "bg-rose-950/30 border-rose-500/50 text-rose-200"
                           : isWarn
                           ? "bg-amber-950/25 border-amber-500/40 text-amber-200"
                           : "bg-blue-950/20 border-blue-500/30 text-blue-200"
                       }`}
                     >
                       {isCrit ? (
-                        <AlertOctagon className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                          <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />
+                        </div>
                       ) : isWarn ? (
-                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                        </div>
                       ) : (
-                        <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-6 h-6 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                          <Info className="w-3.5 h-3.5 text-cyan-400" />
+                        </div>
                       )}
 
                       <div className="flex flex-col gap-0.5 flex-1">
-                        <strong className="font-extrabold text-[11px] text-white">
+                        <strong className="font-extrabold text-[11.5px] text-white">
                           {w.title}
                         </strong>
-                        <p className="text-[10px] opacity-90 leading-relaxed">{w.message}</p>
+                        <p className="text-[10.5px] opacity-90 leading-relaxed">{w.message}</p>
                       </div>
                     </div>
                   );
@@ -212,3 +252,5 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
     </div>
   );
 }
+
+export default DefenseScorePanel;

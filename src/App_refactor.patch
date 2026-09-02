@@ -1,0 +1,80 @@
+--- src/App.tsx
++++ src/App_new.tsx
+@@ -224,11 +224,9 @@
+ }
+ 
++import { usePlayer } from "./hooks/usePlayer";
++
+ export default function App(){
+-  const [input,setInput]=useState(()=>localStorage.getItem("coc-last-tag")||"");
+-  const [player,setPlayer]=useState<Player|null>(null);
+-  const [loading,setLoading]=useState(false),[error,setError]=useState(""),[syncedAt,setSyncedAt]=useState<Date|null>(null);
++  const { input, setInput, loading, error, cacheWarning, player, setPlayer, history, load } = usePlayer();
++  const [syncedAt, setSyncedAt] = useState<Date|null>(null);
+   const [tab,setTab]=useState<Tab>("overview"),[roadTH,setRoadTH]=useState(11);
+   const [calcMode,setCalcMode]=useState<"suggest"|"town-hall"|"single">("suggest"),[plannerKind,setPlannerKind]=useState<UpgradeItem["kind"]|"all">("all");
+   const [plannerItemId,setPlannerItemId]=useState("barbarian-king"),[targetLevel,setTargetLevel]=useState(100),[maxTownHall,setMaxTownHall]=useState(18),[builderCount,setBuilderCount]=useState(5);
+@@ -239,47 +237,13 @@
+   const [pasteText,setPasteText]=useState("");
+   const [pasteReport,setPasteReport]=useState<VillagePasteReport|null>(null);
+   const [,bumpDbVersion]=useState(0);
+-  const [cacheWarning,setCacheWarning]=useState("");
+-  const abortControllerRef=useRef<AbortController|null>(null);
+   
+   useGameDatabase(()=>bumpDbVersion(v=>v+1));
+   const townHallInfo=townHallDb||townHallInfoDefault;
+ 
+-  async function loadPlayer(raw=input){
+-    const tag=normalizeTag(raw);
+-    if(tag.length<4){setError("Player Tag chưa hợp lệ.");return}
+-    
+-    if(abortControllerRef.current) abortControllerRef.current.abort();
+-    abortControllerRef.current = new AbortController();
+-    
+-    setLoading(true);setError("");setCacheWarning("");
+-    try{
+-      const res=await fetch(`/warreport/v1/players/${encodeURIComponent(tag)}`,{
+-        cache:"no-store",
+-        signal: abortControllerRef.current.signal
+-      });
+-      if(!res.ok){
+-        if(res.status===404)throw new Error("Không tìm thấy người chơi. Hãy kiểm tra lại Player Tag.");
+-        if(res.status===401||res.status===403)throw new Error("War Report đã thay đổi quyền hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (WAR_REPORT_API_KEY).");
+-        if(res.status===502)throw new Error("Proxy không thể kết nối đến War Report. Hãy chắc chắn bạn đã cấu hình backend proxy.");
+-        throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
+-      }
+-      const payload=await res.json() as Partial<Player>;
+-      if(!payload||typeof payload!=="object"||!Number.isFinite(payload.townHallLevel))throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
+-      const data:Player={
+-        ...payload,
+-        tag:typeof payload.tag==="string"?normalizeTag(payload.tag):tag,
+-        name:typeof payload.name==="string"?payload.name:"Người chơi",
+-        townHallLevel:clampInteger(payload.townHallLevel,1,18,1),
+-        expLevel:clampInteger(payload.expLevel,0,1000,0),
+-        trophies:clampInteger(payload.trophies,0,100000,0),
+-        bestTrophies:clampInteger(payload.bestTrophies,0,100000,0),
+-        warStars:clampInteger(payload.warStars,0,100000,0),
+-        attackWins:clampInteger(payload.attackWins,0,100000,0),
+-        defenseWins:clampInteger(payload.defenseWins,0,100000,0),
+-        heroes:Array.isArray(payload.heroes)?payload.heroes:[],
+-        troops:Array.isArray(payload.troops)?payload.troops:[],
+-        spells:Array.isArray(payload.spells)?payload.spells:[],
+-        heroEquipment:Array.isArray(payload.heroEquipment)?payload.heroEquipment:[],
+-        pets:Array.isArray(payload.pets)?payload.pets:[],
+-        clan:typeof payload.clan==="object"&&payload.clan?payload.clan:undefined,
+-        league:typeof payload.league==="object"&&payload.league?payload.league:undefined
+-      };
+-      setPlayer(data);
+-      setSyncedAt(new Date());
+-      localStorage.setItem("coc-last-tag",data.tag);
+-      if(payload.clan?.name?.includes("(cached)")) setCacheWarning("Dữ liệu được tải từ bộ đệm (cache). Có thể không phải thông tin mới nhất.");
+-    }catch(e:any){
+-      if(e.name!=="AbortError") setError(e.message||"Lỗi không xác định.");
+-    }finally{
+-      setLoading(false);
+-    }
++  async function loadPlayer(raw=input) {
++    await load(raw);
++    setSyncedAt(new Date());
++    localStorage.setItem("coc-last-tag", normalizeTag(raw));
+   }

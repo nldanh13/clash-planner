@@ -1,6 +1,7 @@
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import { getTileGap, scanChainLightningHazards } from "./chainLightningUtils";
 import { calculateFirepowerHeatmap } from "./heatmapUtils";
+import { getAllBuildingLimits } from "./buildingLimits";
 import type {
   DefenseScoreResult,
   DefenseWarning,
@@ -9,10 +10,19 @@ import type {
 } from "./types";
 
 /**
- * 3-Star Defense Scoring Algorithm for Clash of Clans Bases (0 - 100 Điểm)
+ * Thuật toán tính Điểm bố trí tham khảo (Heuristic cơ bản, 0 - 100 Điểm)
  */
 export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: number): DefenseScoreResult {
   const warnings: DefenseWarning[] = [];
+
+  warnings.push({
+    id: "model-limit",
+    type: "tip",
+    title: "Giới hạn đánh giá",
+    message: "Đây là điểm tham khảo cơ bản. Thuật toán chưa xét cấp độ công trình, hướng thổi của Air Sweeper, chế độ Inferno/X-Bow, thiết kế khoang tường và thuật toán tìm đường (pathing) của lính.",
+    category: "core",
+  });
+
 
   if (buildings.length === 0) {
     return {
@@ -32,7 +42,30 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
     };
   }
 
+
+  // --- 0. PENALTY THIẾU CÔNG TRÌNH ---
+  const limits = getAllBuildingLimits(townHallLevel);
+  const expectedCoreIds = ["eagle-artillery", "inferno-tower", "scattershot", "monolith"];
+  let missingCoreCount = 0;
+  for (const cid of expectedCoreIds) {
+      const allowed = limits[cid] || 0;
+      const placed = buildings.filter(b => b.buildingId === cid).length;
+      if (allowed > 0 && placed < allowed) {
+          missingCoreCount += (allowed - placed);
+      }
+  }
+  if (missingCoreCount > 0) {
+      warnings.push({
+          id: "missing-core",
+          type: "warning",
+          title: "Thiếu công trình phòng thủ lõi",
+          message: `Bạn chưa đặt đủ ${missingCoreCount} công trình phòng thủ chủ lực cho TH${townHallLevel}. Điểm số có thể không phản ánh đúng sức mạnh.`,
+          category: "core"
+      });
+  }
+
   // --- 1. HỆ SỐ CỐT LÕI (Max 30 Điểm) ---
+
   // A. Core Spacing (18 pts): Monolith, Eagle, Inferno, Scattershot distance >= 3 tiles
   let coreScore = 0;
   const coreBuildings = buildings.filter((b) =>
@@ -107,7 +140,7 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
   coreScore = Math.min(30, coreSpacingPts + storageShieldPts);
 
   // --- 2. HỆ SỐ CHỐNG SÉT LAN (Max 20 Điểm) ---
-  const chainAnalysis = scanChainLightningHazards(buildings, 2);
+  const chainAnalysis = scanChainLightningHazards(buildings, 1);
   let chainScore = 20;
   if (chainAnalysis.criticalCount > 0) {
     chainScore -= Math.min(14, chainAnalysis.criticalCount * 2.5);
@@ -179,6 +212,15 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
 
   let trapPoints = 0;
   const th = buildings.find((b) => b.buildingId === "town-hall");
+  if (!th) {
+    warnings.push({
+      id: "th-missing",
+      type: "critical",
+      title: "Thiếu Town Hall",
+      message: "Bạn chưa đặt Town Hall. Hãy kéo thả Town Hall vào bản đồ.",
+      category: "th",
+    });
+  }
   const tornado = traps.find((b) => b.buildingId === "tornado-trap");
 
   // A. Tornado placement near TH or Core
@@ -280,11 +322,11 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
 
   if (totalScore >= 90) {
     tier = "S";
-    tierTitle = "Bất khả xâm phạm (Anti 3-Star Chuẩn)";
+    tierTitle = "Tuyệt vời (Bố cục chuẩn)";
     tierColor = "#2ecc71";
   } else if (totalScore >= 75) {
     tier = "A";
-    tierTitle = "Phòng thủ vững chắc (Khó 3 sao)";
+    tierTitle = "Rất tốt (Phân bổ phòng thủ tốt)";
     tierColor = "#3498db";
   } else if (totalScore >= 60) {
     tier = "B";
@@ -296,7 +338,7 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
     tierColor = "#e67e22";
   } else {
     tier = "D";
-    tierTitle = "Kém (Dễ bị 3 sao)";
+    tierTitle = "Cần cải thiện (Nhiều điểm nghẽn)";
     tierColor = "#e74c3c";
   }
 
