@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Clash Path — Admin dữ liệu</title>
+<style>
+:root{color-scheme:dark;--gold:#ffc857;--cyan:#59d9ed;--green:#73e49a;--red:#ff7380;--panel:#111d28;--panel2:#172532;--line:#2b3c4b;--muted:#91a0ad;--bg:#07111a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f6f1e5;font-family:"Segoe UI",Inter,Arial,sans-serif;font-size:13px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 18px 60px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+header p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--panel);color:#c8d3db;padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:700;font-size:12px}
+.tabs button.active{background:linear-gradient(#ffd678,#e8a73a);color:#1e1406;border-color:transparent}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar button,.toolbar label{border:1px solid var(--line);background:var(--panel);color:#c8d3db;padding:8px 12px;border-radius:9px;cursor:pointer;font-size:11px;font-weight:700}
+.toolbar button.primary{background:linear-gradient(#ffd678,#e8a73a);color:#1e1406;border-color:transparent}
+.toolbar input[type=file]{display:none}
+.status{font-size:11px;color:var(--green);margin-left:4px}
+.search{width:100%;max-width:320px;height:36px;border:1px solid var(--line);background:#0e1a24;color:#fff;border-radius:9px;padding:0 12px;margin-bottom:14px}
+.kind-group{margin-bottom:22px}
+.kind-group h2{font-size:13px;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px}
+.item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.item-card{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px;display:grid;grid-template-columns:52px 1fr;gap:10px}
+.item-thumb{width:52px;height:52px;border-radius:8px;background:radial-gradient(circle,#334b5d,#17232e);display:grid;place-items:center;overflow:hidden}
+.item-thumb img{width:88%;height:88%;object-fit:contain}
+.item-thumb span{font-size:9px;color:#5d7080}
+.item-body strong{font-size:12px;display:block}
+.item-body small{color:var(--muted);font-size:9px}
+.item-body input{width:100%;margin-top:6px;height:28px;border:1px solid var(--line);background:#0e1a24;color:#fff;border-radius:6px;padding:0 8px;font-size:10px}
+.item-body input::placeholder{color:#5c6b76}
+.th-card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;margin-bottom:12px;display:grid;gap:8px}
+.th-card h3{margin:0;font-size:14px;color:var(--gold)}
+.th-row{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:center}
+.th-card input,.th-card textarea{width:100%;border:1px solid var(--line);background:#0e1a24;color:#fff;border-radius:7px;padding:7px 9px;font-size:11px;font-family:inherit}
+.th-card textarea{min-height:44px;resize:vertical}
+.tags{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-top:4px}
+.tags label{font-size:9px;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px}
+footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:#5c6b76;font-size:9px;line-height:1.6}
+.hint{padding:12px 14px;border:1px solid #2c3f4d;border-radius:10px;background:#0e1a24;color:#8ea0ac;font-size:11px;line-height:1.6;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Clash Path — Admin dữ liệu</h1>
+      <p>Công cụ riêng để cập nhật ảnh + nội dung Roadmap TH1-18 cho web app. Chạy độc lập, không cần server, không cần đăng nhập.</p>
+    </div>
+  </header>
+
+  <div class="hint" id="hint"></div>
+
+  <div class="tabs">
+    <button data-tab="images" class="active">Ảnh (theo item)</button>
+    <button data-tab="roadmap">Roadmap TH1-18</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="primary" id="exportImageMap">Xuất imageMap.ts</button>
+    <button class="primary" id="exportTownHall">Xuất townHallData.ts</button>
+    <button id="exportBackup">Xuất JSON sao lưu</button>
+    <label>Nhập JSON sao lưu<input type="file" id="importBackup" accept="application/json"/></label>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div id="panel-images">
+    <input class="search" id="search" placeholder="Tìm theo tên hoặc id..."/>
+    <div id="imageList"></div>
+  </div>
+
+  <div id="panel-roadmap" style="display:none"></div>
+
+  <footer>
+    Dữ liệu chỉnh ở đây lưu tạm trong trình duyệt (localStorage) để không mất khi tắt trang.
+    Khi xong, bấm "Xuất imageMap.ts" / "Xuất townHallData.ts" rồi lưu đè file tải về vào đúng vị trí trong
+    project web app: src/imageMap.ts và src/townHallData.ts. Danh sách item ở tab Ảnh khớp với
+    src/upgradeData.ts tại thời điểm xuất bản công cụ này — nếu sau này bạn thêm item mới trong
+    upgradeData.ts, dùng nút "Nhập JSON sao lưu" với 1 file catalog mới, hoặc báo lại để cập nhật danh sách.
+  </footer>
+</div>
+
+<script>
+const MANIFEST = [{"id": "town-hall", "name": "Town Hall", "kind": "building", "owner": null}, {"id": "builder-hut", "name": "Builder's Hut", "kind": "defense", "owner": null}, {"id": "cannon", "name": "Cannon", "kind": "defense", "owner": null}, {"id": "archer-tower", "name": "Archer Tower", "kind": "defense", "owner": null}, {"id": "mortar", "name": "Mortar", "kind": "defense", "owner": null}, {"id": "air-defense", "name": "Air Defense", "kind": "defense", "owner": null}, {"id": "wizard-tower", "name": "Wizard Tower", "kind": "defense", "owner": null}, {"id": "air-sweeper", "name": "Air Sweeper", "kind": "defense", "owner": null}, {"id": "hidden-tesla", "name": "Hidden Tesla", "kind": "defense", "owner": null}, {"id": "xbow", "name": "X-Bow", "kind": "defense", "owner": null}, {"id": "inferno-tower", "name": "Inferno Tower", "kind": "defense", "owner": null}, {"id": "eagle-artillery", "name": "Eagle Artillery", "kind": "defense", "owner": null}, {"id": "scattershot", "name": "Scattershot", "kind": "defense", "owner": null}, {"id": "monolith", "name": "Monolith", "kind": "defense", "owner": null}, {"id": "spell-tower", "name": "Spell Tower", "kind": "defense", "owner": null}, {"id": "multi-archer-tower", "name": "Multi-Archer Tower", "kind": "defense", "owner": null}, {"id": "ricochet-cannon", "name": "Ricochet Cannon", "kind": "defense", "owner": null}, {"id": "firespitter", "name": "Firespitter", "kind": "defense", "owner": null}, {"id": "wall", "name": "Wall", "kind": "wall", "owner": null}, {"id": "gold-mine", "name": "Gold Mine", "kind": "building", "owner": null}, {"id": "elixir-collector", "name": "Elixir Collector", "kind": "building", "owner": null}, {"id": "dark-elixir-drill", "name": "Dark Elixir Drill", "kind": "building", "owner": null}, {"id": "gold-storage", "name": "Gold Storage", "kind": "building", "owner": null}, {"id": "elixir-storage", "name": "Elixir Storage", "kind": "building", "owner": null}, {"id": "dark-elixir-storage", "name": "Dark Elixir Storage", "kind": "building", "owner": null}, {"id": "barracks", "name": "Barracks", "kind": "building", "owner": null}, {"id": "dark-barracks", "name": "Dark Barracks", "kind": "building", "owner": null}, {"id": "spell-factory", "name": "Spell Factory", "kind": "building", "owner": null}, {"id": "dark-spell-factory", "name": "Dark Spell Factory", "kind": "building", "owner": null}, {"id": "laboratory", "name": "Laboratory", "kind": "building", "owner": null}, {"id": "army-camp", "name": "Army Camp", "kind": "building", "owner": null}, {"id": "clan-castle", "name": "Clan Castle", "kind": "building", "owner": null}, {"id": "blacksmith", "name": "Blacksmith", "kind": "building", "owner": null}, {"id": "workshop", "name": "Workshop", "kind": "building", "owner": null}, {"id": "pet-house", "name": "Pet House", "kind": "building", "owner": null}, {"id": "bomb", "name": "Bomb", "kind": "trap", "owner": null}, {"id": "spring-trap", "name": "Spring Trap", "kind": "trap", "owner": null}, {"id": "air-bomb", "name": "Air Bomb", "kind": "trap", "owner": null}, {"id": "giant-bomb", "name": "Giant Bomb", "kind": "trap", "owner": null}, {"id": "seeking-air-mine", "name": "Seeking Air Mine", "kind": "trap", "owner": null}, {"id": "skeleton-trap", "name": "Skeleton Trap", "kind": "trap", "owner": null}, {"id": "tornado-trap", "name": "Tornado Trap", "kind": "trap", "owner": null}, {"id": "giga-bomb", "name": "Giga Bomb", "kind": "trap", "owner": null}, {"id": "barbarian-king", "name": "Barbarian King", "kind": "hero", "owner": null}, {"id": "archer-queen", "name": "Archer Queen", "kind": "hero", "owner": null}, {"id": "minion-prince", "name": "Minion Prince", "kind": "hero", "owner": null}, {"id": "grand-warden", "name": "Grand Warden", "kind": "hero", "owner": null}, {"id": "royal-champion", "name": "Royal Champion", "kind": "hero", "owner": null}, {"id": "dragon-duke", "name": "Dragon Duke", "kind": "hero", "owner": null}, {"id": "barbarian", "name": "Barbarian", "kind": "troop", "owner": null}, {"id": "archer", "name": "Archer", "kind": "troop", "owner": null}, {"id": "giant", "name": "Giant", "kind": "troop", "owner": null}, {"id": "goblin", "name": "Goblin", "kind": "troop", "owner": null}, {"id": "wall-breaker", "name": "Wall Breaker", "kind": "troop", "owner": null}, {"id": "balloon", "name": "Balloon", "kind": "troop", "owner": null}, {"id": "wizard", "name": "Wizard", "kind": "troop", "owner": null}, {"id": "healer", "name": "Healer", "kind": "troop", "owner": null}, {"id": "dragon", "name": "Dragon", "kind": "troop", "owner": null}, {"id": "p-e-k-k-a", "name": "P.E.K.K.A", "kind": "troop", "owner": null}, {"id": "baby-dragon", "name": "Baby Dragon", "kind": "troop", "owner": null}, {"id": "miner", "name": "Miner", "kind": "troop", "owner": null}, {"id": "electro-dragon", "name": "Electro Dragon", "kind": "troop", "owner": null}, {"id": "yeti", "name": "Yeti", "kind": "troop", "owner": null}, {"id": "dragon-rider", "name": "Dragon Rider", "kind": "troop", "owner": null}, {"id": "electro-titan", "name": "Electro Titan", "kind": "troop", "owner": null}, {"id": "root-rider", "name": "Root Rider", "kind": "troop", "owner": null}, {"id": "druid", "name": "Druid", "kind": "troop", "owner": null}, {"id": "furnace", "name": "Furnace", "kind": "troop", "owner": null}, {"id": "ruin-witch", "name": "Ruin Witch", "kind": "troop", "owner": null}, {"id": "thrower", "name": "Thrower", "kind": "troop", "owner": null}, {"id": "meteor-golem", "name": "Meteor Golem", "kind": "troop", "owner": null}, {"id": "minion", "name": "Minion", "kind": "troop", "owner": null}, {"id": "hog-rider", "name": "Hog Rider", "kind": "troop", "owner": null}, {"id": "valkyrie", "name": "Valkyrie", "kind": "troop", "owner": null}, {"id": "golem", "name": "Golem", "kind": "troop", "owner": null}, {"id": "witch", "name": "Witch", "kind": "troop", "owner": null}, {"id": "lava-hound", "name": "Lava Hound", "kind": "troop", "owner": null}, {"id": "bowler", "name": "Bowler", "kind": "troop", "owner": null}, {"id": "ice-golem", "name": "Ice Golem", "kind": "troop", "owner": null}, {"id": "headhunter", "name": "Headhunter", "kind": "troop", "owner": null}, {"id": "apprentice-warden", "name": "Apprentice Warden", "kind": "troop", "owner": null}, {"id": "lightning-spell", "name": "Lightning Spell", "kind": "spell", "owner": null}, {"id": "healing-spell", "name": "Healing Spell", "kind": "spell", "owner": null}, {"id": "rage-spell", "name": "Rage Spell", "kind": "spell", "owner": null}, {"id": "jump-spell", "name": "Jump Spell", "kind": "spell", "owner": null}, {"id": "freeze-spell", "name": "Freeze Spell", "kind": "spell", "owner": null}, {"id": "clone-spell", "name": "Clone Spell", "kind": "spell", "owner": null}, {"id": "invisibility-spell", "name": "Invisibility Spell", "kind": "spell", "owner": null}, {"id": "recall-spell", "name": "Recall Spell", "kind": "spell", "owner": null}, {"id": "revive-spell", "name": "Revive Spell", "kind": "spell", "owner": null}, {"id": "poison-spell", "name": "Poison Spell", "kind": "spell", "owner": null}, {"id": "earthquake-spell", "name": "Earthquake Spell", "kind": "spell", "owner": null}, {"id": "haste-spell", "name": "Haste Spell", "kind": "spell", "owner": null}, {"id": "skeleton-spell", "name": "Skeleton Spell", "kind": "spell", "owner": null}, {"id": "bat-spell", "name": "Bat Spell", "kind": "spell", "owner": null}, {"id": "overgrowth-spell", "name": "Overgrowth Spell", "kind": "spell", "owner": null}, {"id": "totem-spell", "name": "Totem Spell", "kind": "spell", "owner": null}, {"id": "wall-wrecker", "name": "Wall Wrecker", "kind": "siege", "owner": null}, {"id": "battle-blimp", "name": "Battle Blimp", "kind": "siege", "owner": null}, {"id": "stone-slammer", "name": "Stone Slammer", "kind": "siege", "owner": null}, {"id": "siege-barracks", "name": "Siege Barracks", "kind": "siege", "owner": null}, {"id": "log-launcher", "name": "Log Launcher", "kind": "siege", "owner": null}, {"id": "flame-flinger", "name": "Flame Flinger", "kind": "siege", "owner": null}, {"id": "battle-drill", "name": "Battle Drill", "kind": "siege", "owner": null}, {"id": "troop-launcher", "name": "Troop Launcher", "kind": "siege", "owner": null}, {"id": "sky-wagon", "name": "Sky Wagon", "kind": "siege", "owner": null}, {"id": "giant-gauntlet", "name": "Giant Gauntlet", "kind": "equipment", "owner": "Barbarian King"}, {"id": "rage-vial", "name": "Rage Vial", "kind": "equipment", "owner": "Barbarian King"}, {"id": "vampstache", "name": "Vampstache", "kind": "equipment", "owner": "Barbarian King"}, {"id": "earthquake-boots", "name": "Earthquake Boots", "kind": "equipment", "owner": "Barbarian King"}, {"id": "barbarian-puppet", "name": "Barbarian Puppet", "kind": "equipment", "owner": "Barbarian King"}, {"id": "action-figure", "name": "Action Figure", "kind": "equipment", "owner": "Archer Queen"}, {"id": "archer-puppet", "name": "Archer Puppet", "kind": "equipment", "owner": "Archer Queen"}, {"id": "frozen-arrow", "name": "Frozen Arrow", "kind": "equipment", "owner": "Archer Queen"}, {"id": "giant-arrow", "name": "Giant Arrow", "kind": "equipment", "owner": "Archer Queen"}, {"id": "healer-puppet", "name": "Healer Puppet", "kind": "equipment", "owner": "Archer Queen"}, {"id": "invisibility-vial", "name": "Invisibility Vial", "kind": "equipment", "owner": "Archer Queen"}, {"id": "dark-crown", "name": "Dark Crown", "kind": "equipment", "owner": "Minion Prince"}, {"id": "dark-orb", "name": "Dark Orb", "kind": "equipment", "owner": "Minion Prince"}, {"id": "henchmen-puppet", "name": "Henchmen Puppet", "kind": "equipment", "owner": "Minion Prince"}, {"id": "metal-pants", "name": "Metal Pants", "kind": "equipment", "owner": "Minion Prince"}, {"id": "eternal-tome", "name": "Eternal Tome", "kind": "equipment", "owner": "Grand Warden"}, {"id": "fireball", "name": "Fireball", "kind": "equipment", "owner": "Grand Warden"}, {"id": "healing-tome", "name": "Healing Tome", "kind": "equipment", "owner": "Grand Warden"}, {"id": "heroic-torch", "name": "Heroic Torch", "kind": "equipment", "owner": "Grand Warden"}, {"id": "electro-boots", "name": "Electro Boots", "kind": "equipment", "owner": "Royal Champion"}, {"id": "frost-flake", "name": "Frost Flake", "kind": "equipment", "owner": "Royal Champion"}, {"id": "haste-vial", "name": "Haste Vial", "kind": "equipment", "owner": "Royal Champion"}, {"id": "hog-rider-puppet", "name": "Hog Rider Puppet", "kind": "equipment", "owner": "Royal Champion"}, {"id": "fire-heart", "name": "Fire Heart", "kind": "equipment", "owner": "Dragon Duke"}, {"id": "flame-blower", "name": "Flame Blower", "kind": "equipment", "owner": "Dragon Duke"}, {"id": "l-a-s-s-i", "name": "L.A.S.S.I", "kind": "pet", "owner": null}, {"id": "electro-owl", "name": "Electro Owl", "kind": "pet", "owner": null}, {"id": "mighty-yak", "name": "Mighty Yak", "kind": "pet", "owner": null}, {"id": "unicorn", "name": "Unicorn", "kind": "pet", "owner": null}, {"id": "diggy", "name": "Diggy", "kind": "pet", "owner": null}, {"id": "frosty", "name": "Frosty", "kind": "pet", "owner": null}, {"id": "phoenix", "name": "Phoenix", "kind": "pet", "owner": null}, {"id": "poison-lizard", "name": "Poison Lizard", "kind": "pet", "owner": null}, {"id": "angry-jelly", "name": "Angry Jelly", "kind": "pet", "owner": null}, {"id": "spirit-fox", "name": "Spirit Fox", "kind": "pet", "owner": null}, {"id": "sneezy", "name": "Sneezy", "kind": "pet", "owner": null}, {"id": "greedy-raven", "name": "Greedy Raven", "kind": "pet", "owner": null}];
+const DEFAULT_TOWNHALLS = [{"level":1,"title":"Khởi đầu","blurb":"Làm quen cơ chế cơ bản: xây, thu tài nguyên, tập trận đầu tiên.","unlocks":{"buildings":["Town Hall","Army Camp","Barracks","Gold Mine","Gold Storage","Elixir Collector","Elixir Storage"],"defenses":["Cannon"],"troops":["Barbarian","Archer","Giant"]}},{"level":2,"title":"Phòng thủ đầu tiên","blurb":"Tường và Archer Tower buộc bạn phải nghĩ đến bố trí làng lần đầu tiên.","unlocks":{"buildings":["Clan Castle","Tường (Wall)"],"defenses":["Archer Tower"],"troops":["Goblin"]}},{"level":3,"title":"Gia nhập hội","blurb":"Laboratory mở ra nhánh nâng cấp quân độc lập với công trình.","unlocks":{"buildings":["Laboratory"],"defenses":["Mortar"],"traps":["Bomb"]}},{"level":4,"title":"Trên không & phá tường","blurb":"Air Defense và hai đơn vị chuyên dụng đầu tiên xuất hiện.","unlocks":{"defenses":["Air Defense"],"traps":["Spring Trap"],"troops":["Balloon","Wall Breaker"]}},{"level":5,"title":"Phép thuật","blurb":"Spell Factory và Lightning Spell mở kỷ nguyên dùng phép trong tấn công.","unlocks":{"buildings":["Spell Factory"],"defenses":["Wizard Tower"],"traps":["Air Bomb"],"troops":["Wizard"],"spells":["Lightning Spell"]}},{"level":6,"title":"Kiểm soát trên không","blurb":"Air Sweeper đổi hướng quân bay, Healing Spell kéo dài đội hình đẩy.","unlocks":{"defenses":["Air Sweeper"],"traps":["Giant Bomb"],"troops":["Healer"],"spells":["Healing Spell"]}},{"level":7,"title":"Hero & Dark Elixir","blurb":"Hero đầu tiên xuất hiện cùng cả một nhánh tài nguyên phụ mới.","unlocks":{"buildings":["Dark Barracks","Dark Elixir Drill","Dark Elixir Storage","Hero Hall"],"defenses":["Hidden Tesla"],"traps":["Seeking Air Mine"],"troops":["Dragon","Hog Rider","Minion"],"spells":["Rage Spell"],"heroes":["Barbarian King"]}},{"level":8,"title":"Archer Queen & Blacksmith","blurb":"Hero thứ hai và hệ thống trang bị hero (Blacksmith) bắt đầu từ đây.","unlocks":{"buildings":["Blacksmith","Dark Spell Factory"],"defenses":["Bomb Tower"],"traps":["Skeleton Trap"],"troops":["Golem","P.E.K.K.A","Valkyrie"],"spells":["Earthquake Spell","Poison Spell"],"heroes":["Archer Queen"]}},{"level":9,"title":"Minion Prince & X-Bow","blurb":"Hero thứ ba cùng loạt phép hỗ trợ chiến thuật (Freeze, Haste, Jump).","unlocks":{"defenses":["X-Bow"],"troops":["Baby Dragon","Lava Hound","Witch"],"spells":["Freeze Spell","Haste Spell","Jump Spell","Skeleton Spell"],"heroes":["Minion Prince"]}},{"level":10,"title":"Inferno","blurb":"Inferno Tower là bước ngoặt phòng thủ — bắt đầu kỷ nguyên phòng thủ khó nhằn.","unlocks":{"defenses":["Inferno Tower"],"troops":["Bowler","Miner"],"spells":["Bat Spell","Clone Spell"]}},{"level":11,"title":"Grand Warden","blurb":"Hero hỗ trợ đầu tiên (buff/debuff theo vùng) cùng Eagle Artillery.","unlocks":{"defenses":["Eagle Artillery"],"traps":["Tornado Trap"],"troops":["Electro Dragon","Ice Golem"],"spells":["Invisibility Spell"],"heroes":["Grand Warden"]}},{"level":12,"title":"Siege Workshop","blurb":"Máy công thành (siege machine) đầu tiên — thay đổi cách donate và mở đường.","unlocks":{"buildings":["Workshop"],"troops":["Yeti","Headhunter"],"spells":["Overgrowth Spell"],"siege":["Wall Wrecker","Battle Blimp","Stone Slammer"]}},{"level":13,"title":"Royal Champion","blurb":"Hero cận chiến tầm xa thứ tư, thêm 2 máy công thành mới.","unlocks":{"defenses":["Scattershot"],"troops":["Dragon Rider","Apprentice Warden"],"spells":["Recall Spell"],"siege":["Log Launcher","Siege Barracks"],"heroes":["Royal Champion"]}},{"level":14,"title":"Hero Pets","blurb":"Pet House mở khóa 4 pet đầu tiên để ghép cùng hero.","unlocks":{"buildings":["Pet House"],"troops":["Druid","Electro Titan"],"spells":["Ice Block Spell"],"siege":["Flame Flinger"],"pets":["L.A.S.S.I","Electro Owl","Mighty Yak","Unicorn"],"note":"Builder's Hut cũng nâng lên cấp 4 ở TH này."}},{"level":15,"title":"Monolith","blurb":"Hero thứ năm (Dragon Duke) cùng 2 phòng thủ mới và 4 pet tiếp theo.","unlocks":{"defenses":["Monolith","Spell Tower"],"troops":["Root Rider","Furnace"],"spells":["Revive Spell"],"siege":["Battle Drill"],"heroes":["Dragon Duke"],"pets":["Diggy","Frosty","Phoenix","Poison Lizard"]}},{"level":16,"title":"Merged Defenses","blurb":"Cơ chế ghép phòng thủ cũ thành phòng thủ mới — cần thiết kế lại layout.","unlocks":{"defenses":["Multi-Archer Tower","Ricochet Cannon"],"troops":["Ruin Witch","Thrower"],"siege":["Troop Launcher"],"pets":["Angry Jelly","Spirit Fox"],"note":"Multi-Archer Tower/Ricochet Cannon được ghép từ các phòng thủ cấp thấp hơn, không xây mới hoàn toàn."}},{"level":17,"title":"Inferno Artillery","blurb":"Thêm phòng thủ hướng bắn thủ công và máy công thành mới.","unlocks":{"buildings":["Multi-Gear Tower"],"defenses":["Firespitter"],"traps":["Giga Bomb"],"siege":["Sky Wagon"],"pets":["Sneezy"],"note":"Ruin Witch cũng nâng lên cấp 3 ở TH này."}},{"level":18,"title":"Guardians","blurb":"Hệ thống Guardian và phòng thủ cấp cao nhất hiện tại — TH tối đa.","unlocks":{"buildings":["Crafting Station","Revenge Tower","Super Wizard Tower"],"guardians":["Logger","Longshot","Smasher"],"pets":["Greedy Raven"],"note":"Guardian là hệ thống cấu hình theo chiến thuật, không phải công trình nâng cấp tuyến tính."}}];
+const ASSETS = "https://assets.colinschmale.dev/warreport";
+const COC_GUIDE_BUILDING_ART = {
+  "army-camp":"/static/imgs/army/troop-housing-12.png","barracks":"/static/imgs/army/barrack-18.png",
+  "dark-barracks":"/static/imgs/army/dark-elixir-barrack-11.png","spell-factory":"/static/imgs/army/spell-forge-8.png",
+  "dark-spell-factory":"/static/imgs/army/mini-spell-factory-6.png","laboratory":"/static/imgs/army/laboratory-15.png",
+  "clan-castle":"/static/imgs/army/alliance-castle-13.png","blacksmith":"/static/imgs/army/smithy-9.png",
+  "workshop":"/static/imgs/army/siegeworkshop-7.png","pet-house":"/static/imgs/army/pet-shop-10.png",
+  "gold-mine":"/static/imgs/resource/gold-mine-16.png","elixir-collector":"/static/imgs/resource/elixir-pump-16.png",
+  "dark-elixir-drill":"/static/imgs/resource/dark-elixir-pump-10.png","gold-storage":"/static/imgs/resource/gold-storage-18.png",
+  "elixir-storage":"/static/imgs/resource/elixir-storage-18.png","dark-elixir-storage":"/static/imgs/resource/dark-elixir-storage-12.png",
+  "builder-hut":"/static/imgs/other/worker-building-6.png","cannon":"/static/imgs/defense/cannon-21.png",
+  "archer-tower":"/static/imgs/defense/archer-tower-21.png","mortar":"/static/imgs/defense/mortar-16.png",
+  "air-defense":"/static/imgs/defense/air-defense-15.png","wizard-tower":"/static/imgs/defense/wizard-tower-17.png",
+  "air-sweeper":"/static/imgs/defense/air-blaster-7.png","hidden-tesla":"/static/imgs/defense/tesla-tower-15.png",
+  "xbow":"/static/imgs/defense/bow-11.png","inferno-tower":"/static/imgs/defense/dark-tower-10.png",
+  "eagle-artillery":"/static/imgs/defense/ancient-artillery-7.png","scattershot":"/static/imgs/defense/scattershot-5.png",
+  "monolith":"/static/imgs/defense/monolith-3.png","spell-tower":"/static/imgs/defense/spell-tower-3.png",
+  "multi-archer-tower":"/static/imgs/defense/merged-archer-tower-3.png","ricochet-cannon":"/static/imgs/defense/merged-cannon-3.png",
+  "firespitter":"/static/imgs/defense/firespitter-2.png","wall":"/static/imgs/defense/wall-18.png",
+  "bomb":"/static/imgs/trap/mine-13.png","spring-trap":"/static/imgs/trap/ejector-5.png",
+  "air-bomb":"/static/imgs/trap/airtrap-11.png","giant-bomb":"/static/imgs/trap/superbomb-11.png",
+  "seeking-air-mine":"/static/imgs/trap/megaairtrap-7.png","skeleton-trap":"/static/imgs/trap/halloweenskels-3.png",
+  "tornado-trap":"/static/imgs/trap/tornadotrap-1.png","giga-bomb":"/static/imgs/trap/gigabomb-3.png"
+};
+const isBuildingKind = k => k==="building"||k==="defense"||k==="trap"||k==="wall";
+function defaultRemote(item){
+  if(item.id==="town-hall")return null;
+  if(isBuildingKind(item.kind)){
+    const p = COC_GUIDE_BUILDING_ART[item.id];
+    return p ? "https://coc.guide"+p : null;
+  }
+  const folder = item.kind==="hero"?"heroes":item.kind==="spell"?"spells":item.kind==="equipment"?"heroes/equipment":"troops";
+  return ASSETS+"/"+folder+"/"+encodeURIComponent(item.name)+".webp";
+}
+
+const KIND_LABEL = {building:"Công trình",defense:"Phòng thủ",trap:"Bẫy",wall:"Tường",hero:"Hero",troop:"Quân",spell:"Phép",siege:"Máy công thành",equipment:"Trang bị",pet:"Pet"};
+
+const LS_KEY = "coc-admin-state-v1";
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { imageMap: {}, townHalls: DEFAULT_TOWNHALLS };
+}
+let state = loadState();
+if(!state.townHalls || !state.townHalls.length) state.townHalls = DEFAULT_TOWNHALLS;
+if(!state.imageMap) state.imageMap = {};
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  const el = document.getElementById("status");
+  el.textContent = "Đã lưu tạm lúc " + new Date().toLocaleTimeString("vi-VN");
+  setTimeout(()=>{ if(el.textContent.startsWith("Đã lưu tạm")) el.textContent=""; }, 3000);
+}
+
+function download(filename, text){
+  const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function tsString(s){ return JSON.stringify(s == null ? "" : s); }
+
+function buildImageMapTs(){
+  const entries = Object.entries(state.imageMap).filter(([,v])=>v && v.trim());
+  entries.sort((a,b)=>a[0].localeCompare(b[0]));
+  const lines = entries.map(([id,url])=>'  '+tsString(id)+': '+tsString(url)+',');
+  return [
+    '// File này do coc-admin/index.html xuất ra — KHÔNG sửa tay, mở admin',
+    '// tool để chỉnh rồi xuất lại. Ghi đè URL ảnh remote cho từng item theo',
+    '// id; item nào không có ở đây thì App.tsx tự dùng nguồn mặc định',
+    '// (coc.guide cho công trình/phòng thủ/bẫy, assets.colinschmale.dev cho',
+    '// phần còn lại — xem remoteArt() trong src/App.tsx).',
+    'export const imageMap: Record<string,string> = {',
+    ...lines,
+    '};',
+    ''
+  ].join('\n');
+}
+
+function tsArray(arr){
+  if(!arr || !arr.length) return null;
+  return '[' + arr.map(s=>tsString(s)).join(', ') + ']';
+}
+
+function buildTownHallTs(){
+  const UNLOCK_KEYS = ["buildings","defenses","traps","troops","spells","heroes","siege","pets","guardians"];
+  const entries = state.townHalls.map(th=>{
+    const parts = [];
+    for(const key of UNLOCK_KEYS){
+      const arr = th.unlocks && th.unlocks[key];
+      if(Array.isArray(arr) && arr.length) parts.push(key+': '+tsArray(arr));
+    }
+    if(th.unlocks && th.unlocks.note && th.unlocks.note.trim()) parts.push('note: '+tsString(th.unlocks.note));
+    return '  { level: '+th.level+', title: '+tsString(th.title)+', blurb: '+tsString(th.blurb)+',\n    unlocks: { '+parts.join(', ')+' } }';
+  });
+  return [
+    '// Dữ liệu "mở khóa gì ở mỗi Town Hall" cho tab Roadmap TH1-18.',
+    '// File này do coc-admin/index.html xuất ra — chỉnh trong admin tool rồi',
+    '// xuất lại thay vì sửa tay ở đây.',
+    'export type TownHallUnlocks = {',
+    '  buildings?: string[];',
+    '  defenses?: string[];',
+    '  traps?: string[];',
+    '  troops?: string[];',
+    '  spells?: string[];',
+    '  heroes?: string[];',
+    '  siege?: string[];',
+    '  pets?: string[];',
+    '  guardians?: string[];',
+    '  note?: string;',
+    '};',
+    '',
+    'export type TownHallInfo = {',
+    '  level: number;',
+    '  title: string;',
+    '  blurb: string;',
+    '  unlocks: TownHallUnlocks;',
+    '};',
+    '',
+    'export const townHallInfo: TownHallInfo[] = [',
+    entries.join(',\n'),
+    '];',
+    ''
+  ].join('\n');
+}
+
+function renderHint(){
+  document.getElementById("hint").innerHTML =
+    "Danh sách item (tab Ảnh) khớp với <b>src/upgradeData.ts</b> tại thời điểm tạo công cụ — " + MANIFEST.length +
+    " item. Danh sách Roadmap khớp với <b>src/townHallData.ts</b> hiện tại. Sửa xong nhớ bấm 2 nút " +
+    "\"Xuất...\" ở trên rồi lưu đè 2 file tương ứng vào project web app.";
+}
+
+function renderImages(filter){
+  const q = (filter||"").trim().toLowerCase();
+  const groups = {};
+  for(const item of MANIFEST){
+    if(item.id==="town-hall") continue;
+    if(q && !item.name.toLowerCase().includes(q) && !item.id.includes(q)) continue;
+    (groups[item.kind] = groups[item.kind] || []).push(item);
+  }
+  const order = ["building","defense","trap","wall","hero","troop","siege","spell","equipment","pet"];
+  let html = "";
+  for(const kind of order){
+    const items = groups[kind];
+    if(!items || !items.length) continue;
+    html += '<div class="kind-group"><h2>'+(KIND_LABEL[kind]||kind)+' ('+items.length+')</h2><div class="item-grid">';
+    for(const item of items){
+      const override = state.imageMap[item.id] || "";
+      const preview = override || defaultRemote(item) || "";
+      html += '<div class="item-card">'
+        + '<div class="item-thumb">' + (preview ? '<img src="'+preview.replace(/"/g,'&quot;')+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"/>' : '') + '<span'+(preview?' style="display:none"':'')+'>?</span></div>'
+        + '<div class="item-body">'
+        + '<strong>'+item.name+'</strong><small>id: '+item.id+(item.owner?' · '+item.owner:'')+'</small>'
+        + '<input type="text" placeholder="URL ảnh ghi đè (để trống = dùng mặc định)" value="'+override.replace(/"/g,'&quot;')+'" data-id="'+item.id+'"/>'
+        + '</div></div>';
+    }
+    html += '</div></div>';
+  }
+  document.getElementById("imageList").innerHTML = html || '<p style="color:var(--muted)">Không tìm thấy item nào khớp.</p>';
+  document.querySelectorAll('#imageList input[data-id]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const id = e.target.getAttribute('data-id');
+      const val = e.target.value.trim();
+      if(val) state.imageMap[id] = val; else delete state.imageMap[id];
+      save();
+      // Trì hoãn render lại sang tick sau — tránh thay innerHTML của
+      // #imageList ngay trong lúc sự kiện "change" của 1 input con trong
+      // đó còn đang xử lý (một số trình duyệt báo lỗi NotFoundError nếu
+      // gỡ node cha đang chứa input vừa phát sự kiện ngay lập tức).
+      setTimeout(()=>renderImages(document.getElementById('search').value), 0);
+    });
+  });
+}
+
+function renderRoadmap(){
+  const UNLOCK_KEYS = [["buildings","Công trình"],["defenses","Phòng thủ"],["traps","Bẫy"],["troops","Quân"],["spells","Phép"],["heroes","Hero"],["siege","Máy công thành"],["pets","Pet"],["guardians","Guardian"]];
+  let html = "";
+  state.townHalls.slice().sort((a,b)=>a.level-b.level).forEach((th,idx)=>{
+    html += '<div class="th-card" data-level="'+th.level+'">'
+      + '<h3>Town Hall '+th.level+'</h3>'
+      + '<div class="th-row"><label>Tiêu đề</label><input data-field="title" value="'+ (th.title||"").replace(/"/g,'&quot;') +'"/></div>'
+      + '<div class="th-row"><label>Mô tả</label><textarea data-field="blurb">'+ (th.blurb||"") +'</textarea></div>'
+      + '<div class="tags">'
+      + UNLOCK_KEYS.map(([key,label])=>'<div><label>'+label+' (phẩy ,)</label><input data-field="unlock-'+key+'" value="'+((th.unlocks&&th.unlocks[key])||[]).join(", ").replace(/"/g,'&quot;')+'"/></div>').join('')
+      + '<div><label>Ghi chú thêm</label><input data-field="unlock-note" value="'+((th.unlocks&&th.unlocks.note)||"").replace(/"/g,'&quot;')+'"/></div>'
+      + '</div></div>';
+  });
+  document.getElementById("panel-roadmap").innerHTML = html;
+  document.querySelectorAll('.th-card').forEach(card=>{
+    const level = Number(card.getAttribute('data-level'));
+    card.querySelectorAll('[data-field]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        const th = state.townHalls.find(t=>t.level===level);
+        const field = el.getAttribute('data-field');
+        if(field==="title") th.title = el.value;
+        else if(field==="blurb") th.blurb = el.value;
+        else if(field==="unlock-note"){ th.unlocks = th.unlocks || {}; th.unlocks.note = el.value; }
+        else if(field.startsWith("unlock-")){
+          const key = field.slice(7);
+          th.unlocks = th.unlocks || {};
+          const list = el.value.split(",").map(s=>s.trim()).filter(Boolean);
+          if(list.length) th.unlocks[key] = list; else delete th.unlocks[key];
+        }
+        save();
+      });
+    });
+  });
+}
+
+document.querySelectorAll('.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.getAttribute('data-tab');
+    document.getElementById('panel-images').style.display = tab==='images' ? '' : 'none';
+    document.getElementById('panel-roadmap').style.display = tab==='roadmap' ? '' : 'none';
+  });
+});
+document.getElementById('search').addEventListener('input', e=>renderImages(e.target.value));
+document.getElementById('exportImageMap').addEventListener('click', ()=>download('imageMap.ts', buildImageMapTs()));
+document.getElementById('exportTownHall').addEventListener('click', ()=>download('townHallData.ts', buildTownHallTs()));
+document.getElementById('exportBackup').addEventListener('click', ()=>download('coc-admin-backup.json', JSON.stringify(state,null,2)));
+document.getElementById('importBackup').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(parsed.imageMap) state.imageMap = parsed.imageMap;
+      if(parsed.townHalls) state.townHalls = parsed.townHalls;
+      save();
+      renderImages(document.getElementById('search').value);
+      renderRoadmap();
+      document.getElementById('status').textContent = "Đã nhập file sao lưu.";
+    }catch(err){ alert("File JSON không hợp lệ: " + err.message); }
+  };
+  reader.readAsText(file);
+});
+
+renderHint();
+renderImages("");
+renderRoadmap();
+</script>
+</body>
+</html>
