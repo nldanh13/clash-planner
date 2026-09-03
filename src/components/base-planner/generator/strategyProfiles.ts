@@ -21,6 +21,8 @@ export interface StrategyProfile {
     pathComplexity: number;
     upgradeAccessibility: number;
     aestheticBalance: number;
+    /** Weight of the Deployment Zone safety score (see deploymentRisk.ts) in the overall weighted average. */
+    deploymentSafety: number;
   };
 }
 
@@ -46,6 +48,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.15,
       upgradeAccessibility: 0.0,
       aestheticBalance: 0.05,
+      deploymentSafety: 0.15,
     },
   },
   trophy: {
@@ -69,6 +72,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.10,
       upgradeAccessibility: 0.0,
       aestheticBalance: 0.0,
+      deploymentSafety: 0.15,
     },
   },
   farming: {
@@ -92,6 +96,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.05,
       upgradeAccessibility: 0.0,
       aestheticBalance: 0.0,
+      deploymentSafety: 0.10,
     },
   },
   hybrid: {
@@ -115,6 +120,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.10,
       upgradeAccessibility: 0.0,
       aestheticBalance: 0.0,
+      deploymentSafety: 0.12,
     },
   },
   progress: {
@@ -138,6 +144,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.05,
       upgradeAccessibility: 0.45,
       aestheticBalance: 0.10,
+      deploymentSafety: 0.0,
     },
   },
   showcase: {
@@ -161,6 +168,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
       pathComplexity: 0.05,
       upgradeAccessibility: 0.0,
       aestheticBalance: 0.25,
+      deploymentSafety: 0.0,
     },
   },
 };

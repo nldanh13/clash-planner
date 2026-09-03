@@ -16,6 +16,12 @@ import { BUILDINGS_BY_ID, CELL_SIZE_PX, GRID_SIZE } from "./constants";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { buildOccupancyMatrix, canPlaceBuildingFast, getBuildingAtCell } from "./gridMatrix";
 import { calculateFirepowerHeatmap, getHeatmapColor } from "./heatmapUtils";
+import {
+  HOME_VILLAGE_DEPLOYMENT_RULES,
+  computeDeploymentAnalysis,
+  getBuildingRect,
+  type DeploymentAnalysis,
+} from "./deploymentZones";
 import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
 
 interface CanvasGridBoardProps {
@@ -110,6 +116,32 @@ export function CanvasGridBoard({
     if (settings.plannerMode !== "analysis" || !settings.showHeatmap) return null;
     return calculateFirepowerHeatmap(buildings);
   }, [buildings, settings.showHeatmap, settings.plannerMode]);
+
+  // Deployment Zone: buildings array used for the mask, substituting the
+  // in-progress drag position so the overlay updates live while dragging
+  // without waiting for pointer-up (and without creating any checkpoint).
+  const deploymentPreviewBuildings = useMemo(() => {
+    if (!activeDrag) return buildings;
+    if (activeDrag.type === "move" && activeDrag.instanceId) {
+      return buildings.map((b) =>
+        b.instanceId === activeDrag.instanceId
+          ? { ...b, x: activeDrag.currentX, y: activeDrag.currentY }
+          : b
+      );
+    }
+    if (activeDrag.type === "new" && BUILDINGS_BY_ID.has(activeDrag.buildingId)) {
+      return [
+        ...buildings,
+        { instanceId: "__deployment-preview__", buildingId: activeDrag.buildingId, x: activeDrag.currentX, y: activeDrag.currentY },
+      ];
+    }
+    return buildings;
+  }, [buildings, activeDrag]);
+
+  const deploymentAnalysis: DeploymentAnalysis | null = useMemo(() => {
+    if (settings.deploymentDisplayMode === "off") return null;
+    return computeDeploymentAnalysis(deploymentPreviewBuildings);
+  }, [deploymentPreviewBuildings, settings.deploymentDisplayMode]);
 
   // Center canvas in viewport helper
   const centerCanvasInViewport = useCallback(() => {
@@ -317,6 +349,40 @@ export function CanvasGridBoard({
       }
     }
 
+    // 2b. Deployment Zone Overlay (uses the exact same mask as the Isometric
+    // renderer and every non-visual consumer — see deploymentZones.ts).
+    if (deploymentAnalysis && settings.deploymentDisplayMode !== "off") {
+      const mode = settings.deploymentDisplayMode;
+      const { deploymentBlockMask } = deploymentAnalysis.masks;
+      const regionGrid = deploymentAnalysis.regionTypeGrid;
+
+      if (mode === "blocked" || mode === "all") {
+        ctx.fillStyle = "rgba(248, 113, 113, 0.16)";
+        for (let y = 0; y < GRID_SIZE; y++) {
+          for (let x = 0; x < GRID_SIZE; x++) {
+            if (deploymentBlockMask[y][x]) {
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+      }
+
+      if (mode === "holes" || mode === "all") {
+        for (let y = 0; y < GRID_SIZE; y++) {
+          for (let x = 0; x < GRID_SIZE; x++) {
+            const regionType = regionGrid[y][x];
+            if (regionType === "internal-hole") {
+              ctx.fillStyle = "rgba(244, 63, 94, 0.55)";
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            } else if (regionType === "corridor") {
+              ctx.fillStyle = "rgba(249, 115, 22, 0.38)";
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+      }
+    }
+
     // 3. Grid Lines
     if (settings.showGrid) {
       ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
@@ -508,6 +574,31 @@ export function CanvasGridBoard({
       }
     }
 
+    // 4b. Selected Building's Deployment Halo (independent of the global
+    // overlay toggle — a quick per-building inspector, distinct color from
+    // both the amber selection border and the block/hole overlay above).
+    if (selectedPlacedBuilding) {
+      const selRect = getBuildingRect(selectedPlacedBuilding);
+      if (selRect) {
+        const { blockRadius } = HOME_VILLAGE_DEPLOYMENT_RULES;
+        const haloLeft = Math.max(0, selRect.x - blockRadius);
+        const haloTop = Math.max(0, selRect.y - blockRadius);
+        const haloRight = Math.min(GRID_SIZE, selRect.x + selRect.width + blockRadius);
+        const haloBottom = Math.min(GRID_SIZE, selRect.y + selRect.height + blockRadius);
+
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(
+          haloLeft * cellSize,
+          haloTop * cellSize,
+          (haloRight - haloLeft) * cellSize,
+          (haloBottom - haloTop) * cellSize
+        );
+        ctx.setLineDash([]);
+      }
+    }
+
     // 5. Tactical Range Circles Layer
     if (settings.showRanges !== "none") {
       for (let i = 0; i < buildings.length; i++) {
@@ -655,10 +746,12 @@ export function CanvasGridBoard({
     buildings,
     cellSize,
     chainAnalysis,
+    deploymentAnalysis,
     heatmapData,
     hoverCoord,
     occupancyMatrix,
     selectedDefId,
+    selectedPlacedBuilding,
     selectedPlacedId,
     settings,
   ]);
@@ -1180,6 +1273,21 @@ export function CanvasGridBoard({
                 </b>
               </div>
             )}
+            <div
+              className="inspector-stat-row"
+              title={
+                HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
+                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
+                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
+              }
+            >
+              <span>Vùng cấm triển khai:</span>
+              <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category) ? "text-slate-400" : "text-sky-400"}>
+                {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
+                  ? "Không có (bẫy ẩn)"
+                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
+              </b>
+            </div>
             <p className="inspector-desc">{selectedPlacedDef.description}</p>
           </div>
 

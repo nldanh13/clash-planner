@@ -1,6 +1,8 @@
-import { PlacedBuilding } from "./types";
+import { BasePurpose, PlacedBuilding } from "./types";
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import { getAllBuildingLimits } from "./buildingLimits";
+import { computeDeploymentAnalysis } from "./deploymentZones";
+import { getDeploymentWarnings } from "./deploymentRisk";
 
 export type ValidationIssueType = "critical" | "warning";
 
@@ -19,7 +21,14 @@ export interface ValidationResult {
   hasWarnings: boolean;
 }
 
-export function validateLayout(buildings: unknown, thLevel: number): ValidationResult {
+/**
+ * Structural validation always runs (overlaps, bounds, counts, duplicate IDs,
+ * missing Town Hall — anything that must block saving). Strategic (Deployment
+ * Zone) validation is opt-in via `purpose`: it never flips isValid to false —
+ * internal holes/corridors are reported as non-blocking warnings so a layout
+ * with a deployment hole can still be saved, just not labelled "ready"/"optimal".
+ */
+export function validateLayout(buildings: unknown, thLevel: number, purpose?: BasePurpose): ValidationResult {
   const issues: ValidationIssue[] = [];
   const validBuildings: PlacedBuilding[] = [];
   const sanitizedBuildings: PlacedBuilding[] = [];
@@ -117,6 +126,15 @@ export function validateLayout(buildings: unknown, thLevel: number): ValidationR
     } else {
       sanitizedBuildings.push(validBuilding);
       currentCounts[buildingId] = currentCount + 1;
+    }
+  }
+
+  // --- Strategic (Deployment Zone) validation: warnings only, never blocks saving ---
+  if (purpose) {
+    const analysis = computeDeploymentAnalysis(validBuildings);
+    const deploymentWarnings = getDeploymentWarnings(analysis, validBuildings, purpose);
+    for (const w of deploymentWarnings) {
+      issues.push({ type: "warning", message: `${w.title}: ${w.message}` });
     }
   }
 

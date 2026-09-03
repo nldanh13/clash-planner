@@ -13,6 +13,9 @@ import { PlacementEngine } from "./placementEngine";
 import { WallGenerator } from "./wallGenerator";
 import { validateGeneratedBase } from "./generatorValidator";
 import { STRATEGY_PROFILES } from "./strategyProfiles";
+import { computeDeploymentAnalysis } from "../deploymentZones";
+import { computeDeploymentRisk, isDeploymentReadyForPurpose } from "../deploymentRisk";
+import { suggestDeploymentAutoFix } from "../deploymentAutoFix";
 
 export function generateBase(options: GenerateBaseOptions): GeneratedBaseResult {
   const startTime = performance.now();
@@ -45,17 +48,44 @@ export function generateBase(options: GenerateBaseOptions): GeneratedBaseResult 
       const validation = validateGeneratedBase(buildings, thLevel);
 
       if (validation.isValid && validation.isComplete) {
-        const score = computeBaseScore(buildings, thLevel, purpose);
+        // Deployment Zone pass: for tactical purposes, try to close any dangerous
+        // internal deployment holes the placement pipeline left behind before
+        // scoring. This never adds/removes buildings and is rejected outright
+        // (see suggestDeploymentAutoFix) if it would drop the base's own defense
+        // score or fails structural re-validation — the placement pipeline itself
+        // is not deployment-mask-aware, this is a bounded post-pass on top of it.
+        let finalBuildings = buildings;
+        let finalStats = validation.stats;
+        let finalWarnings = validation.warnings;
+
+        if (purpose === "war" || purpose === "trophy" || purpose === "hybrid") {
+          const fix = suggestDeploymentAutoFix(buildings, thLevel, purpose);
+          if (fix.applied) {
+            const revalidation = validateGeneratedBase(fix.updatedBuildings, thLevel);
+            if (revalidation.isValid && revalidation.isComplete) {
+              finalBuildings = fix.updatedBuildings;
+              finalStats = revalidation.stats;
+              if (fix.resolvedHoleCount > 0) {
+                finalWarnings = [
+                  ...finalWarnings,
+                  `Đã tự động đóng ${fix.resolvedHoleCount} lỗ thả quân nguy hiểm trong quá trình tạo base.`,
+                ];
+              }
+            }
+          }
+        }
+
+        const score = computeBaseScore(finalBuildings, thLevel, purpose);
         result = {
           success: true,
-          buildings,
+          buildings: finalBuildings,
           townHallLevel: thLevel,
           purpose,
           pattern,
           seed: actualSeed,
-          stats: validation.stats,
+          stats: finalStats,
           score,
-          warnings: validation.warnings,
+          warnings: finalWarnings,
           executionTimeMs: Math.round(performance.now() - startTime),
         };
         break;
@@ -770,7 +800,16 @@ function computeBaseScore(
   // 10. Aesthetic Balance
   const aestheticBalance = purpose === "showcase" ? 96 : 80;
 
-  // Weighted overall score
+  // 11. Deployment Zone Safety (see deploymentZones.ts / deploymentRisk.ts) —
+  // the ONE place the generator's "how safe is this base to actually deploy
+  // against" number comes from. Never recomputed ad hoc elsewhere.
+  const deploymentAnalysis = computeDeploymentAnalysis(buildings);
+  const deploymentRisk = computeDeploymentRisk(deploymentAnalysis, buildings, purpose);
+  const deploymentSafety = deploymentRisk.deploymentSafetyScore;
+
+  // Weighted overall score. Divide by the sum of weights actually used (rather
+  // than assuming they sum to exactly 1) so adding deploymentSafety's weight
+  // above doesn't silently bias every profile's score upward.
   const rawScore =
     symmetry * weights.symmetry +
     compartmentQuality * weights.compartmentQuality +
@@ -780,15 +819,24 @@ function computeBaseScore(
     resourceProtection * weights.resourceProtection +
     pathComplexity * weights.pathComplexity +
     upgradeAccessibility * weights.upgradeAccessibility +
-    aestheticBalance * weights.aestheticBalance;
+    aestheticBalance * weights.aestheticBalance +
+    deploymentSafety * weights.deploymentSafety;
 
-  const overallScore = Math.round(Math.max(0, Math.min(100, rawScore)));
+  const totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0) || 1;
+  const overallScore = Math.round(Math.max(0, Math.min(100, rawScore / totalWeight)));
 
   let tier: "S" | "A" | "B" | "C" = "B";
   if (overallScore >= 90) tier = "S";
   else if (overallScore >= 80) tier = "A";
   else if (overallScore >= 70) tier = "B";
   else tier = "C";
+
+  // War/Trophy/Hybrid: never label a base "S"/"A" (optimal/ready) while it still
+  // carries a critical deployment hole, no matter how high the raw score is.
+  const deploymentReady = isDeploymentReadyForPurpose(deploymentAnalysis, buildings, purpose);
+  if (!deploymentReady.ready && (tier === "S" || tier === "A")) {
+    tier = "B";
+  }
 
   return {
     completeness,
@@ -802,9 +850,12 @@ function computeBaseScore(
     pathComplexity,
     upgradeAccessibility,
     aestheticBalance,
+    deploymentSafety,
     overallScore,
     tier,
-    summary: `Base ${profile.name} đạt cấp ${tier} (${overallScore}/100 điểm) với đầy đủ 100% công trình và tường hợp lệ.`,
+    summary: deploymentReady.ready
+      ? `Base ${profile.name} đạt cấp ${tier} (${overallScore}/100 điểm) với đầy đủ 100% công trình và tường hợp lệ.`
+      : `Base ${profile.name} đạt ${overallScore}/100 điểm nhưng bị giới hạn ở cấp ${tier} vì còn lỗ thả quân nguy hiểm gần lõi base (${deploymentReady.reason ?? ""}).`,
   };
 }
 
@@ -821,6 +872,7 @@ function getEmptyScore(): BaseScore {
     pathComplexity: 0,
     upgradeAccessibility: 0,
     aestheticBalance: 0,
+    deploymentSafety: 0,
     overallScore: 0,
     tier: "C",
     summary: "Bản đồ chưa hợp lệ hoặc chưa được tạo thành công.",

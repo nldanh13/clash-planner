@@ -2,7 +2,10 @@ import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import { getTileGap, scanChainLightningHazards } from "./chainLightningUtils";
 import { calculateFirepowerHeatmap } from "./heatmapUtils";
 import { getAllBuildingLimits } from "./buildingLimits";
+import { computeDeploymentAnalysis } from "./deploymentZones";
+import { computeDeploymentRisk, getDeploymentWarnings } from "./deploymentRisk";
 import type {
+  BasePurpose,
   DefenseScoreResult,
   DefenseWarning,
   PlacedBuilding,
@@ -12,7 +15,11 @@ import type {
 /**
  * Thuật toán tính Điểm bố trí tham khảo (Heuristic cơ bản, 0 - 100 Điểm)
  */
-export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: number): DefenseScoreResult {
+export function evaluateBaseDefense(
+  buildings: PlacedBuilding[],
+  townHallLevel: number,
+  purpose: BasePurpose = "hybrid"
+): DefenseScoreResult {
   const warnings: DefenseWarning[] = [];
 
   warnings.push({
@@ -137,7 +144,16 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
     });
   }
 
-  coreScore = Math.min(30, coreSpacingPts + storageShieldPts);
+  // --- 1b. VÙNG CẤM TRIỂN KHAI (Deployment Zone) ---
+  // Deployment risk (internal holes, corridors, uncovered perimeter) eats into
+  // the same "Core" budget as clumping/shielding: both are about whether the
+  // core of the base is actually reachable/safe, not separate concerns.
+  const deploymentAnalysis = computeDeploymentAnalysis(buildings);
+  const deploymentRisk = computeDeploymentRisk(deploymentAnalysis, buildings, purpose);
+  const deploymentPenalty = Math.min(15, Math.round(deploymentRisk.deploymentRiskScore / 4));
+  warnings.push(...getDeploymentWarnings(deploymentAnalysis, buildings, purpose));
+
+  coreScore = Math.max(0, Math.min(30, coreSpacingPts + storageShieldPts) - deploymentPenalty);
 
   // --- 2. HỆ SỐ CHỐNG SÉT LAN (Max 20 Điểm) ---
   const chainAnalysis = scanChainLightningHazards(buildings, 2);
@@ -392,5 +408,6 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
       blindSpotsPercent: heat.blindSpotsPercent,
       quadrantBalance: heat.quadrantBalance,
     },
+    deployment: deploymentAnalysis,
   };
 }

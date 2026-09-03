@@ -1,11 +1,13 @@
 import React, { useRef } from "react";
 import {
+  Box,
   Crosshair,
   Download,
   Edit3,
   Eye,
   EyeOff,
   Flame,
+  Grid3x3,
   ImageIcon,
   Layers,
   Maximize,
@@ -16,6 +18,7 @@ import {
   RefreshCw,
   ScanSearch,
   ShieldAlert,
+  ShieldOff,
   Trash2,
   Undo2,
   Upload,
@@ -26,10 +29,19 @@ import {
 import type {
   ChainLightningMode,
   DefenseScoreResult,
+  DeploymentDisplayMode,
   PlannerMode,
+  PlannerViewMode,
   RangeDisplayMode,
   TacticalSettings,
 } from "./types";
+
+const DEPLOYMENT_MODE_LABELS: Record<DeploymentDisplayMode, string> = {
+  off: "Tắt",
+  blocked: "Vùng cấm",
+  holes: "Lỗ nguy hiểm",
+  all: "Tất cả",
+};
 
 interface TacticalToolbarProps {
   townHallLevel?: number;
@@ -60,6 +72,8 @@ interface TacticalToolbarProps {
   onToggleFullscreen?: () => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
+  viewMode?: PlannerViewMode;
+  onViewModeChange?: (mode: PlannerViewMode) => void;
 }
 
 const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
@@ -82,6 +96,8 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   onToggleFullscreen,
   isSidebarCollapsed = false,
   onToggleSidebar,
+  viewMode = "2d",
+  onViewModeChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,6 +118,14 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
       const modes: ChainLightningMode[] = ["none", "selected", "all"];
       const next = modes[(modes.indexOf(s.showChainLightning) + 1) % modes.length];
       return { ...s, showChainLightning: next };
+    });
+  };
+
+  const cycleDeploymentMode = () => {
+    onUpdateSettings((s) => {
+      const modes: DeploymentDisplayMode[] = ["off", "blocked", "holes", "all"];
+      const next = modes[(modes.indexOf(s.deploymentDisplayMode) + 1) % modes.length];
+      return { ...s, deploymentDisplayMode: next };
     });
   };
 
@@ -270,6 +294,24 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 <Zap className="w-3.5 h-3.5" />
                 <span>Sét: {settings.showChainLightning === "none" ? "Tắt" : settings.showChainLightning === "selected" ? "Chọn" : "Tất cả"}</span>
               </button>
+
+              <button
+                onClick={cycleDeploymentMode}
+                className={`min-h-[34px] flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  settings.deploymentDisplayMode !== "off"
+                    ? "bg-sky-500/25 text-sky-300 border border-sky-500/50 shadow-sm"
+                    : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700"
+                }`}
+                title="Chuyển chế độ hiển thị Vùng triển khai (Deployment Zone)"
+                aria-label="Vùng triển khai"
+              >
+                {settings.deploymentDisplayMode !== "off" ? (
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                ) : (
+                  <ShieldOff className="w-3.5 h-3.5" />
+                )}
+                <span>Vùng triển khai: {DEPLOYMENT_MODE_LABELS[settings.deploymentDisplayMode]}</span>
+              </button>
             </>
           )}
         </div>
@@ -331,7 +373,37 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             </button>
           )}
 
-          {/* Zoom Out */}
+          {/* 2D / Isometric View Switch */}
+          {onViewModeChange && (
+            <div className="flex items-center gap-0.5 bg-slate-900/90 p-0.5 rounded-md mr-1 border-r border-slate-800 pr-1.5">
+              <button
+                onClick={() => onViewModeChange("2d")}
+                className={`h-[30px] flex items-center gap-1 px-2 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                  viewMode === "2d" ? "bg-cyan-500/25 text-cyan-300 border border-cyan-500/40" : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Xem Sơ đồ 2D (chỉnh sửa được)"
+                aria-label="Chế độ xem 2D"
+              >
+                <Grid3x3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">2D</span>
+              </button>
+              <button
+                onClick={() => onViewModeChange("isometric")}
+                className={`h-[30px] flex items-center gap-1 px-2 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                  viewMode === "isometric" ? "bg-cyan-500/25 text-cyan-300 border border-cyan-500/40" : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Xem Trực quan Isometric (chỉ xem — kéo/zoom, không chỉnh sửa được)"
+                aria-label="Chế độ xem Isometric"
+              >
+                <Box className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Iso</span>
+              </button>
+            </div>
+          )}
+
+          {/* Zoom Out (2D only — Isometric view manages its own pan/zoom) */}
+          {viewMode === "2d" && (
+          <>
           <button
             onClick={() => onZoomChange(Math.max(0.35, Number((zoomLevel - 0.1).toFixed(2))), "manual")}
             className="w-[34px] h-[34px] min-w-[34px] min-h-[34px] flex items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
@@ -387,6 +459,8 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <Maximize className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Vừa khung</span>
           </button>
+          </>
+          )}
 
           {/* Fullscreen Button */}
           {onToggleFullscreen && (

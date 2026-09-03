@@ -9,18 +9,32 @@ import {
   Info,
   ShieldAlert,
   ShieldCheck,
+  Target,
   X,
 } from "lucide-react";
-import type { DefenseScoreResult } from "./types";
+import { DeploymentZonePanel } from "./DeploymentZonePanel";
+import type { AutoFixResult } from "./deploymentAutoFix";
+import type { BasePurpose, DefenseScoreResult, PlacedBuilding } from "./types";
 
 interface DefenseScorePanelProps {
   defenseScore: DefenseScoreResult;
   onClose?: () => void;
+  /** Deployment Zone tab context — omit to hide the tab entirely (e.g. no layout loaded yet). */
+  deploymentContext?: {
+    purpose: BasePurpose;
+    buildings: PlacedBuilding[];
+    autoFixPreview: AutoFixResult | null;
+    isApplyingFix: boolean;
+    onViewOnMap: () => void;
+    onSuggestFix: () => void;
+    onApplyAutoFix: () => void;
+    onDismissPreview: () => void;
+  };
 }
 
-export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelProps) {
+export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: DefenseScorePanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<"breakdown" | "warnings">("breakdown");
+  const [activeTab, setActiveTab] = useState<"breakdown" | "warnings" | "deployment">("breakdown");
 
   const { totalScore, tier, tierTitle, tierColor, breakdown, warnings } = defenseScore;
 
@@ -135,6 +149,25 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
                 </span>
               )}
             </button>
+
+            {deploymentContext && defenseScore.deployment && (
+              <button
+                onClick={() => setActiveTab("deployment")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "deployment"
+                    ? "bg-slate-800 text-sky-300 border border-sky-500/40 shadow-sm"
+                    : "bg-transparent text-slate-400 hover:text-slate-200 border border-transparent"
+                }`}
+              >
+                <Target className="w-3.5 h-3.5 text-sky-400" />
+                <span>Vùng triển khai</span>
+                {defenseScore.deployment.internalHoleCount > 0 && (
+                  <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-full font-mono ml-1 bg-rose-500/30 text-rose-300 border border-rose-500/50">
+                    {defenseScore.deployment.internalHoleCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Tab 1: Detailed Breakdown with Visual Progress Bars */}
@@ -246,6 +279,21 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
                 })
               )}
             </div>
+          )}
+
+          {/* Tab 3: Deployment Zone */}
+          {activeTab === "deployment" && deploymentContext && defenseScore.deployment && (
+            <DeploymentZonePanel
+              analysis={defenseScore.deployment}
+              purpose={deploymentContext.purpose}
+              buildings={deploymentContext.buildings}
+              autoFixPreview={deploymentContext.autoFixPreview}
+              isApplyingFix={deploymentContext.isApplyingFix}
+              onViewOnMap={deploymentContext.onViewOnMap}
+              onSuggestFix={deploymentContext.onSuggestFix}
+              onApplyAutoFix={deploymentContext.onApplyAutoFix}
+              onDismissPreview={deploymentContext.onDismissPreview}
+            />
           )}
         </>
       )}

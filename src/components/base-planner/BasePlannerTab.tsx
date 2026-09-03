@@ -12,9 +12,12 @@ import { exportLayoutAsImage, exportLayoutAsJSON, importLayoutFromJSON } from ".
 import { validateLayout, type ValidationIssue } from "./LayoutValidator";
 import { getAllBuildingLimits } from "./buildingLimits";
 import { CURRENT_CATALOG_VERSION } from "./catalog";
+import { CELL_SIZE_PX } from "./constants";
 import { evaluateBaseDefense } from "./defenseScorer";
 import { scanChainLightningHazards } from "./chainLightningUtils";
+import { suggestDeploymentAutoFix, type AutoFixResult } from "./deploymentAutoFix";
 import {
+  createCheckpoint,
   duplicateLayout,
   getActiveLayoutId,
   getSavedLayouts,
@@ -23,13 +26,14 @@ import {
   setActiveLayoutId,
 } from "./layoutStorage";
 import { useBasePlannerHistory } from "./useBasePlannerHistory";
-import type { LayoutProject, PlacedBuilding, TacticalSettings } from "./types";
+import type { LayoutProject, PlacedBuilding, PlannerViewMode, TacticalSettings } from "./types";
 import TacticalToolbar from "./TacticalToolbar";
 import { EditorBlueprintHeader } from "./EditorBlueprintHeader";
 import { BlueprintManagerModal } from "./BlueprintManagerModal";
 import { NewBlueprintWizardModal } from "./NewBlueprintWizardModal";
 import { InventorySidebar } from "./InventorySidebar";
 import { CanvasGridBoard } from "./CanvasGridBoard";
+import { IsometricGridBoard } from "./IsometricGridBoard";
 import { DefenseScorePanel } from "./DefenseScorePanel";
 
 interface BasePlannerTabProps {
@@ -94,6 +98,8 @@ export function BasePlannerTab({
     showCoordinates: false,
     wallBrushActive: false,
     eraserActive: false,
+    deploymentDisplayMode: "off",
+    viewMode: "2d",
   });
 
   // Undo/Redo History
@@ -119,6 +125,11 @@ export function BasePlannerTab({
     }
   }, [activeLayout]);
 
+  // A stale auto-fix preview from a different layout is worse than no preview.
+  useEffect(() => {
+    setAutoFixPreview(null);
+  }, [activeLayout?.id]);
+
   // Close manager logic adhering to specs:
   // - If active layout exists: close modal and return to its editor
   // - If no active layout exists: return user to the previous tab
@@ -142,10 +153,15 @@ export function BasePlannerTab({
     return getAllBuildingLimits(townHallLevel);
   }, [townHallLevel]);
 
-  // Real-time 3-Star Defense Score Calculation
+  // Real-time 3-Star Defense Score Calculation (Deployment Zone analysis included)
+  const purpose = activeLayout?.purpose || "hybrid";
   const defenseScoreResult = useMemo(() => {
-    return evaluateBaseDefense(buildings, townHallLevel);
-  }, [buildings, townHallLevel]);
+    return evaluateBaseDefense(buildings, townHallLevel, purpose);
+  }, [buildings, townHallLevel, purpose]);
+
+  // Deployment Zone auto-fix preview/apply state
+  const [autoFixPreview, setAutoFixPreview] = useState<AutoFixResult | null>(null);
+  const [isApplyingFix, setIsApplyingFix] = useState(false);
 
   // Notify user with auto-dismiss
   const showToast = (msg: string) => {
@@ -360,6 +376,70 @@ export function BasePlannerTab({
     e.dataTransfer.effectAllowed = "copy";
   };
 
+  // Deployment Zone: scroll+select the nearest dangerous hole in the 2D board.
+  const handleViewDeploymentOnMap = () => {
+    const deployment = defenseScoreResult.deployment;
+    if (!deployment) return;
+    const holes = deployment.regions.filter((r) => r.type === "internal-hole");
+    if (holes.length === 0) return;
+
+    const target = holes.reduce((best, r) => {
+      const bestDist = best.minDistanceToTownHall ?? Infinity;
+      const rDist = r.minDistanceToTownHall ?? Infinity;
+      return rDist < bestDist ? r : best;
+    }, holes[0]);
+    const cell = target.cells[0];
+    if (!cell) return;
+
+    setSettings((s) => ({
+      ...s,
+      viewMode: "2d",
+      plannerMode: "analysis",
+      deploymentDisplayMode: s.deploymentDisplayMode === "off" ? "holes" : s.deploymentDisplayMode,
+    }));
+
+    requestAnimationFrame(() => {
+      const container = document.querySelector(".grid-canvas-viewport");
+      if (container) {
+        const cellSize = Math.round(CELL_SIZE_PX * zoomLevel);
+        container.scrollTo({
+          left: Math.max(0, cell.x * cellSize - container.clientWidth / 2),
+          top: Math.max(0, cell.y * cellSize - container.clientHeight / 2),
+          behavior: "smooth",
+        });
+      }
+    });
+  };
+
+  const handleSuggestDeploymentFix = () => {
+    const fix = suggestDeploymentAutoFix(buildings, townHallLevel, purpose);
+    setAutoFixPreview(fix);
+  };
+
+  const handleApplyDeploymentAutoFix = () => {
+    if (!activeLayout) return;
+    setIsApplyingFix(true);
+    try {
+      const fix =
+        autoFixPreview && autoFixPreview.applied
+          ? autoFixPreview
+          : suggestDeploymentAutoFix(buildings, townHallLevel, purpose);
+
+      if (!fix.applied) {
+        setAutoFixPreview(fix);
+        showToast("Không tìm được cách khắc phục an toàn cho các lỗ thả quân hiện tại.");
+        return;
+      }
+
+      createCheckpoint(activeLayout.id, "Trước khi Tự động khắc phục Vùng triển khai", buildings);
+      handleUpdateBuildings(fix.updatedBuildings);
+      setAutoFixPreview(fix);
+      showToast(`Đã tự động đóng ${fix.resolvedHoleCount} lỗ thả quân nguy hiểm.`);
+    } finally {
+      setIsApplyingFix(false);
+    }
+  };
+
   // Count chain issues
   const chainAnalysis = useMemo(() => {
     if (settings.showChainLightning === "none") return { dangerPairs: [] };
@@ -421,6 +501,8 @@ export function BasePlannerTab({
             onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
             isFullscreen={isFullscreen}
             onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+            viewMode={settings.viewMode}
+            onViewModeChange={(mode: PlannerViewMode) => setSettings((s) => ({ ...s, viewMode: mode }))}
           />
 
           {/* Mobile Segmented Workspace Tabs (lg:hidden) */}
@@ -504,32 +586,51 @@ export function BasePlannerTab({
                 <DefenseScorePanel
                   defenseScore={defenseScoreResult}
                   onClose={() => setSettings((s) => ({ ...s, plannerMode: "design" }))}
+                  deploymentContext={{
+                    purpose,
+                    buildings,
+                    autoFixPreview,
+                    isApplyingFix,
+                    onViewOnMap: handleViewDeploymentOnMap,
+                    onSuggestFix: handleSuggestDeploymentFix,
+                    onApplyAutoFix: handleApplyDeploymentAutoFix,
+                    onDismissPreview: () => setAutoFixPreview(null),
+                  }}
                 />
               )}
             </aside>
 
-            {/* Center: Grid Canvas */}
+            {/* Center: Grid Canvas (2D editable board, or read-only Isometric view) */}
             <main
               className={`planner-canvas-panel ${
                 isFullscreen ? "canvas-fullscreen" : ""
               } ${mobileWorkspaceTab === "inventory" ? "hidden lg:flex" : "flex"}`}
             >
-              <CanvasGridBoard
-                buildings={buildings}
-                onUpdateBuildings={handleUpdateBuildings}
-                selectedDefId={selectedDefId}
-                onClearSelectedDef={() => setSelectedDefId(null)}
-                selectedPlacedId={selectedPlacedId}
-                onSelectPlacedId={setSelectedPlacedId}
-                buildingLimits={buildingLimits}
-                settings={settings}
-                zoomLevel={zoomLevel}
-                zoomMode={zoomMode}
-                onZoomChange={(newZoom, mode) => {
-                  setZoomLevel(newZoom);
-                  if (mode) setZoomMode(mode);
-                }}
-              />
+              {settings.viewMode === "isometric" ? (
+                <IsometricGridBoard
+                  buildings={buildings}
+                  selectedPlacedId={selectedPlacedId}
+                  onSelectPlacedId={setSelectedPlacedId}
+                  settings={settings}
+                />
+              ) : (
+                <CanvasGridBoard
+                  buildings={buildings}
+                  onUpdateBuildings={handleUpdateBuildings}
+                  selectedDefId={selectedDefId}
+                  onClearSelectedDef={() => setSelectedDefId(null)}
+                  selectedPlacedId={selectedPlacedId}
+                  onSelectPlacedId={setSelectedPlacedId}
+                  buildingLimits={buildingLimits}
+                  settings={settings}
+                  zoomLevel={zoomLevel}
+                  zoomMode={zoomMode}
+                  onZoomChange={(newZoom, mode) => {
+                    setZoomLevel(newZoom);
+                    if (mode) setZoomMode(mode);
+                  }}
+                />
+              )}
             </main>
           </div>
         </>

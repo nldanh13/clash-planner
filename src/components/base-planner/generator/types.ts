@@ -44,6 +44,8 @@ export interface BaseScore {
   pathComplexity: number;
   upgradeAccessibility: number;
   aestheticBalance: number;
+  /** 0-100 Deployment Zone safety score (see deploymentRisk.ts) — higher is safer (fewer/no internal holes). */
+  deploymentSafety: number;
   overallScore: number;
   tier: "S" | "A" | "B" | "C";
   summary: string;
