@@ -19,6 +19,7 @@ import {
   ScanSearch,
   ShieldAlert,
   ShieldOff,
+  Sparkles,
   Trash2,
   Undo2,
   Upload,
@@ -159,11 +160,67 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             <ScanSearch className="w-3.5 h-3.5" />
             <span>Phân tích</span>
           </button>
+          <button
+            onClick={() => setMode("decorate")}
+            className={`min-h-[34px] flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              settings.plannerMode === "decorate"
+                ? "bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40 shadow-sm"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+            aria-label="Chế độ Trang trí"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Trang trí</span>
+          </button>
         </div>
 
         {/* Tools Section */}
         <div className="flex items-center gap-1.5 shrink-0 sm:flex-wrap">
-          {settings.plannerMode === "design" ? (
+          {settings.plannerMode === "decorate" ? (
+            <>
+              <button
+                onClick={() =>
+                  onUpdateSettings((s) => ({
+                    ...s,
+                    eraserActive: !s.eraserActive,
+                    wallBrushActive: false,
+                  }))
+                }
+                className={`min-h-[34px] flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  settings.eraserActive
+                    ? "bg-rose-600 text-white font-black shadow-md"
+                    : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700"
+                }`}
+                title="Chế độ Tẩy công trình/tường/trang trí khi chạm"
+                aria-label={settings.eraserActive ? "Tắt chế độ tẩy" : "Bật chế độ tẩy"}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Tẩy</span>
+              </button>
+
+              <div className="w-px h-5 bg-slate-800 hidden sm:block mx-0.5" />
+
+              <button
+                onClick={onUndo}
+                disabled={!canUndo}
+                className="w-[34px] h-[34px] min-w-[34px] min-h-[34px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                title="Hoàn tác"
+                aria-label="Hoàn tác"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={onRedo}
+                disabled={!canRedo}
+                className="w-[34px] h-[34px] min-w-[34px] min-h-[34px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                title="Làm lại"
+                aria-label="Làm lại"
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : settings.plannerMode === "design" ? (
             <>
               <button
                 onClick={() =>

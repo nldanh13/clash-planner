@@ -25,6 +25,31 @@ export interface PlacedBuilding {
   level?: number;
 }
 
+/**
+ * Purely cosmetic objects (trees, statues, banners...). Deliberately kept OUT of
+ * `PlacedBuilding`/`BuildingCategory` so they never touch the real-gameplay pipeline
+ * (defense scoring, deployment-zone masks, generator required-counts, TH unlock
+ * validation) — they are visual-only and never affect any of that.
+ */
+export interface DecorationDef {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  color: string;
+  accentColor?: string;
+  /** Emoji glyph drawn on the canvas in place of game art (no decoration sprites exist in this project). */
+  emoji: string;
+  description?: string;
+}
+
+export interface PlacedDecoration {
+  instanceId: string;
+  decorationId: string;
+  x: number;
+  y: number;
+}
+
 export type BasePurpose =
   | "war"
   | "trophy"
@@ -53,6 +78,8 @@ export interface LayoutProject {
   pattern?: string;
   seed?: number | string;
   buildings: PlacedBuilding[];
+  /** Optional — omitted on layouts created before decorations existed. */
+  decorations?: PlacedDecoration[];
   createdAt: string;
   updatedAt: string;
   catalogVersion: string;
@@ -88,7 +115,7 @@ export interface BaseLayoutData {
   updatedAt: string;
 }
 
-export type PlannerMode = "design" | "analysis";
+export type PlannerMode = "design" | "analysis" | "decorate";
 export type RangeDisplayMode = "all" | "selected" | "none";
 export type ChainLightningMode = "all" | "selected" | "none";
 /** off = Tắt, blocked = Vùng cấm, holes = Lỗ nguy hiểm, all = Tất cả. */
