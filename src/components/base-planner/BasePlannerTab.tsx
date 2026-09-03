@@ -57,8 +57,10 @@ export function BasePlannerTab({
     return saved[0] || null;
   });
 
-  // Modals state: Manager modal opens automatically on initial entry into Base Planner tab
-  const [isManagerOpen, setIsManagerOpen] = useState<boolean>(true);
+  // Modals state: the manager only auto-opens when there's genuinely nothing to
+  // show yet (no saved layout) — not on every visit to the tab, which used to
+  // pop it up over whatever the user was already working on.
+  const [isManagerOpen, setIsManagerOpen] = useState<boolean>(() => !activeLayout);
   const [isNewWizardOpen, setIsNewWizardOpen] = useState<boolean>(false);
   const [wizardInitialTH, setWizardInitialTH] = useState<number>(initialTownHall);
 

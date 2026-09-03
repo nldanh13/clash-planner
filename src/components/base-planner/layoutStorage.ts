@@ -59,54 +59,6 @@ export function generateId(): string {
 }
 
 /**
- * Creates default layouts for TH11, TH14, TH16 if storage is empty
- */
-export function createDefaultInitialLayouts(): LayoutProject[] {
-  const now = new Date().toISOString();
-  return [
-    {
-      id: "layout-th11-war",
-      name: "TH11 – Chiến tranh – Mẫu 01",
-      townHallLevel: 11,
-      purpose: "war",
-      creationMethod: "template",
-      status: "valid",
-      buildings: getPresetLayout(11),
-      catalogVersion: CURRENT_CATALOG_VERSION,
-      isPinned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: "layout-th14-hybrid",
-      name: "TH14 – Cân bằng – Mẫu 01",
-      townHallLevel: 14,
-      purpose: "hybrid",
-      creationMethod: "template",
-      status: "valid",
-      buildings: getPresetLayout(14),
-      catalogVersion: CURRENT_CATALOG_VERSION,
-      isPinned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: "layout-th16-meta",
-      name: "TH16 – Chiến tranh – Mẫu 01",
-      townHallLevel: 16,
-      purpose: "war",
-      creationMethod: "template",
-      status: "valid",
-      buildings: getPresetLayout(16),
-      catalogVersion: CURRENT_CATALOG_VERSION,
-      isPinned: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-/**
  * Purges trash items older than 30 days
  */
 export function purgeExpiredTrash(layouts: LayoutProject[]): LayoutProject[] {
@@ -126,9 +78,8 @@ export function getAllLayoutsRaw(): LayoutProject[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LAYOUTS);
     if (!raw) {
-      const initial = createDefaultInitialLayouts();
-      safeSetLocalStorage(STORAGE_KEY_LAYOUTS, JSON.stringify(initial));
-      return initial;
+      // First-ever visit: start from zero, no seeded example layouts.
+      return [];
     }
 
     const parsed = JSON.parse(raw);
@@ -161,7 +112,7 @@ export function getAllLayoutsRaw(): LayoutProject[] {
     console.error("Failed to parse saved base layouts:", err);
   }
 
-  return createDefaultInitialLayouts();
+  return [];
 }
 
 /**

@@ -623,7 +623,7 @@ export function BlueprintManagerModal({
               aria-label="Nhập JSON"
             >
               <FileUp className="w-4 h-4 text-cyan-400" />
-              <span className="hidden md:inline">Nhập JSON</span>
+              <span className="hidden sm:inline">Nhập JSON</span>
             </button>
 
             {/* Tùy chọn Sao lưu & Xuất */}
@@ -637,7 +637,7 @@ export function BlueprintManagerModal({
                 aria-label="Tùy chọn sao lưu và xuất dữ liệu"
               >
                 <Download className="w-4 h-4 text-emerald-400" />
-                <span className="hidden lg:inline">Sao lưu</span>
+                <span className="hidden sm:inline">Sao lưu</span>
               </button>
 
               {isLibraryMenuOpen && (
@@ -818,7 +818,7 @@ export function BlueprintManagerModal({
             </div>
 
             {/* Quick Filter Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+            <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
               {[
                 { id: "all", label: "Tất cả" },
                 { id: "recent", label: "Gần đây" },
@@ -861,7 +861,7 @@ export function BlueprintManagerModal({
         )}
 
         {/* MAIN BODY AREA */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-[#08121c]">
+        <div className="no-scrollbar flex-1 overflow-y-auto p-3 sm:p-4 bg-[#08121c]">
           {/* TAB 1: ACTIVE BLUEPRINTS */}
           {currentTab === "active" && (
             <>
@@ -1484,7 +1484,7 @@ export function BlueprintManagerModal({
                 </button>
               </div>
 
-              <div className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
+              <div className="no-scrollbar p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
                 {/* Town Hall Filter */}
                 <div>
                   <label className="font-bold text-slate-200 block mb-1.5">Cấp Town Hall</label>
