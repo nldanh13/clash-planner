@@ -1,3 +1,5 @@
+import type { DeploymentAnalysis } from "./deploymentZones";
+
 export type BuildingCategory = "defense" | "resource" | "army" | "trap" | "wall" | "hero";
 
 export interface BuildingDef {
@@ -89,6 +91,9 @@ export interface BaseLayoutData {
 export type PlannerMode = "design" | "analysis";
 export type RangeDisplayMode = "all" | "selected" | "none";
 export type ChainLightningMode = "all" | "selected" | "none";
+/** off = Tắt, blocked = Vùng cấm, holes = Lỗ nguy hiểm, all = Tất cả. */
+export type DeploymentDisplayMode = "off" | "blocked" | "holes" | "all";
+export type PlannerViewMode = "2d" | "isometric";
 
 export interface TacticalSettings {
   showRanges: RangeDisplayMode;
@@ -102,6 +107,8 @@ export interface TacticalSettings {
   plannerMode: PlannerMode;
   showBuildingNames: boolean;
   showBuildingLevels: boolean; // 1 or 2 tiles
+  deploymentDisplayMode: DeploymentDisplayMode;
+  viewMode: PlannerViewMode;
 }
 
 export interface ChainDangerPair {
@@ -147,4 +154,6 @@ export interface DefenseScoreResult {
     blindSpotsPercent: number;
     quadrantBalance: { nw: number; ne: number; sw: number; se: number };
   };
+  /** Deployment Zone analysis (see deploymentZones.ts). Optional only so older callers/tests compile untouched. */
+  deployment?: DeploymentAnalysis;
 }
