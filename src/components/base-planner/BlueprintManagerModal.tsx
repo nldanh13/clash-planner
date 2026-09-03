@@ -577,16 +577,16 @@ export function BlueprintManagerModal({
         />
 
         {/* TOP HEADER */}
-        <div className="p-3.5 sm:p-4 border-b border-[#182a3a] flex items-center justify-between gap-3 bg-[#0e1d2c] shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
+        <div className="p-3 sm:p-4 border-b border-[#182a3a] flex items-center justify-between gap-2 sm:gap-3 bg-[#0e1d2c] shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
               <FolderOpen className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2
                   id="manager-title"
-                  className="text-sm sm:text-base font-black text-white tracking-wide uppercase truncate"
+                  className="text-xs sm:text-base font-black text-white tracking-wide uppercase truncate"
                 >
                   Quản Lý Bản Thiết Kế
                 </h2>
@@ -598,7 +598,7 @@ export function BlueprintManagerModal({
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Kho bố cục mẫu */}
             <button
               type="button"
@@ -606,7 +606,7 @@ export function BlueprintManagerModal({
                 onClose();
                 onOpenNewWizard();
               }}
-              className="px-2.5 sm:px-3 py-2 min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
+              className="p-2 sm:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
               title="Xem và chọn bố cục mẫu từ kho"
               aria-label="Kho bố cục mẫu"
             >
@@ -618,7 +618,7 @@ export function BlueprintManagerModal({
             <button
               type="button"
               onClick={handleImportSingleClick}
-              className="px-2.5 sm:px-3 py-2 min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
+              className="p-2 sm:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
               title="Nhập bản thiết kế từ file JSON"
               aria-label="Nhập JSON"
             >
@@ -631,7 +631,7 @@ export function BlueprintManagerModal({
               <button
                 type="button"
                 onClick={() => setIsLibraryMenuOpen(!isLibraryMenuOpen)}
-                className="p-2 sm:px-2.5 py-2 min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
+                className="p-2 sm:px-2.5 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
                 title="Tùy chọn sao lưu và xuất dữ liệu"
                 aria-expanded={isLibraryMenuOpen}
                 aria-label="Tùy chọn sao lưu và xuất dữ liệu"
@@ -673,12 +673,13 @@ export function BlueprintManagerModal({
                   onClose();
                   onOpenNewWizard();
                 }}
-                className="px-3 sm:px-4 py-2 min-h-[40px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all"
+                className="px-2.5 sm:px-4 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all shrink-0"
                 title="Tạo bản thiết kế mới"
                 aria-label="Tạo bản thiết kế mới"
               >
                 <Plus className="w-4 h-4" />
-                <span>Tạo bản thiết kế mới</span>
+                <span className="hidden sm:inline">Tạo bản thiết kế mới</span>
+                <span className="sm:hidden">Tạo mới</span>
               </button>
             )}
 
@@ -686,7 +687,7 @@ export function BlueprintManagerModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-2 min-h-[38px] sm:min-h-[40px] min-w-[38px] sm:min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
               title="Đóng Quản lý bản thiết kế"
               aria-label="Đóng Quản lý bản thiết kế"
             >

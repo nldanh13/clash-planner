@@ -15,15 +15,13 @@ async function startServer() {
   app.use(express.json());
 
   // API Proxy Route for War Report
-  app.get("/api/warreport/*all", async (req, res) => {
+  app.use("/api/warreport", async (req, res) => {
     if (!apiKey) {
-      return res.status(503).json({ error: "Service temporarily unavailable (WAR_REPORT_API_KEY missing)" });
+      return res.status(503).json({ error: "Chưa cấu hình WAR_REPORT_API_KEY trong biến môi trường. Vui lòng thêm WAR_REPORT_API_KEY trong phần Cài đặt." });
     }
     
     try {
-      // Forward the exact sub-path and query parameters after /api/warreport/
-      const subPathAndQuery = req.originalUrl.replace(/^\/api\/warreport\/?/, "");
-      const targetUrl = `https://clashapi.colinschmale.dev/${subPathAndQuery}`;
+      const targetUrl = `https://clashapi.colinschmale.dev${req.url}`;
 
       const response = await fetch(targetUrl, {
         method: req.method,
@@ -34,19 +32,32 @@ async function startServer() {
         }
       });
 
+      const contentType = response.headers.get("content-type") || "";
       const responseText = await response.text();
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        responseData = responseText;
+
+      if (contentType.includes("application/json")) {
+        try {
+          const jsonData = JSON.parse(responseText);
+          return res.status(response.status).json(jsonData);
+        } catch {
+          return res.status(502).json({ error: "Dữ liệu trả về từ War Report không hợp lệ (lỗi cú pháp JSON)." });
+        }
       }
 
-      res.status(response.status).send(responseData);
+      return res.status(response.status >= 400 ? response.status : 502).json({
+        error: response.status === 401
+          ? "War Report API yêu cầu API key hợp lệ hoặc khóa đã hết hạn."
+          : `War Report phản hồi mã lỗi ${response.status} (không phải định dạng JSON).`
+      });
     } catch (error: any) {
       console.error("Proxy Error:", error);
-      res.status(502).json({ error: "Failed to connect to War Report API." });
+      res.status(502).json({ error: "Không thể kết nối đến máy chủ War Report API." });
     }
+  });
+
+  // Ensure NO API call ever falls through to SPA HTML
+  app.all("/api/*all", (req, res) => {
+    res.status(404).json({ error: `API endpoint ${req.originalUrl} không tồn tại.` });
   });
 
   // Vite middleware for development

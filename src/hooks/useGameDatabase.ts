@@ -28,15 +28,29 @@ function validateLevels(data: any): data is Record<string, any[]> {
   );
 }
 
+async function fetchJsonSafely(url: string) {
+  try {
+    const res = await fetch(url);
+    if (!res || !res.ok) return null;
+    const contentType = res.headers?.get ? (res.headers.get("content-type") || "") : "application/json";
+    if (contentType && !contentType.includes("application/json") && !contentType.includes("+json")) {
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export function useGameDatabase(onLoaded: () => void) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/data/images.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/data/townhalls.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/data/levels.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetchJsonSafely("/data/images.json"),
+      fetchJsonSafely("/data/townhalls.json"),
+      fetchJsonSafely("/data/levels.json"),
     ]).then(([images, townhalls, levelsDb]) => {
       if (cancelled) return;
       const newWarnings: string[] = [];
