@@ -330,6 +330,17 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   }
 }
 
+/* Hides the scrollbar on the horizontally-scrolling mobile toolbar rows
+   (TacticalToolbar) without disabling scroll — the row still swipes/wheels
+   fine, it just doesn't need a visible track at that size. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .planner-sidebar-panel {
   display: flex;
   flex-direction: column;

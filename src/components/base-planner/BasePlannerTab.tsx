@@ -505,8 +505,11 @@ export function BasePlannerTab({
             onViewModeChange={(mode: PlannerViewMode) => setSettings((s) => ({ ...s, viewMode: mode }))}
           />
 
-          {/* Mobile Segmented Workspace Tabs (lg:hidden) */}
-          <div className="lg:hidden flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0">
+          {/* Mobile Segmented Workspace Tabs — hides at the same 768px breakpoint
+              the .planner-main-layout CSS grid switches to a side-by-side layout at
+              (md:hidden, not lg:hidden — using lg here left a 768-1024px dead zone
+              where this switcher was visible but did nothing). */}
+          <div className="md:hidden flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0">
             <button
               onClick={() => setMobileWorkspaceTab("map")}
               className={`flex-1 min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -561,7 +564,7 @@ export function BasePlannerTab({
                 isSidebarCollapsed
                   ? "hidden"
                   : mobileWorkspaceTab === "map"
-                  ? "hidden lg:flex"
+                  ? "hidden md:flex"
                   : "flex"
               }`}
             >
@@ -604,7 +607,7 @@ export function BasePlannerTab({
             <main
               className={`planner-canvas-panel ${
                 isFullscreen ? "canvas-fullscreen" : ""
-              } ${mobileWorkspaceTab === "inventory" ? "hidden lg:flex" : "flex"}`}
+              } ${mobileWorkspaceTab === "inventory" ? "hidden md:flex" : "flex"}`}
             >
               {settings.viewMode === "isometric" ? (
                 <IsometricGridBoard

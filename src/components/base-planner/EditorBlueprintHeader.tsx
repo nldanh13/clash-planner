@@ -186,40 +186,40 @@ export function EditorBlueprintHeader({
             title="Xem danh sách bản thiết kế đã lưu, tìm kiếm, nhập/xuất"
           >
             <FolderOpen className="w-4 h-4 text-cyan-400" />
-            <span>Quản lý bản thiết kế</span>
+            <span className="hidden sm:inline">Quản lý bản thiết kế</span>
           </button>
 
           {/* Lưu */}
           <button
             type="button"
             onClick={onSaveManual}
-            className="px-3.5 py-2 rounded-xl bg-[#142636] hover:bg-[#1c354a] border border-[#23405b] text-emerald-300 hover:text-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            className="px-3 py-2 sm:px-3.5 rounded-xl bg-[#142636] hover:bg-[#1c354a] border border-[#23405b] text-emerald-300 hover:text-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
             title="Lưu ngay bản thiết kế hiện tại"
           >
             <Save className="w-4 h-4 text-emerald-400" />
-            <span>Lưu</span>
+            <span className="hidden sm:inline">Lưu</span>
           </button>
 
           {/* Đổi tên */}
           <button
             type="button"
             onClick={handleOpenRename}
-            className="px-3 py-2 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-2.5 py-2 sm:px-3 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Đổi tên bản thiết kế"
           >
             <Edit2 className="w-3.5 h-3.5 text-amber-400" />
-            <span>Đổi tên</span>
+            <span className="hidden sm:inline">Đổi tên</span>
           </button>
 
           {/* Tạo bản sao */}
           <button
             type="button"
             onClick={onDuplicate}
-            className="px-3 py-2 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-2.5 py-2 sm:px-3 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Nhân bản bản thiết kế này thành một bản lưu mới"
           >
             <Copy className="w-3.5 h-3.5 text-purple-400" />
-            <span>Tạo bản sao</span>
+            <span className="hidden sm:inline">Tạo bản sao</span>
           </button>
         </div>
       </div>

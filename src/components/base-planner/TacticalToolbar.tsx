@@ -132,9 +132,9 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   return (
     <div className="sticky top-0 z-20 flex flex-col gap-1.5 w-full max-w-full min-w-0 pb-2 pt-0.5 select-none bg-[#08121bed]/95 backdrop-blur-md">
       {/* Hàng 1: Chế độ, Công cụ chỉnh sửa (Thiết kế / Phân tích) & Nhãn hiển thị */}
-      <div className="flex items-center justify-between gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 flex-wrap">
+      <div className="no-scrollbar flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 overflow-x-auto sm:justify-between sm:flex-wrap">
         {/* Mode Switcher */}
-        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg">
+        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg shrink-0">
           <button
             onClick={() => setMode("design")}
             className={`min-h-[34px] flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
@@ -162,7 +162,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         </div>
 
         {/* Tools Section */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 shrink-0 sm:flex-wrap">
           {settings.plannerMode === "design" ? (
             <>
               <button
@@ -182,7 +182,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label={settings.wallBrushActive ? "Tắt cọ vẽ tường" : "Bật cọ vẽ tường"}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Vẽ Tường</span>
+                <span className="hidden sm:inline">Vẽ Tường</span>
               </button>
 
               <button
@@ -202,7 +202,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label={settings.eraserActive ? "Tắt chế độ tẩy" : "Bật chế độ tẩy"}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Tẩy</span>
+                <span className="hidden sm:inline">Tẩy</span>
               </button>
 
               <div className="w-px h-5 bg-slate-800 hidden sm:block mx-0.5" />
@@ -250,7 +250,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label="Mật độ hỏa lực Heatmap"
               >
                 <Flame className="w-3.5 h-3.5" />
-                <span>Heatmap</span>
+                <span className="hidden sm:inline">Heatmap</span>
               </button>
 
               <button
@@ -264,7 +264,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label="Bảng điểm phòng thủ"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Điểm</span>
+                <span className="hidden sm:inline">Điểm</span>
               </button>
 
               <button
@@ -278,7 +278,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label="Tầm bắn"
               >
                 <Crosshair className="w-3.5 h-3.5" />
-                <span>Tầm: {settings.showRanges === "none" ? "Tắt" : settings.showRanges === "selected" ? "Chọn" : "Tất cả"}</span>
+                <span className="hidden sm:inline">Tầm: {settings.showRanges === "none" ? "Tắt" : settings.showRanges === "selected" ? "Chọn" : "Tất cả"}</span>
               </button>
 
               <button
@@ -292,7 +292,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 aria-label="Sét lan"
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span>Sét: {settings.showChainLightning === "none" ? "Tắt" : settings.showChainLightning === "selected" ? "Chọn" : "Tất cả"}</span>
+                <span className="hidden sm:inline">Sét: {settings.showChainLightning === "none" ? "Tắt" : settings.showChainLightning === "selected" ? "Chọn" : "Tất cả"}</span>
               </button>
 
               <button
@@ -310,14 +310,14 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
                 ) : (
                   <ShieldOff className="w-3.5 h-3.5" />
                 )}
-                <span>Vùng triển khai: {DEPLOYMENT_MODE_LABELS[settings.deploymentDisplayMode]}</span>
+                <span className="hidden sm:inline">Vùng triển khai: {DEPLOYMENT_MODE_LABELS[settings.deploymentDisplayMode]}</span>
               </button>
             </>
           )}
         </div>
 
         {/* Visibility Toggles (Names & Levels) */}
-        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg">
+        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg shrink-0">
           <button
             onClick={() => onUpdateSettings((s) => ({ ...s, showBuildingNames: !s.showBuildingNames }))}
             className={`min-h-[34px] px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
@@ -329,7 +329,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             aria-label={settings.showBuildingNames ? "Ẩn tên công trình" : "Hiện tên công trình"}
           >
             {settings.showBuildingNames ? <Eye className="w-3.5 h-3.5 text-cyan-400" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>Tên</span>
+            <span className="hidden sm:inline">Tên</span>
           </button>
           <button
             onClick={() => onUpdateSettings((s) => ({ ...s, showBuildingLevels: !s.showBuildingLevels }))}
@@ -342,20 +342,20 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             aria-label={settings.showBuildingLevels ? "Ẩn cấp độ" : "Hiện cấp độ"}
           >
             {settings.showBuildingLevels ? <Eye className="w-3.5 h-3.5 text-cyan-400" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>Cấp</span>
+            <span className="hidden sm:inline">Cấp</span>
           </button>
         </div>
       </div>
 
       {/* Hàng 2: Điều hướng canvas (Sidebar, Zoom, Vừa khung, Toàn màn hình) + Dữ liệu (Nhập, Xuất) */}
-      <div className="flex items-center justify-between gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 flex-wrap">
+      <div className="no-scrollbar flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 overflow-x-auto sm:justify-between sm:flex-wrap">
         {/* Left: Sidebar & Zoom Controls */}
-        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg flex-wrap">
-          {/* Sidebar collapse/expand toggle on desktop */}
+        <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg shrink-0 sm:flex-wrap">
+          {/* Sidebar collapse/expand toggle on tablet+ (matches the 768px breakpoint the CSS grid layout switches at) */}
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="hidden lg:flex items-center gap-1 px-2 h-[34px] min-h-[34px] rounded-md text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer border-r border-slate-800 pr-2.5 mr-1"
+              className="hidden md:flex items-center gap-1 px-2 h-[34px] min-h-[34px] rounded-md text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer border-r border-slate-800 pr-2.5 mr-1"
               title={isSidebarCollapsed ? "Mở rộng danh mục công trình" : "Thu gọn danh mục công trình để mở rộng bản đồ"}
               aria-label={isSidebarCollapsed ? "Mở sidebar" : "Thu gọn sidebar"}
             >
@@ -481,7 +481,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
         </div>
 
         {/* Right: Data Actions (Import, Export JSON & PNG) */}
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1 ml-auto shrink-0">
           <input
             type="file"
             ref={fileInputRef}
@@ -513,7 +513,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
             aria-label="Xuất ảnh PNG"
           >
             <ImageIcon className="w-3.5 h-3.5" />
-            <span>Xuất PNG</span>
+            <span className="hidden sm:inline">Xuất PNG</span>
           </button>
         </div>
       </div>
