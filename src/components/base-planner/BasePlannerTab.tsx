@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FolderOpen,
   LayoutGrid,
+  Minimize,
   Plus,
   Shield,
 } from "lucide-react";
@@ -129,6 +130,20 @@ export function BasePlannerTab({
   useEffect(() => {
     setAutoFixPreview(null);
   }, [activeLayout?.id]);
+
+  // Fullscreen canvas mode covers the whole viewport (including the toolbar's
+  // own exit button) with position:fixed, so Escape must work independently
+  // of any on-screen control — otherwise the user is stuck until they refresh.
+  // (This is CSS `.canvas-fullscreen`, not the browser's native Fullscreen
+  // API, so the native Esc-to-exit behavior doesn't apply here for free.)
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen]);
 
   // Close manager logic adhering to specs:
   // - If active layout exists: close modal and return to its editor
@@ -609,6 +624,18 @@ export function BasePlannerTab({
                 isFullscreen ? "canvas-fullscreen" : ""
               } ${mobileWorkspaceTab === "inventory" ? "hidden md:flex" : "flex"}`}
             >
+              {isFullscreen && (
+                <button
+                  onClick={() => setIsFullscreen(false)}
+                  className="absolute top-3 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold shadow-2xl transition-colors cursor-pointer"
+                  title="Thoát toàn màn hình (Esc)"
+                  aria-label="Thoát toàn màn hình"
+                >
+                  <Minimize className="w-3.5 h-3.5" />
+                  <span>Thoát toàn màn hình (Esc)</span>
+                </button>
+              )}
+
               {settings.viewMode === "isometric" ? (
                 <IsometricGridBoard
                   buildings={buildings}
