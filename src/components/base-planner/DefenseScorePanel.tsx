@@ -27,7 +27,7 @@ export function DefenseScorePanel({ defenseScore, onClose }: DefenseScorePanelPr
   const criticalWarnings = warnings.filter((w) => w.type === "critical");
 
   return (
-    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 shadow-2xl text-slate-200 flex flex-col gap-3 w-full transition-all">
+    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 shadow-2xl text-slate-200 flex flex-col gap-3 w-full h-full min-h-0 overflow-y-auto transition-all">
       {/* Header with Overall Score & Tier */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div className="flex items-center gap-3">

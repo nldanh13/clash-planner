@@ -66,6 +66,9 @@ export function BasePlannerTab({
   const [selectedDefId, setSelectedDefId] = useState<string | null>(null);
   const [selectedPlacedId, setSelectedPlacedId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [zoomMode, setZoomMode] = useState<"fit" | "manual">("fit");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Validation recovery
@@ -282,12 +285,12 @@ export function BasePlannerTab({
 
   // Fit Map zoom
   const handleFitMap = () => {
-    setZoomLevel(1);
+    setZoomMode("fit");
     const container = document.querySelector(".grid-canvas-viewport");
     if (container) {
       container.scrollTo({
-        left: container.scrollWidth / 2 - container.clientWidth / 2,
-        top: container.scrollHeight / 2 - container.clientHeight / 2,
+        left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
+        top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
         behavior: "smooth",
       });
     }
@@ -406,10 +409,18 @@ export function BasePlannerTab({
             onImportJSON={handleImportJSON}
             chainIssuesCount={chainAnalysis.dangerPairs.length}
             zoomLevel={zoomLevel}
-            onZoomChange={setZoomLevel}
+            zoomMode={zoomMode}
+            onZoomChange={(newZoom, mode) => {
+              setZoomLevel(newZoom);
+              setZoomMode(mode || "manual");
+            }}
             placedCount={buildings.length}
             defenseScore={defenseScoreResult}
             onFitMap={handleFitMap}
+            isSidebarCollapsed={isSidebarCollapsed}
+            onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
           />
 
           {/* Mobile Segmented Workspace Tabs (lg:hidden) */}
@@ -457,11 +468,19 @@ export function BasePlannerTab({
           </div>
 
           {/* Main Planner Grid Body */}
-          <div className="planner-main-layout w-full max-w-full min-w-0 overflow-hidden">
+          <div
+            className={`planner-main-layout w-full max-w-full min-w-0 overflow-hidden ${
+              isSidebarCollapsed ? "sidebar-collapsed" : ""
+            }`}
+          >
             {/* Left: Building Inventory / Sidebar */}
             <aside
               className={`planner-sidebar-panel ${
-                mobileWorkspaceTab === "map" ? "hidden lg:flex" : "flex"
+                isSidebarCollapsed
+                  ? "hidden"
+                  : mobileWorkspaceTab === "map"
+                  ? "hidden lg:flex"
+                  : "flex"
               }`}
             >
               {settings.plannerMode === "design" ? (
@@ -492,8 +511,8 @@ export function BasePlannerTab({
             {/* Center: Grid Canvas */}
             <main
               className={`planner-canvas-panel ${
-                mobileWorkspaceTab === "inventory" ? "hidden lg:flex" : "flex"
-              }`}
+                isFullscreen ? "canvas-fullscreen" : ""
+              } ${mobileWorkspaceTab === "inventory" ? "hidden lg:flex" : "flex"}`}
             >
               <CanvasGridBoard
                 buildings={buildings}
@@ -505,6 +524,11 @@ export function BasePlannerTab({
                 buildingLimits={buildingLimits}
                 settings={settings}
                 zoomLevel={zoomLevel}
+                zoomMode={zoomMode}
+                onZoomChange={(newZoom, mode) => {
+                  setZoomLevel(newZoom);
+                  if (mode) setZoomMode(mode);
+                }}
               />
             </main>
           </div>

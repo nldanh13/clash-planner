@@ -1,6 +1,9 @@
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import { validateLayout } from "./LayoutValidator";
 import type { BaseLayoutData, PlacedBuilding } from "./types";
+import { BUILDING_METADATA_MAP, getAllBuildingLimits, getTownHallCatalog } from "./catalog";
+import { PlacementEngine } from "./generator/placementEngine";
+import { PRNG } from "./generator/prng";
 
 /**
  * Generates and downloads high-resolution PNG of the 44x44 base layout
@@ -238,98 +241,143 @@ export async function importLayoutFromJSON(file: File): Promise<BaseLayoutData> 
 }
 
 /**
- * Pre-built symmetrical starter base presets for quick preview and editing
+ * Pre-built symmetrical starter base presets for quick preview and editing.
+ * Dynamically builds a valid layout conforming to the exact catalog of the requested Town Hall level.
  */
 export function getPresetLayout(townHallLevel: number): PlacedBuilding[] {
+  const th = Math.max(1, Math.min(18, Math.trunc(townHallLevel || 11)));
+  const limits = getAllBuildingLimits(th);
+  const engine = new PlacementEngine(new PRNG(th * 1000 + 42));
   const list: PlacedBuilding[] = [];
   let idCounter = 1;
-  const add = (buildingId: string, x: number, y: number) => {
-    list.push({
-      instanceId: `preset-${idCounter++}`,
-      buildingId,
-      x,
-      y,
-    });
+
+  const currentCounts: Record<string, number> = {};
+
+  const place = (buildingId: string, x: number, y: number): boolean => {
+    const meta = BUILDING_METADATA_MAP[buildingId];
+    if (!meta) return false;
+    const maxLimit = limits[buildingId] || 0;
+    const current = currentCounts[buildingId] || 0;
+    if (current >= maxLimit) return false;
+
+    const w = meta.width;
+    const h = meta.height;
+    if (!engine.isFree(x, y, w, h)) return false;
+
+    const instId = `preset-${th}-${idCounter++}`;
+    if (engine.place(instId, buildingId, x, y, w, h)) {
+      currentCounts[buildingId] = current + 1;
+      list.push({ instanceId: instId, buildingId, x, y });
+      return true;
+    }
+    return false;
   };
 
-  // Center Core
-  add("town-hall", 20, 20); // 4x4 placed at (20,20) -> spans 20..23, 20..23
-  add("clan-castle", 20, 16); // 3x3 at top
-  add("eagle-artillery", 20, 25); // 4x4 at bottom (TH11+)
+  // 1. Center Core
+  place("town-hall", 20, 20);
+  if (limits["clan-castle"]) place("clan-castle", 20, 16);
+  if (limits["eagle-artillery"]) place("eagle-artillery", 20, 25);
+  if (limits["monolith"]) place("monolith", 25, 20);
+  if (limits["spell-tower"]) place("spell-tower", 16, 20);
 
-  // Inner Defenses
-  add("inferno-tower", 16, 20); // 3x3 Left
-  add("inferno-tower", 25, 20); // 3x3 Right
-  add("xbow", 16, 16);
-  add("xbow", 25, 16);
-  add("xbow", 16, 25);
-  add("xbow", 25, 25);
-
-  // Air Defenses
-  add("air-defense", 12, 16);
-  add("air-defense", 29, 16);
-  add("air-defense", 12, 25);
-  add("air-defense", 29, 25);
-
-  // Wizard Towers
-  add("wizard-tower", 12, 20);
-  add("wizard-tower", 29, 20);
-  add("wizard-tower", 20, 12);
-  add("wizard-tower", 20, 30);
-
-  // Heroes
-  add("archer-queen", 16, 12);
-  add("barbarian-king", 25, 12);
-  add("grand-warden", 16, 29);
-  add("royal-champion", 25, 29);
-
-  // Storages
-  add("dark-elixir-storage", 21, 24);
-  add("gold-storage", 12, 12);
-  add("gold-storage", 29, 12);
-  add("elixir-storage", 12, 29);
-  add("elixir-storage", 29, 29);
-
-  // Inner Wall Ring around Core (from (14,10) to (30,34))
-  for (let x = 14; x <= 30; x++) {
-    add("wall", x, 10);
-    add("wall", x, 34);
+  // 2. Inner Defenses
+  if (limits["inferno-tower"]) {
+    place("inferno-tower", 16, 20);
+    place("inferno-tower", 25, 20);
   }
-  for (let y = 10; y <= 34; y++) {
-    add("wall", 14, y);
-    add("wall", 30, y);
+  if (limits["xbow"]) {
+    place("xbow", 16, 16);
+    place("xbow", 25, 16);
+    place("xbow", 16, 25);
+    place("xbow", 25, 25);
   }
 
-  // Middle Compartment Dividers
-  for (let x = 14; x <= 30; x++) {
-    add("wall", x, 15);
-    add("wall", x, 24);
-  }
-  for (let y = 10; y <= 34; y++) {
-    add("wall", 19, y);
-    add("wall", 24, y);
+  // 3. Air Defenses
+  if (limits["air-defense"]) {
+    place("air-defense", 12, 16);
+    place("air-defense", 29, 16);
+    place("air-defense", 12, 25);
+    place("air-defense", 29, 25);
   }
 
-  // Outer Defenses
-  add("cannon", 8, 12);
-  add("cannon", 33, 12);
-  add("cannon", 8, 29);
-  add("cannon", 33, 29);
-  add("cannon", 20, 7);
+  // 4. Wizard Towers
+  if (limits["wizard-tower"]) {
+    place("wizard-tower", 12, 20);
+    place("wizard-tower", 29, 20);
+    place("wizard-tower", 20, 12);
+    place("wizard-tower", 20, 30);
+  }
 
-  add("archer-tower", 8, 17);
-  add("archer-tower", 33, 17);
-  add("archer-tower", 8, 24);
-  add("archer-tower", 33, 24);
-  add("archer-tower", 20, 36);
+  // 5. Heroes (if unlocked at this TH)
+  if (limits["archer-queen"]) place("archer-queen", 16, 12);
+  if (limits["barbarian-king"]) place("barbarian-king", 25, 12);
+  if (limits["grand-warden"]) place("grand-warden", 16, 29);
+  if (limits["royal-champion"]) place("royal-champion", 25, 29);
 
-  // Outer Traps
-  add("giant-bomb", 14, 8);
-  add("giant-bomb", 27, 8);
-  add("tornado-trap", 20, 19);
-  add("seeking-air-mine", 11, 15);
-  add("seeking-air-mine", 30, 15);
+  // 6. Storages
+  if (limits["dark-elixir-storage"]) place("dark-elixir-storage", 21, 24);
+  if (limits["gold-storage"]) {
+    place("gold-storage", 12, 12);
+    place("gold-storage", 29, 12);
+  }
+  if (limits["elixir-storage"]) {
+    place("elixir-storage", 12, 29);
+    place("elixir-storage", 29, 29);
+  }
 
-  const { sanitizedBuildings } = validateLayout(list, townHallLevel);
+  // 7. Inner Wall Rings if walls available
+  const wallLimit = limits["wall"] || 0;
+  if (wallLimit > 0) {
+    for (let x = 14; x <= 30; x++) {
+      place("wall", x, 10);
+      place("wall", x, 34);
+    }
+    for (let y = 10; y <= 34; y++) {
+      place("wall", 14, y);
+      place("wall", 30, y);
+    }
+  }
+
+  // 8. Outer Defenses
+  if (limits["cannon"]) {
+    place("cannon", 8, 12);
+    place("cannon", 33, 12);
+    place("cannon", 8, 29);
+    place("cannon", 33, 29);
+    place("cannon", 20, 7);
+  }
+  if (limits["archer-tower"]) {
+    place("archer-tower", 8, 17);
+    place("archer-tower", 33, 17);
+    place("archer-tower", 8, 24);
+    place("archer-tower", 33, 24);
+    place("archer-tower", 20, 36);
+  }
+
+  // 9. Traps
+  if (limits["giant-bomb"]) {
+    place("giant-bomb", 14, 8);
+    place("giant-bomb", 27, 8);
+  }
+  if (limits["tornado-trap"]) place("tornado-trap", 20, 19);
+  if (limits["seeking-air-mine"]) {
+    place("seeking-air-mine", 11, 15);
+    place("seeking-air-mine", 30, 15);
+  }
+
+  // 10. Dynamically fill all remaining catalog items to reach exact required totals
+  const catalog = getTownHallCatalog(th);
+  for (const item of catalog) {
+    const current = currentCounts[item.buildingId] || 0;
+    const missing = item.count - current;
+    for (let i = 0; i < missing; i++) {
+      const pos = engine.findNearestFree(22, 22, item.width, item.height);
+      if (pos) {
+        place(item.buildingId, pos.x, pos.y);
+      }
+    }
+  }
+
+  const { sanitizedBuildings } = validateLayout(list, th);
   return sanitizedBuildings;
 }

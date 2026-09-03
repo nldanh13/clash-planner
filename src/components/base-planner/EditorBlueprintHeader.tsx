@@ -88,7 +88,7 @@ export function EditorBlueprintHeader({
 
   return (
     <>
-      <div className="w-full bg-[#08131e] border border-[#1d3144] rounded-2xl p-3 sm:p-4 mb-3 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 select-none">
+      <div className="w-full shrink-0 bg-[#08131e] border border-[#1d3144] rounded-xl p-2.5 sm:p-3 mb-2 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5 select-none">
         {/* Left Side: Blueprint Identification & Status */}
         <div className="flex items-center gap-3.5 min-w-0 flex-1">
           {/* Town Hall Read-Only Badge with Lock Indicator */}

@@ -235,11 +235,13 @@ export default function App() {
         />
       )}
 
-      <footer>
-        <span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span>
-        <span>Tiến độ thủ công lưu riêng theo từng Player Tag</span>
-        <span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span>
-      </footer>
+      {tab !== "base-planner" && (
+        <footer>
+          <span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span>
+          <span>Tiến độ thủ công lưu riêng theo từng Player Tag</span>
+          <span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span>
+        </footer>
+      )}
     </main>
   );
 }

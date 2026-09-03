@@ -28,6 +28,8 @@ interface CanvasGridBoardProps {
   buildingLimits: Record<string, number>;
   settings: TacticalSettings;
   zoomLevel: number;
+  zoomMode?: "fit" | "manual";
+  onZoomChange?: (zoom: number, mode?: "fit" | "manual") => void;
 }
 
 interface ActiveDrag {
@@ -41,6 +43,8 @@ interface ActiveDrag {
   isValid: boolean;
 }
 
+const BASE_BOARD_PIXELS = GRID_SIZE * CELL_SIZE_PX; // 44 * 18 = 792px
+
 export function CanvasGridBoard({
   buildings,
   onUpdateBuildings,
@@ -51,6 +55,8 @@ export function CanvasGridBoard({
   buildingLimits,
   settings,
   zoomLevel,
+  zoomMode = "fit",
+  onZoomChange,
 }: CanvasGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,9 +66,17 @@ export function CanvasGridBoard({
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isPaintingWalls, setIsPaintingWalls] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(false);
   const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(true);
   const [isChainAlertExpanded, setIsChainAlertExpanded] = useState(true);
+
+  const panStartRef = useRef<{
+    clientX: number;
+    clientY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
 
   // Scaled dimensions
   const cellSize = Math.round(CELL_SIZE_PX * zoomLevel);
@@ -89,24 +103,87 @@ export function CanvasGridBoard({
       return { dangerPairs: [], vulnerableInstanceIds: new Set<string>(), criticalCount: 0, warningCount: 0 };
     }
     return scanChainLightningHazards(buildings, 2);
-  }, [buildings, settings.showChainLightning, 2]);
+  }, [buildings, settings.showChainLightning]);
 
   // Calculate Firepower Heatmap
   const heatmapData = useMemo(() => {
     if (settings.plannerMode !== "analysis" || !settings.showHeatmap) return null;
     return calculateFirepowerHeatmap(buildings);
-  }, [buildings, settings.showHeatmap]);
+  }, [buildings, settings.showHeatmap, settings.plannerMode]);
+
+  // Center canvas in viewport helper
+  const centerCanvasInViewport = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (containerRef.current) {
+        const el = containerRef.current;
+        el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
+        el.scrollTop = Math.max(0, (el.scrollHeight - el.clientHeight) / 2);
+      }
+    });
+  }, []);
+
+  // Fit to frame calculation: determines the scale to fit the 44x44 board completely inside the viewport
+  const calculateFitScale = useCallback(() => {
+    if (!containerRef.current) return null;
+    const el = containerRef.current;
+    // 32px safe margin (16px padding on each side)
+    const availW = Math.max(120, el.clientWidth - 32);
+    const availH = Math.max(120, el.clientHeight - 32);
+    const scale = Math.min(availW / BASE_BOARD_PIXELS, availH / BASE_BOARD_PIXELS);
+    return Math.max(0.35, Math.min(1.6, Number(scale.toFixed(2))));
+  }, []);
+
+  // Responsive ResizeObserver: when zoomMode is 'fit', automatically adjust zoom level on container resize
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateFit = () => {
+      if (zoomMode === "fit") {
+        const fitScale = calculateFitScale();
+        if (fitScale && Math.abs(fitScale - zoomLevel) > 0.01) {
+          onZoomChange?.(fitScale, "fit");
+        }
+        centerCanvasInViewport();
+      }
+    };
+
+    updateFit();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateFit();
+    });
+    resizeObserver.observe(el);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [zoomMode, calculateFitScale, onZoomChange, zoomLevel, centerCanvasInViewport]);
+
+  // Smooth zooming with trackpad pinch or Ctrl/Cmd + Wheel
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        const nextZoom = Math.max(0.35, Math.min(1.8, Number((zoomLevel + delta).toFixed(2))));
+        onZoomChange?.(nextZoom, "manual");
+      }
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [zoomLevel, onZoomChange]);
 
   // Auto-center viewport to show center of base on mount
   useEffect(() => {
-    if (containerRef.current) {
-      const el = containerRef.current;
-      const scrollX = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
-      const scrollY = Math.max(0, (el.scrollHeight - el.clientHeight) / 2);
-      el.scrollLeft = scrollX;
-      el.scrollTop = scrollY;
-    }
-  }, []);
+    centerCanvasInViewport();
+  }, [centerCanvasInViewport]);
 
   // Selected Building lookup
   const selectedPlacedBuilding = useMemo(() => {
@@ -345,28 +422,89 @@ export function CanvasGridBoard({
         ctx.fillText("!", px + pw - 8, py + 8);
       }
 
-      // Building Label (Name & Coord)
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      // Building Label (Name, Level, Coords) with zero overlap
+      if (settings.showBuildingNames || settings.showBuildingLevels || settings.showCoordinates) {
+        const isHovered =
+          hoverCoord &&
+          hoverCoord.x >= b.x &&
+          hoverCoord.x < b.x + def.width &&
+          hoverCoord.y >= b.y &&
+          hoverCoord.y < b.y + def.height;
 
-      const fontSize = Math.max(8, Math.min(11, Math.round(cellSize * 0.55)));
-      ctx.font = `bold ${fontSize}px sans-serif`;
+        const maxTextWidth = Math.max(0, pw - 4); // 2px margin each side
+        const baseFontSize = Math.max(7, Math.min(11, Math.round(cellSize * 0.52)));
+        ctx.font = `bold ${baseFontSize}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
 
-      const textY = py + ph / 2 - (ph >= 3 * cellSize ? 4 : 0);
-      if (settings.showBuildingNames) {
-        const displayName = def.name.length > 12 && def.width <= 3 ? def.name.slice(0, 10) + ".." : def.name;
-        ctx.fillText(displayName, px + pw / 2, textY);
-      }
-      
-      if (settings.showBuildingLevels && b.level) {
-        ctx.font = `bold ${Math.max(7, fontSize - 2)}px sans-serif`;
-        ctx.fillStyle = isSelected ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0.75)";
-        ctx.fillText(`Lvl ${b.level}`, px + pw / 2, textY + (settings.showBuildingNames ? fontSize + 2 : 0));
-      } else if (ph >= 3 * cellSize && settings.showCoordinates) {
-        ctx.font = `normal ${Math.max(7, fontSize - 2.5)}px sans-serif`;
-        ctx.fillStyle = isSelected ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0.75)";
-        ctx.fillText(`${b.x},${b.y}`, px + pw / 2, textY + (settings.showBuildingNames ? fontSize + 1 : 0));
+        // Selective density: on small buildings, hide name at very small zooms unless hovered/selected
+        let shouldDrawName = settings.showBuildingNames;
+        if (cellSize < 12) {
+          if (def.width < 4 && !isSelected && !isHovered) {
+            shouldDrawName = false;
+          }
+        } else if (cellSize < 15) {
+          if (def.width <= 2 && !isSelected && !isHovered) {
+            shouldDrawName = false;
+          }
+        }
+
+        if (shouldDrawName && maxTextWidth >= 16) {
+          // Mathematical truncation with measureText: guarantee it NEVER overflows pw - 4
+          let displayName = def.name;
+          if (ctx.measureText(displayName).width > maxTextWidth) {
+            let left = 1;
+            let right = def.name.length - 1;
+            let best = "";
+            while (left <= right) {
+              const mid = Math.floor((left + right) / 2);
+              const testStr = def.name.slice(0, mid) + "..";
+              if (ctx.measureText(testStr).width <= maxTextWidth) {
+                best = testStr;
+                left = mid + 1;
+              } else {
+                right = mid - 1;
+              }
+            }
+            displayName = best;
+          }
+
+          if (displayName) {
+            const hasSubText =
+              (settings.showBuildingLevels && b.level && ph >= 2 * cellSize + 6) ||
+              (settings.showCoordinates && ph >= 3 * cellSize && cellSize >= 14);
+            const textY = py + ph / 2 - (hasSubText ? Math.round(baseFontSize * 0.55) : 0);
+
+            // Subtle dark background backing / drop shadow for crisp legibility
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillText(displayName, px + pw / 2, textY + 1);
+            ctx.fillStyle = isSelected ? "#ffffff" : "#f8fafc";
+            ctx.fillText(displayName, px + pw / 2, textY);
+
+            // Secondary row: Level or Coordinates
+            if (settings.showBuildingLevels && b.level && ph >= 2 * cellSize + 6) {
+              const subFontSize = Math.max(7, baseFontSize - 2);
+              ctx.font = `bold ${subFontSize}px sans-serif`;
+              const subText = cellSize < 15 ? `L${b.level}` : `Lvl ${b.level}`;
+              if (ctx.measureText(subText).width <= maxTextWidth) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillText(subText, px + pw / 2, textY + baseFontSize + 2);
+                ctx.fillStyle = isSelected ? "#fef08a" : "rgba(255, 255, 255, 0.85)";
+                ctx.fillText(subText, px + pw / 2, textY + baseFontSize + 1);
+              }
+            } else if (settings.showCoordinates && ph >= 3 * cellSize && cellSize >= 14) {
+              const subFontSize = Math.max(7, baseFontSize - 2);
+              ctx.font = `normal ${subFontSize}px sans-serif`;
+              const coordText = `${b.x},${b.y}`;
+              if (ctx.measureText(coordText).width <= maxTextWidth) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillText(coordText, px + pw / 2, textY + baseFontSize + 2);
+                ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+                ctx.fillText(coordText, px + pw / 2, textY + baseFontSize + 1);
+              }
+            }
+          }
+        }
       }
     }
 
@@ -529,10 +667,25 @@ export function CanvasGridBoard({
   // MOUSE & POINTER EVENTS (O(1) FAST)
   // ==========================================
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return; // Left click only
+    if (e.button !== 0 && e.button !== 1) return; // Left or Middle click
     setIsPointerDown(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     dragActionCommittedRef.current = false;
+
+    // Middle click pan
+    if (e.button === 1) {
+      e.preventDefault();
+      if (containerRef.current) {
+        setIsPanning(true);
+        panStartRef.current = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          scrollLeft: containerRef.current.scrollLeft,
+          scrollTop: containerRef.current.scrollTop,
+        };
+      }
+      return;
+    }
 
     const coord = getTileFromEvent(e);
     if (!coord) return;
@@ -595,10 +748,29 @@ export function CanvasGridBoard({
       }
     } else {
       onSelectPlacedId(null);
+      // Empty background clicked -> start panning viewport
+      if (containerRef.current) {
+        setIsPanning(true);
+        panStartRef.current = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          scrollLeft: containerRef.current.scrollLeft,
+          scrollTop: containerRef.current.scrollTop,
+        };
+      }
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Panning canvas
+    if (isPanning && panStartRef.current && containerRef.current) {
+      const dx = e.clientX - panStartRef.current.clientX;
+      const dy = e.clientY - panStartRef.current.clientY;
+      containerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+      containerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+      return;
+    }
+
     const coord = getTileFromEvent(e);
     setHoverCoord(coord);
 
@@ -643,6 +815,10 @@ export function CanvasGridBoard({
     setIsPointerDown(false);
     setIsPaintingWalls(false);
     setIsErasing(false);
+    if (isPanning) {
+      setIsPanning(false);
+      panStartRef.current = null;
+    }
     e.currentTarget.releasePointerCapture(e.pointerId);
 
     if (activeDrag) {
@@ -937,8 +1113,16 @@ export function CanvasGridBoard({
         tabIndex={0}
         aria-label="Bản đồ Clash of Clans"
         role="application"
-        className={`grid-canvas-board outline-none ${settings.wallBrushActive ? "brush-mode" : ""} ${
-          settings.eraserActive ? "eraser-mode" : ""
+        className={`grid-canvas-board outline-none ${
+          isPanning
+            ? "cursor-grabbing"
+            : settings.wallBrushActive
+            ? "brush-mode"
+            : settings.eraserActive
+            ? "eraser-mode"
+            : selectedDefId
+            ? "cursor-copy"
+            : "cursor-crosshair"
         }`}
         style={{
           width: `${boardPixelSize}px`,

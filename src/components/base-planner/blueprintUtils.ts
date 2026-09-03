@@ -1,6 +1,11 @@
 import type { BasePurpose, CreationMethod, LayoutProject, LayoutStatus, PlacedBuilding } from "./types";
 import { validateLayout } from "./LayoutValidator";
-import { CURRENT_CATALOG_VERSION, getTownHallRequirements } from "./catalog";
+import {
+  BUILDING_METADATA_MAP,
+  CURRENT_CATALOG_VERSION,
+  getAllBuildingLimits,
+  getTownHallRequirements,
+} from "./catalog";
 
 /**
  * Normalizes layout name by trimming whitespace and collapsing multiple inner spaces.
@@ -116,6 +121,196 @@ export const METHOD_NAME_TAGS: Record<CreationMethod, string> = {
   import: "Nhập",
 };
 
+export interface LayoutPlacementStats {
+  validBuildings: PlacedBuilding[];
+  placedCount: number;
+  requiredTotal: number;
+  requiredBuildings: number;
+  requiredTraps: number;
+  requiredWalls: number;
+  missingCount: number;
+  placedPercentage: number;
+  invalidCount: number;
+  isComplete: boolean;
+}
+
+/**
+ * Accurately calculates placed count and required totals from actual valid objects on the map.
+ * Strictly excludes:
+ * - Duplicate instance IDs
+ * - Objects out of 44x44 bounds
+ * - Objects not in Town Hall catalog
+ * - Objects exceeding building limit
+ * - Corrupted / NaN coordinates
+ */
+export function getLayoutPlacementStats(
+  layout: { buildings?: PlacedBuilding[]; townHallLevel?: number } | null | undefined
+): LayoutPlacementStats {
+  const th = Math.max(1, Math.min(18, Math.trunc(layout?.townHallLevel || 11)));
+  const reqs = getTownHallRequirements(th);
+  const limits = getAllBuildingLimits(th);
+
+  if (!layout || !Array.isArray(layout.buildings)) {
+    return {
+      validBuildings: [],
+      placedCount: 0,
+      requiredTotal: reqs.total,
+      requiredBuildings: reqs.buildings,
+      requiredTraps: reqs.traps,
+      requiredWalls: reqs.walls,
+      missingCount: reqs.total,
+      placedPercentage: 0,
+      invalidCount: 0,
+      isComplete: false,
+    };
+  }
+
+  const seenInstanceIds = new Set<string>();
+  const buildingCounts: Record<string, number> = {};
+  const validBuildings: PlacedBuilding[] = [];
+  let invalidCount = 0;
+
+  for (const b of layout.buildings) {
+    if (
+      !b ||
+      typeof b.buildingId !== "string" ||
+      typeof b.x !== "number" ||
+      typeof b.y !== "number" ||
+      isNaN(b.x) ||
+      isNaN(b.y)
+    ) {
+      invalidCount++;
+      continue;
+    }
+
+    // Check duplicate instanceId
+    if (b.instanceId) {
+      if (seenInstanceIds.has(b.instanceId)) {
+        invalidCount++;
+        continue;
+      }
+      seenInstanceIds.add(b.instanceId);
+    }
+
+    // Check building exists in catalog
+    const meta = BUILDING_METADATA_MAP[b.buildingId];
+    const maxLimit = limits[b.buildingId] || 0;
+    if (!meta || maxLimit <= 0) {
+      invalidCount++;
+      continue;
+    }
+
+    // Check within 44x44 bounds
+    const w = meta.width;
+    const h = meta.height;
+    if (b.x < 0 || b.y < 0 || b.x + w > 44 || b.y + h > 44) {
+      invalidCount++;
+      continue;
+    }
+
+    // Check limit not exceeded
+    const currentCount = buildingCounts[b.buildingId] || 0;
+    if (currentCount >= maxLimit) {
+      invalidCount++;
+      continue;
+    }
+
+    buildingCounts[b.buildingId] = currentCount + 1;
+    validBuildings.push(b);
+  }
+
+  const placedCount = validBuildings.length;
+  const missingCount = Math.max(0, reqs.total - placedCount);
+  const placedPercentage = reqs.total > 0 ? Math.min(100, Math.round((placedCount / reqs.total) * 100)) : 0;
+  const isComplete = placedCount === reqs.total && invalidCount === 0;
+
+  return {
+    validBuildings,
+    placedCount,
+    requiredTotal: reqs.total,
+    requiredBuildings: reqs.buildings,
+    requiredTraps: reqs.traps,
+    requiredWalls: reqs.walls,
+    missingCount,
+    placedPercentage,
+    invalidCount,
+    isComplete,
+  };
+}
+
+/**
+ * Formats timestamps into natural, user-friendly Vietnamese text:
+ * - "Vừa cập nhật"
+ * - "5 phút trước"
+ * - "Hôm qua, 12:28"
+ * - "03/09/2026, 12:28"
+ */
+export function formatRelativeUpdateTime(dateInput: string | number | Date | undefined | null): string {
+  if (!dateInput) return "Chưa xác định";
+  const d = new Date(dateInput);
+  const time = d.getTime();
+  if (isNaN(time)) return "Chưa xác định";
+
+  const now = Date.now();
+  const diffMs = now - time;
+
+  if (diffMs < 60 * 1000) {
+    return "Vừa cập nhật";
+  }
+  const diffMinutes = Math.floor(diffMs / (60 * 1000));
+  if (diffMinutes < 60) {
+    return `${diffMinutes} phút trước`;
+  }
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    const nowDate = new Date();
+    if (nowDate.getDate() === d.getDate() && nowDate.getMonth() === d.getMonth() && nowDate.getFullYear() === d.getFullYear()) {
+      return `${diffHours} giờ trước`;
+    }
+  }
+
+  const nowMidnight = new Date();
+  nowMidnight.setHours(0, 0, 0, 0);
+  const yesterdayMidnight = new Date(nowMidnight.getTime() - 24 * 60 * 60 * 1000);
+  const targetMidnight = new Date(d);
+  targetMidnight.setHours(0, 0, 0, 0);
+
+  const hoursStr = String(d.getHours()).padStart(2, "0");
+  const minsStr = String(d.getMinutes()).padStart(2, "0");
+
+  if (targetMidnight.getTime() === yesterdayMidnight.getTime()) {
+    return `Hôm qua, ${hoursStr}:${minsStr}`;
+  }
+
+  const dayStr = String(d.getDate()).padStart(2, "0");
+  const monthStr = String(d.getMonth() + 1).padStart(2, "0");
+  const yearStr = d.getFullYear();
+
+  return `${dayStr}/${monthStr}/${yearStr}, ${hoursStr}:${minsStr}`;
+}
+
+/**
+ * Determines whether a name is an overly generic default placeholder
+ * such as "TH15", "Untitled", "Bản thiết kế mới"
+ */
+export function isGenericDefaultName(name: string): boolean {
+  const norm = normalizeLayoutName(name).toLowerCase();
+  if (!norm) return true;
+  if (/^th\s*\d{1,2}$/i.test(norm)) return true;
+  if (
+    norm === "untitled" ||
+    norm === "bản thiết kế mới" ||
+    norm === "new layout" ||
+    norm === "bản thiết kế" ||
+    norm === "bản đồ mới" ||
+    norm === "imported base" ||
+    norm === "bản sao"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Generates duplicate name per specification:
  * "<Tên cũ> — Bản sao"
@@ -192,33 +387,21 @@ export function computeLayoutStatus(layout: LayoutProject): LayoutStatus {
     return "data-error";
   }
 
-  for (const b of layout.buildings) {
-    if (
-      !b ||
-      typeof b.buildingId !== "string" ||
-      typeof b.x !== "number" ||
-      typeof b.y !== "number" ||
-      isNaN(b.x) ||
-      isNaN(b.y) ||
-      b.x < 0 ||
-      b.x > 43 ||
-      b.y < 0 ||
-      b.y > 43
-    ) {
-      return "data-error";
-    }
+  const stats = getLayoutPlacementStats(layout);
+
+  if (stats.invalidCount > 0) {
+    return "data-error";
   }
 
   if (layout.catalogVersion && layout.catalogVersion !== CURRENT_CATALOG_VERSION) {
     return "needs-update";
   }
 
-  const reqs = getTownHallRequirements(layout.townHallLevel);
-  if (layout.buildings.length < reqs.total) {
+  if (stats.placedCount < stats.requiredTotal) {
     return "draft";
   }
 
-  const validation = validateLayout(layout.buildings, layout.townHallLevel);
+  const validation = validateLayout(stats.validBuildings, layout.townHallLevel);
   if (!validation.isValid || validation.issues.length > 0) {
     const hasCritical = validation.issues.some((i) => i.type === "critical");
     if (hasCritical) {
@@ -439,15 +622,23 @@ export function migrateSavedLayouts(rawList: unknown[]): LayoutProject[] {
     const purpose = inferPurpose(rawName, r.purpose);
     const creationMethod = inferCreationMethod(rawName, r.creationMethod);
 
-    // 5. Align name with actual TH
-    let baseName = alignNameWithTownHall(rawName || `Bố cục TH${th}`, th);
+    // 5. Align name: Only rename if name is empty or an overly generic default like "TH15", "Untitled"
+    let baseName: string;
+    if (isGenericDefaultName(rawName)) {
+      baseName = generateUniqueBlueprintName(
+        { townHallLevel: th, purpose, method: creationMethod },
+        assignedLayouts,
+        id
+      );
+    } else {
+      baseName = alignNameWithTownHall(rawName, th);
+    }
 
     // 6. Ensure uniqueness in assigned list
     let finalName = baseName;
     let duplicateCounter = 2;
     while (isLayoutNameDuplicate(finalName, assignedLayouts, id)) {
       const pad = String(duplicateCounter).padStart(2, "0");
-      // If baseName already ends with a suffix like " 01" or " (Bản sao)", replace cleanly
       if (/\b\d{2}$/.test(baseName)) {
         finalName = baseName.replace(/\b\d{2}$/, pad);
       } else {
@@ -459,7 +650,7 @@ export function migrateSavedLayouts(rawList: unknown[]): LayoutProject[] {
     const createdAt = typeof r.createdAt === "string" && r.createdAt ? r.createdAt : now;
     const updatedAt = typeof r.updatedAt === "string" && r.updatedAt ? r.updatedAt : now;
 
-    const project: LayoutProject = {
+    const projectWithoutStatus: Omit<LayoutProject, "status"> = {
       id,
       name: finalName,
       townHallLevel: th,
@@ -475,6 +666,11 @@ export function migrateSavedLayouts(rawList: unknown[]): LayoutProject[] {
       isPinned: Boolean(r.isPinned),
       deletedAt: typeof r.deletedAt === "string" ? r.deletedAt : undefined,
       sourceLayoutId: typeof r.sourceLayoutId === "string" ? r.sourceLayoutId : undefined,
+    };
+
+    const project: LayoutProject = {
+      ...projectWithoutStatus,
+      status: computeLayoutStatus(projectWithoutStatus as LayoutProject),
     };
 
     assignedLayouts.push(project);

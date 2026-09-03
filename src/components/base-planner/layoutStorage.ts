@@ -673,6 +673,21 @@ export function updateLayoutToCurrentCatalog(layoutId: string): {
 }
 
 /**
+ * Automatically places missing buildings, traps, and walls for an incomplete/draft layout.
+ * Always creates a checkpoint before adding objects to allow safe rollback.
+ */
+export function supplementMissingObjects(layoutId: string): {
+  updatedLayout: LayoutProject;
+  addedCount: number;
+} {
+  const { updatedLayout, report } = updateLayoutToCurrentCatalog(layoutId);
+  return {
+    updatedLayout,
+    addedCount: report.addedBuildings.length,
+  };
+}
+
+/**
  * Serializes single layout data to JSON string
  */
 export function serializeLayout(layout: LayoutProject): string {

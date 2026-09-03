@@ -581,8 +581,8 @@ export const TH_COUNTS_REGISTRY: Record<number, Record<string, number>> = {
   },
   16: {
     "town-hall": 1,
-    "cannon": 5, // 2 cannons merged into ricochet-cannon
-    "archer-tower": 6, // 2 archer towers merged into multi-archer-tower
+    "cannon": 3, // 4 cannons merged into 2 ricochet-cannons (7 - 4 = 3 regular)
+    "archer-tower": 4, // 4 archer towers merged into 2 multi-archer-towers (8 - 4 = 4 regular)
     "multi-archer-tower": 2,
     "ricochet-cannon": 2,
     "mortar": 4,
