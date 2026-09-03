@@ -2,63 +2,11 @@ import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import type { BuildingDef, ChainDangerPair, PlacedBuilding } from "./types";
 
 /**
- * Checks if a building at (x, y) with (width, height) is strictly inside 44x44 grid
- */
-export function isWithinBounds(x: number, y: number, width: number, height: number): boolean {
-  return x >= 0 && y >= 0 && x + width <= GRID_SIZE && y + height <= GRID_SIZE;
-}
-
-/**
- * Checks if two bounding boxes overlap
- */
-export function doBuildingsOverlap(
-  x1: number,
-  y1: number,
-  w1: number,
-  h1: number,
-  x2: number,
-  y2: number,
-  w2: number,
-  h2: number
-): boolean {
-  return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
-}
-
-/**
- * Validates whether a building placement or move is legal
- */
-export function checkPlacementValidity(
-  buildingId: string,
-  x: number,
-  y: number,
-  currentPlaced: PlacedBuilding[],
-  ignoreInstanceId?: string
-): { valid: boolean; reason?: "out_of_bounds" | "overlap" } {
-  const def = BUILDINGS_BY_ID.get(buildingId);
-  if (!def) return { valid: false, reason: "out_of_bounds" };
-
-  if (!isWithinBounds(x, y, def.width, def.height)) {
-    return { valid: false, reason: "out_of_bounds" };
-  }
-
-  for (const item of currentPlaced) {
-    if (ignoreInstanceId && item.instanceId === ignoreInstanceId) continue;
-    const itemDef = BUILDINGS_BY_ID.get(item.buildingId);
-    if (!itemDef) continue;
-
-    if (doBuildingsOverlap(x, y, def.width, def.height, item.x, item.y, itemDef.width, itemDef.height)) {
-      return { valid: false, reason: "overlap" };
-    }
-  }
-
-  return { valid: true };
-}
-
-/**
- * Computes edge-to-edge Chebyshev gap distance in tiles between two rectangular buildings.
- * If touching or overlapping: 0.
- * If 1 tile empty space between them: 1.
- * If 2 tiles empty space between them: 2.
+ * ĐỊNH NGHĨA KHOẢNG CÁCH DUY NHẤT (EDGE-TO-EDGE):
+ * Đo khoảng cách rỗng (gap) giữa 2 viền công trình theo Chebyshev distance (tối đa của dx, dy).
+ * - Nếu chạm nhau hoặc đè lên nhau: khoảng cách = 0 ô.
+ * - Nếu cách nhau đúng 1 ô trống: khoảng cách = 1 ô (Sét lan truyền được).
+ * - Nếu cách nhau 2 ô trống: khoảng cách = 2 ô (Sét lan KHÔNG truyền được, nhưng nằm trong diện cảnh báo Zap/Earthquake).
  */
 export function getTileGap(
   x1: number,
@@ -77,12 +25,12 @@ export function getTileGap(
 
 /**
  * Scans all placed non-wall buildings and detects pairs that are ≤ maxGap (default 2 tiles) apart.
- * In Clash of Clans, Electro Dragon chain lightning travels up to 2 tiles between buildings.
+ * In Clash of Clans, Electro Dragon chain lightning travels up to 1 tile (gap <= 1). 2 tiles is considered a warning for Zap/Earthquake or slight misplacements. between buildings.
  * Lightning (Zap) and Earthquake spells also exploit closely packed core defenses.
  */
 export function scanChainLightningHazards(
   buildings: PlacedBuilding[],
-  maxGap = 1
+  maxGap = 2
 ): {
   dangerPairs: ChainDangerPair[];
   vulnerableInstanceIds: Set<string>;

@@ -23,13 +23,58 @@ export interface PlacedBuilding {
   level?: number;
 }
 
+export type BasePurpose =
+  | "war"
+  | "trophy"
+  | "farming"
+  | "hybrid"
+  | "progress"
+  | "showcase";
+
+export type CreationMethod = "auto" | "template" | "blank" | "copy" | "import";
+
+export type LayoutStatus =
+  | "valid"
+  | "draft"
+  | "warning"
+  | "needs-update"
+  | "data-error";
+
 export interface LayoutProject {
   id: string;
   name: string;
   townHallLevel: number;
+  purpose: BasePurpose;
+  creationMethod: CreationMethod;
+  status?: LayoutStatus;
+  templateId?: string;
+  pattern?: string;
+  seed?: number | string;
   buildings: PlacedBuilding[];
   createdAt: string;
   updatedAt: string;
+  catalogVersion: string;
+  isPinned?: boolean;
+  deletedAt?: string;
+  sourceLayoutId?: string;
+}
+
+export interface LayoutCheckpoint {
+  id: string;
+  layoutId: string;
+  timestamp: string;
+  reason: string;
+  buildings: PlacedBuilding[];
+  catalogVersion: string;
+  townHallLevel: number;
+}
+
+export interface LayoutLibraryBundle {
+  app: "ClashPath-BasePlanner";
+  version: 2;
+  exportDate: string;
+  catalogVersion: string;
+  layouts: LayoutProject[];
 }
 
 export interface BaseLayoutData {
@@ -41,18 +86,22 @@ export interface BaseLayoutData {
   updatedAt: string;
 }
 
+export type PlannerMode = "design" | "analysis";
 export type RangeDisplayMode = "all" | "selected" | "none";
+export type ChainLightningMode = "all" | "selected" | "none";
 
 export interface TacticalSettings {
   showRanges: RangeDisplayMode;
-  showChainLightning: boolean;
+  showChainLightning: ChainLightningMode;
   showHeatmap: boolean;
   showDefenseScore: boolean;
   showGrid: boolean;
   showCoordinates: boolean;
   wallBrushActive: boolean;
   eraserActive: boolean;
-  chainMaxDistance: number; // 1 or 2 tiles
+  plannerMode: PlannerMode;
+  showBuildingNames: boolean;
+  showBuildingLevels: boolean; // 1 or 2 tiles
 }
 
 export interface ChainDangerPair {

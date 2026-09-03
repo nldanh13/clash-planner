@@ -282,10 +282,13 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   gap: 16px;
   align-items: start;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 @media (max-width: 1024px) {
   .planner-workspace-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 100%;
+    gap: 12px;
   }
 }
 
@@ -563,6 +566,9 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .grid-canvas-viewport {
@@ -570,13 +576,27 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 18px;
+  padding: 16px;
   background: radial-gradient(circle at center, #172d1f 0%, #0d1a12 65%, #07100b 100%);
   border: 1px solid #2d4536;
   border-radius: 14px;
   overflow: auto;
-  min-height: 600px;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 520px;
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 640px) {
+  .grid-canvas-viewport {
+    padding: 8px;
+    min-height: 380px;
+    max-height: 68vh;
+    border-radius: 10px;
+  }
 }
 
 .chain-alert-banner {
@@ -844,4 +864,23 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@media (max-width: 640px) {
+  .app.base-planner-full {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .base-planner-module {
+    margin-top: 10px;
+    gap: 10px;
+  }
+  .building-inspector-card {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: calc(100vw - 32px);
+  }
+}
+
 

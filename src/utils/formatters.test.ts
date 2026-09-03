@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTag, pct, fmtTime, fmtCost } from "./formatters";
+import { normalizeTag, pct, fmtTime, fmtTimeExact, fmtCost } from "./formatters";
 
 describe("formatters", () => {
   it("normalizeTag chuẩn hóa Player Tag", () => {
@@ -14,11 +14,28 @@ describe("formatters", () => {
     expect(pct([])).toBe(0);
   });
 
-  it("fmtTime định dạng thời gian hợp lý", () => {
+    it("fmtTime định dạng thời gian hợp lý (0 giờ, dưới 1 năm, trên 1 năm)", () => {
+    // Thời gian bằng 0
     expect(fmtTime(0)).toBe("Không tốn thời gian");
+    
+    // Một thợ / nhiều thợ hoặc các hàng chờ khác (chỉ là format giờ)
     expect(fmtTime(12)).toBe("12 giờ");
     expect(fmtTime(24)).toBe("1 ngày");
     expect(fmtTime(26)).toBe("1 ngày 2 giờ");
+    
+    // Builder so với các hàng chờ khác: 5 thợ (ví dụ 10 ngày chia 5)
+    expect(fmtTime(240 / 5)).toBe("2 ngày");
+    
+    // Thời gian lớn hơn một năm (vd: 400 ngày)
+    expect(fmtTime(400 * 24)).toBe("1 năm 1 tháng");
+    expect(fmtTime(365 * 24)).toBe("1 năm");
+    expect(fmtTime(750 * 24)).toBe("2 năm");
+  });
+
+  it("fmtTimeExact luôn giữ số ngày/giờ chính xác", () => {
+    expect(fmtTimeExact(400 * 24)).toBe("400 ngày");
+    expect(fmtTimeExact(400 * 24 + 5)).toBe("400 ngày 5 giờ");
+    expect(fmtTimeExact(0)).toBe("Không tốn thời gian");
   });
 
   it("fmtCost tính toán tài nguyên", () => {

@@ -1,28 +1,39 @@
 import React, { useRef } from "react";
 import {
-  AlertTriangle,
-  Award,
-  Clock,
   Crosshair,
   Download,
+  Edit3,
+  Eye,
+  EyeOff,
   Flame,
-  FolderOpen,
-  Image as ImageIcon,
+  ImageIcon,
   Layers,
+  LayoutTemplate,
+  Maximize,
   Redo2,
   RefreshCw,
-  RotateCcw,
+  Save,
+  ScanSearch,
+  ShieldAlert,
   Sparkles,
   Trash2,
   Undo2,
   Upload,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
-import type { DefenseScoreResult, RangeDisplayMode, TacticalSettings } from "./types";
+import type {
+  ChainLightningMode,
+  DefenseScoreResult,
+  PlannerMode,
+  RangeDisplayMode,
+  TacticalSettings,
+} from "./types";
 
 interface TacticalToolbarProps {
-  townHallLevel: number;
-  onTownHallChange: (th: number) => void;
+  townHallLevel?: number;
+  onTownHallChange?: (th: number) => void;
   settings: TacticalSettings;
   onUpdateSettings: (updater: (prev: TacticalSettings) => TacticalSettings) => void;
   canUndo: boolean;
@@ -30,7 +41,8 @@ interface TacticalToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onClear: () => void;
-  onLoadPreset: () => void;
+  onLoadPreset?: () => void;
+  onOpenAutoGenerator?: () => void;
   onExportPNG: () => void;
   onExportJSON: () => void;
   onImportJSON: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -38,15 +50,14 @@ interface TacticalToolbarProps {
   zoomLevel: number;
   onZoomChange: (zoom: number) => void;
   placedCount: number;
-  defenseScore?: DefenseScoreResult;
+  defenseScore: DefenseScoreResult | null;
   activeLayoutName?: string;
   onOpenLayoutManager?: () => void;
   autoSaveTime?: string | null;
+  onFitMap: () => void;
 }
 
-export function TacticalToolbar({
-  townHallLevel,
-  onTownHallChange,
+const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
   settings,
   onUpdateSettings,
   canUndo,
@@ -54,308 +65,305 @@ export function TacticalToolbar({
   onUndo,
   onRedo,
   onClear,
-  onLoadPreset,
   onExportPNG,
   onExportJSON,
   onImportJSON,
-  chainIssuesCount,
   zoomLevel,
   onZoomChange,
   placedCount,
-  defenseScore,
-  activeLayoutName,
-  onOpenLayoutManager,
-  autoSaveTime,
-}: TacticalToolbarProps) {
+  onFitMap,
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const setMode = (mode: PlannerMode) => {
+    onUpdateSettings((s) => ({ ...s, plannerMode: mode }));
+  };
 
   const cycleRangeMode = () => {
     onUpdateSettings((s) => {
-      const next: RangeDisplayMode =
-        s.showRanges === "none" ? "selected" : s.showRanges === "selected" ? "all" : "none";
+      const modes: RangeDisplayMode[] = ["none", "selected", "all"];
+      const next = modes[(modes.indexOf(s.showRanges) + 1) % modes.length];
       return { ...s, showRanges: next };
     });
   };
 
+  const cycleChainMode = () => {
+    onUpdateSettings((s) => {
+      const modes: ChainLightningMode[] = ["none", "selected", "all"];
+      const next = modes[(modes.indexOf(s.showChainLightning) + 1) % modes.length];
+      return { ...s, showChainLightning: next };
+    });
+  };
+
   return (
-    <div className="flex flex-row items-center gap-2 flex-wrap bg-slate-900/90 border border-slate-800 rounded-xl p-2 shadow-lg w-full text-slate-200">
-      {/* Hidden File Input for JSON import - Never visible */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={onImportJSON}
-        accept=".json,application/json"
-        style={{ display: "none" }}
-        className="hidden"
-      />
-
-      {/* CLUSTER 1: Project & TH Preset */}
-      <div className="flex items-center gap-1.5 bg-slate-950/70 p-1 rounded-lg border border-slate-800">
-        {onOpenLayoutManager && (
+    <div className="flex flex-col gap-2 w-full max-w-full min-w-0 mb-3 select-none">
+      {/* Hàng 1: “Thiết kế”, “Phân tích”, “Tên”, “Cấp” */}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 flex-wrap">
+        <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg">
           <button
-            onClick={onOpenLayoutManager}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer"
-            title="Quản lý bản thiết kế (Lưu, đổi tên, nhân bản)"
+            onClick={() => setMode("design")}
+            className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              settings.plannerMode === "design"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+            aria-label="Chế độ Thiết kế"
           >
-            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span className="max-w-[120px] truncate">{activeLayoutName || "Bản thiết kế"}</span>
+            <Edit3 className="w-4 h-4" />
+            <span>Thiết kế</span>
           </button>
-        )}
-
-        {/* Town Hall Selector */}
-        <div className="flex items-center gap-1 px-1.5">
-          <span className="text-[10px] font-black text-amber-400 font-mono">TH</span>
-          <select
-            value={townHallLevel}
-            onChange={(e) => onTownHallChange(Number(e.target.value))}
-            className="bg-slate-900 text-white font-black text-xs px-2 py-1 rounded border border-slate-700 outline-none cursor-pointer focus:border-amber-400"
-            title="Chọn cấp Town Hall (1 - 18)"
+          <button
+            onClick={() => setMode("analysis")}
+            className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              settings.plannerMode === "analysis"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+            aria-label="Chế độ Phân tích"
           >
-            {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => (
-              <option key={lvl} value={lvl} className="bg-slate-900 text-white">
-                TH {lvl}
-              </option>
-            ))}
-          </select>
+            <ScanSearch className="w-4 h-4" />
+            <span>Phân tích</span>
+          </button>
         </div>
 
-        {/* Preset Sample Button */}
-        <button
-          onClick={onLoadPreset}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all cursor-pointer"
-          title={`Nạp mẫu bố cục chuẩn cho TH${townHallLevel}`}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Mẫu TH{townHallLevel}</span>
-        </button>
+        <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg">
+          <button
+            onClick={() => onUpdateSettings((s) => ({ ...s, showBuildingNames: !s.showBuildingNames }))}
+            className={`min-h-[40px] px-3 py-2 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              settings.showBuildingNames
+                ? "bg-slate-700 text-white shadow-sm"
+                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            }`}
+            title="Bật/tắt hiển thị tên công trình"
+            aria-label={settings.showBuildingNames ? "Ẩn tên công trình" : "Hiện tên công trình"}
+          >
+            {settings.showBuildingNames ? <Eye className="w-4 h-4 text-cyan-400" /> : <EyeOff className="w-4 h-4" />}
+            <span>Tên</span>
+          </button>
+          <button
+            onClick={() => onUpdateSettings((s) => ({ ...s, showBuildingLevels: !s.showBuildingLevels }))}
+            className={`min-h-[40px] px-3 py-2 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              settings.showBuildingLevels
+                ? "bg-slate-700 text-white shadow-sm"
+                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            }`}
+            title="Bật/tắt hiển thị cấp độ"
+            aria-label={settings.showBuildingLevels ? "Ẩn cấp độ" : "Hiện cấp độ"}
+          >
+            {settings.showBuildingLevels ? <Eye className="w-4 h-4 text-cyan-400" /> : <EyeOff className="w-4 h-4" />}
+            <span>Cấp</span>
+          </button>
+        </div>
       </div>
 
-      <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-
-      {/* CLUSTER 2: Tactical Analytics (Heatmap, Score, Range, Chain) */}
-      <div className="flex items-center gap-1.5 bg-slate-950/70 p-1 rounded-lg border border-slate-800">
-        {/* Heatmap Toggle */}
-        <button
-          onClick={() => onUpdateSettings((s) => ({ ...s, showHeatmap: !s.showHeatmap }))}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.showHeatmap
-              ? "bg-orange-500/25 text-orange-300 border border-orange-500/60 shadow-sm"
-              : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Bật/Tắt Heatmap phân tích mật độ hỏa lực"
-        >
-          <Flame className={`w-3.5 h-3.5 ${settings.showHeatmap ? "text-orange-400 animate-pulse" : "text-slate-400"}`} />
-          <span>Heatmap</span>
-        </button>
-
-        {/* 3-Star Defense Score Toggle */}
-        <button
-          onClick={() => onUpdateSettings((s) => ({ ...s, showDefenseScore: !s.showDefenseScore }))}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.showDefenseScore
-              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm"
-              : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Bật/Tắt Bảng đánh giá Phòng thủ 3-Sao"
-        >
-          <Award className={`w-3.5 h-3.5 ${settings.showDefenseScore ? "text-cyan-400" : "text-slate-400"}`} />
-          <span>Điểm 3-Sao</span>
-          {defenseScore && (
-            <span
-              className="text-[10px] font-black px-1.5 py-0.5 rounded font-mono ml-0.5 shadow-sm"
-              style={{
-                backgroundColor: `${defenseScore.tierColor}30`,
-                color: defenseScore.tierColor,
-                border: `1px solid ${defenseScore.tierColor}60`,
-              }}
+      {/* Hàng công cụ: Vẽ tường, Tẩy, Undo, Redo (hoặc Heatmap, Điểm, Tầm, Sét lan) */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 flex-wrap">
+        {settings.plannerMode === "design" ? (
+          <>
+            <button
+              onClick={() =>
+                onUpdateSettings((s) => ({
+                  ...s,
+                  wallBrushActive: !s.wallBrushActive,
+                  eraserActive: false,
+                }))
+              }
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.wallBrushActive
+                  ? "bg-cyan-500 text-slate-950 font-black shadow-md"
+                  : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Bật cọ vẽ tường liên tục"
+              aria-label={settings.wallBrushActive ? "Tắt cọ vẽ tường" : "Bật cọ vẽ tường"}
             >
-              {defenseScore.tier} ({defenseScore.totalScore.toFixed(0)})
-            </span>
-          )}
-        </button>
+              <Layers className="w-4 h-4" />
+              <span>Vẽ Tường</span>
+            </button>
 
-        {/* Range Mode Cycle */}
-        <button
-          onClick={cycleRangeMode}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.showRanges !== "none"
-              ? "bg-blue-500/20 text-blue-300 border border-blue-500/50"
-              : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Chuyển chế độ hiển thị tầm bắn: Tắt / Đang chọn / Tất cả"
-        >
-          <Crosshair className="w-3.5 h-3.5 text-blue-400" />
-          <span>
-            Tầm: {settings.showRanges === "none" ? "Tắt" : settings.showRanges === "selected" ? "Chọn" : "Tất cả"}
-          </span>
-        </button>
+            <button
+              onClick={() =>
+                onUpdateSettings((s) => ({
+                  ...s,
+                  eraserActive: !s.eraserActive,
+                  wallBrushActive: false,
+                }))
+              }
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.eraserActive
+                  ? "bg-rose-600 text-white font-black shadow-md"
+                  : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Chế độ Tẩy công trình/tường khi chạm"
+              aria-label={settings.eraserActive ? "Tắt chế độ tẩy" : "Bật chế độ tẩy"}
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Tẩy</span>
+            </button>
 
-        {/* Chain Lightning Hazard Toggle */}
-        <button
-          onClick={() => onUpdateSettings((s) => ({ ...s, showChainLightning: !s.showChainLightning }))}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.showChainLightning
-              ? chainIssuesCount > 0
-                ? "bg-rose-500/20 text-rose-300 border border-rose-500/50"
-                : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50"
-              : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Bật/Tắt Cảnh báo Sét lan (E-Dragon Chain Lightning)"
-        >
-          <Zap className={`w-3.5 h-3.5 ${chainIssuesCount > 0 ? "text-rose-400 animate-pulse" : "text-emerald-400"}`} />
-          <span>Sét lan</span>
-          {chainIssuesCount > 0 && settings.showChainLightning && (
-            <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full font-mono">
-              {chainIssuesCount}
-            </span>
-          )}
-        </button>
+            <div className="w-px h-6 bg-slate-800 hidden sm:block mx-0.5" />
+
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Hoàn tác"
+              aria-label="Hoàn tác"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              title="Làm lại"
+              aria-label="Làm lại"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onClear}
+              disabled={placedCount === 0}
+              className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-rose-950/60 border border-slate-700 text-slate-400 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer ml-auto"
+              title="Dọn sạch toàn bộ công trình trên bản đồ"
+              aria-label="Dọn sạch bản đồ"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => onUpdateSettings((s) => ({ ...s, showHeatmap: !s.showHeatmap }))}
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.showHeatmap
+                  ? "bg-orange-500/25 text-orange-400 border border-orange-500/50 shadow-sm"
+                  : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Bật/tắt bản đồ nhiệt hỏa lực"
+              aria-label="Mật độ hỏa lực Heatmap"
+            >
+              <Flame className="w-4 h-4" />
+              <span>Heatmap</span>
+            </button>
+
+            <button
+              onClick={() => onUpdateSettings((s) => ({ ...s, showDefenseScore: !s.showDefenseScore }))}
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.showDefenseScore
+                  ? "bg-fuchsia-500/25 text-fuchsia-400 border border-fuchsia-500/50 shadow-sm"
+                  : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Bật/tắt bảng điểm phòng thủ tham khảo"
+              aria-label="Bảng điểm phòng thủ"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Điểm</span>
+            </button>
+
+            <button
+              onClick={cycleRangeMode}
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.showRanges !== "none"
+                  ? "bg-blue-500/25 text-blue-300 border border-blue-500/50 shadow-sm"
+                  : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Chuyển chế độ hiển thị tầm bắn"
+              aria-label="Tầm bắn"
+            >
+              <Crosshair className="w-4 h-4" />
+              <span>Tầm: {settings.showRanges === "none" ? "Tắt" : settings.showRanges === "selected" ? "Chọn" : "Tất cả"}</span>
+            </button>
+
+            <button
+              onClick={cycleChainMode}
+              className={`min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                settings.showChainLightning !== "none"
+                  ? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-sm"
+                  : "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-700"
+              }`}
+              title="Chuyển chế độ phân tích sét lan Electro Dragon"
+              aria-label="Sét lan"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Sét: {settings.showChainLightning === "none" ? "Tắt" : settings.showChainLightning === "selected" ? "Chọn" : "Tất cả"}</span>
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-
-      {/* CLUSTER 3: Brush, Eraser & History */}
-      <div className="flex items-center gap-1.5 bg-slate-950/70 p-1 rounded-lg border border-slate-800">
-        {/* Wall Brush Mode */}
-        <button
-          onClick={() =>
-            onUpdateSettings((s) => ({
-              ...s,
-              wallBrushActive: !s.wallBrushActive,
-              eraserActive: false,
-            }))
-          }
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.wallBrushActive
-              ? "bg-cyan-500 text-slate-950 border border-cyan-400 shadow-md font-black"
-              : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Bật/Tắt Cọ vẽ Tường liên tục (Kéo rê chuột)"
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>Vẽ Tường</span>
-        </button>
-
-        {/* Eraser Mode */}
-        <button
-          onClick={() =>
-            onUpdateSettings((s) => ({
-              ...s,
-              eraserActive: !s.eraserActive,
-              wallBrushActive: false,
-            }))
-          }
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-            settings.eraserActive
-              ? "bg-rose-600 text-white border border-rose-500 shadow-md font-black"
-              : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
-          }`}
-          title="Bật/Tắt Chế độ Tẩy nhanh"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span>Tẩy</span>
-        </button>
-
-        {/* Undo */}
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="p-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 transition-all cursor-pointer"
-          title="Hoàn tác (Ctrl+Z)"
-          aria-label="Hoàn tác"
-        >
-          <Undo2 className="w-4 h-4" />
-        </button>
-
-        {/* Redo */}
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="p-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 transition-all cursor-pointer"
-          title="Làm lại (Ctrl+Y)"
-          aria-label="Làm lại"
-        >
-          <Redo2 className="w-4 h-4" />
-        </button>
-
-        {/* Clear Map */}
-        <button
-          onClick={onClear}
-          disabled={placedCount === 0}
-          className="p-1.5 rounded-md bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-800 transition-all cursor-pointer"
-          title="Dọn sạch toàn bộ bản đồ"
-          aria-label="Dọn sạch toàn bộ bản đồ"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="h-6 w-px bg-slate-800 hidden sm:block" />
-
-      {/* CLUSTER 4: Zoom & Export */}
-      <div className="flex items-center gap-1.5 bg-slate-950/70 p-1 rounded-lg border border-slate-800 ml-auto">
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1 px-1">
+      {/* Hàng 4: zoom, vừa bản đồ, nhập, xuất và Xuất PNG */}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0 flex-wrap">
+        <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg">
           <button
             onClick={() => onZoomChange(Math.max(0.6, Number((zoomLevel - 0.1).toFixed(1))))}
-            className="w-6 h-6 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 font-black text-xs flex items-center justify-center border border-slate-800 cursor-pointer"
-            title="Thu nhỏ"
-            aria-label="Thu nhỏ"
+            className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+            title="Thu nhỏ bản đồ (-10%)"
+            aria-label="Thu nhỏ bản đồ"
           >
-            -
+            <ZoomOut className="w-4 h-4" />
           </button>
-          <span className="text-[11px] font-mono font-bold text-slate-300 min-w-[36px] text-center">
+          <span className="text-xs font-mono font-bold text-slate-200 min-w-[42px] text-center select-none">
             {Math.round(zoomLevel * 100)}%
           </span>
           <button
             onClick={() => onZoomChange(Math.min(1.6, Number((zoomLevel + 0.1).toFixed(1))))}
-            className="w-6 h-6 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 font-black text-xs flex items-center justify-center border border-slate-800 cursor-pointer"
-            title="Phóng to"
-            aria-label="Phóng to"
+            className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+            title="Phóng to bản đồ (+10%)"
+            aria-label="Phóng to bản đồ"
           >
-            +
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onFitMap}
+            className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-md text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer ml-0.5"
+            title="Vừa bản đồ và căn giữa"
+            aria-label="Vừa bản đồ và căn giữa"
+          >
+            <Maximize className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Export PNG */}
-        <button
-          onClick={onExportPNG}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all cursor-pointer"
-          title="Xuất ảnh PNG chất lượng cao 2K"
-        >
-          <ImageIcon className="w-3.5 h-3.5" />
-          <span>Xuất PNG</span>
-        </button>
-
-        {/* Export JSON */}
-        <button
-          onClick={onExportJSON}
-          className="p-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all cursor-pointer"
-          title="Tải tệp bố cục JSON"
-          aria-label="Tải tệp bố cục JSON"
-        >
-          <Download className="w-4 h-4" />
-        </button>
-
-        {/* Import JSON Trigger */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all cursor-pointer"
-          title="Nhập tệp bố cục JSON từ máy tính"
-          aria-label="Nhập tệp bố cục JSON"
-        >
-          <Upload className="w-4 h-4" />
-        </button>
-
-        {autoSaveTime && (
-          <div className="hidden lg:flex items-center gap-1 text-[10px] text-slate-400 font-mono px-1">
-            <Clock className="w-3 h-3 text-emerald-400" />
-            <span>{autoSaveTime}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={onImportJSON}
+            accept=".json,application/json"
+            className="hidden"
+            aria-label="Nhập tệp JSON"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+            title="Nhập dữ liệu bố cục từ tệp JSON"
+            aria-label="Nhập tệp JSON"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onExportJSON}
+            className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+            title="Xuất dữ liệu bố cục sang tệp JSON"
+            aria-label="Xuất tệp JSON"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onExportPNG}
+            className="h-[40px] min-h-[40px] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+            title="Xuất bản đồ thành file ảnh PNG"
+            aria-label="Xuất ảnh PNG"
+          >
+            <ImageIcon className="w-4 h-4" />
+            <span>Xuất PNG</span>
+          </button>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default TacticalToolbar;
+

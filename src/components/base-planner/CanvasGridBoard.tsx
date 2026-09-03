@@ -60,8 +60,8 @@ export function CanvasGridBoard({
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isPaintingWalls, setIsPaintingWalls] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
-  const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(true);
-  const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(false);
+  const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(false);
+  const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(true);
   const [isChainAlertExpanded, setIsChainAlertExpanded] = useState(true);
 
   // Scaled dimensions
@@ -85,17 +85,28 @@ export function CanvasGridBoard({
 
   // Scan chain hazards
   const chainAnalysis = useMemo(() => {
-    if (!settings.showChainLightning) {
+    if (settings.showChainLightning === "none") {
       return { dangerPairs: [], vulnerableInstanceIds: new Set<string>(), criticalCount: 0, warningCount: 0 };
     }
-    return scanChainLightningHazards(buildings, settings.chainMaxDistance);
-  }, [buildings, settings.showChainLightning, settings.chainMaxDistance]);
+    return scanChainLightningHazards(buildings, 2);
+  }, [buildings, settings.showChainLightning, 2]);
 
   // Calculate Firepower Heatmap
   const heatmapData = useMemo(() => {
-    if (!settings.showHeatmap) return null;
+    if (settings.plannerMode !== "analysis" || !settings.showHeatmap) return null;
     return calculateFirepowerHeatmap(buildings);
   }, [buildings, settings.showHeatmap]);
+
+  // Auto-center viewport to show center of base on mount
+  useEffect(() => {
+    if (containerRef.current) {
+      const el = containerRef.current;
+      const scrollX = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
+      const scrollY = Math.max(0, (el.scrollHeight - el.clientHeight) / 2);
+      el.scrollLeft = scrollX;
+      el.scrollTop = scrollY;
+    }
+  }, []);
 
   // Selected Building lookup
   const selectedPlacedBuilding = useMemo(() => {
@@ -311,7 +322,7 @@ export function CanvasGridBoard({
         ctx.setLineDash([4, 2]);
         ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
         ctx.setLineDash([]);
-      } else if (isVulnerable && settings.showChainLightning) {
+      } else if (isVulnerable && settings.plannerMode === "analysis" && settings.showChainLightning !== "none") {
         ctx.strokeStyle = "#ff4757";
         ctx.lineWidth = 2;
         ctx.strokeRect(px + 1, py + 1, pw - 2, ph - 2);
@@ -343,13 +354,19 @@ export function CanvasGridBoard({
       ctx.font = `bold ${fontSize}px sans-serif`;
 
       const textY = py + ph / 2 - (ph >= 3 * cellSize ? 4 : 0);
-      const displayName = def.name.length > 12 && def.width <= 3 ? def.name.slice(0, 10) + ".." : def.name;
-      ctx.fillText(displayName, px + pw / 2, textY);
-
-      if (ph >= 3 * cellSize) {
+      if (settings.showBuildingNames) {
+        const displayName = def.name.length > 12 && def.width <= 3 ? def.name.slice(0, 10) + ".." : def.name;
+        ctx.fillText(displayName, px + pw / 2, textY);
+      }
+      
+      if (settings.showBuildingLevels && b.level) {
+        ctx.font = `bold ${Math.max(7, fontSize - 2)}px sans-serif`;
+        ctx.fillStyle = isSelected ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0.75)";
+        ctx.fillText(`Lvl ${b.level}`, px + pw / 2, textY + (settings.showBuildingNames ? fontSize + 2 : 0));
+      } else if (ph >= 3 * cellSize && settings.showCoordinates) {
         ctx.font = `normal ${Math.max(7, fontSize - 2.5)}px sans-serif`;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-        ctx.fillText(`${b.x},${b.y}`, px + pw / 2, textY + fontSize + 1);
+        ctx.fillStyle = isSelected ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0.75)";
+        ctx.fillText(`${b.x},${b.y}`, px + pw / 2, textY + (settings.showBuildingNames ? fontSize + 1 : 0));
       }
     }
 
@@ -399,9 +416,12 @@ export function CanvasGridBoard({
     }
 
     // 6. Chain Lightning Hazard Lines & Badges
-    if (settings.showChainLightning && chainAnalysis.dangerPairs.length > 0) {
+    if (settings.plannerMode === "analysis" && settings.showChainLightning !== "none" && chainAnalysis.dangerPairs.length > 0) {
       for (let i = 0; i < chainAnalysis.dangerPairs.length; i++) {
         const pair = chainAnalysis.dangerPairs[i];
+        if (settings.showChainLightning === "selected" && selectedPlacedId) {
+          if (pair.b1.instanceId !== selectedPlacedId && pair.b2.instanceId !== selectedPlacedId) continue;
+        }
         const cx1 = (pair.b1.x + pair.b1Def.width / 2) * cellSize;
         const cy1 = (pair.b1.y + pair.b1Def.height / 2) * cellSize;
         const cx2 = (pair.b2.x + pair.b2Def.width / 2) * cellSize;
@@ -755,7 +775,7 @@ export function CanvasGridBoard({
   return (
     <div className="grid-canvas-viewport relative" ref={containerRef}>
       {/* SMART COMPACT ALERT: Chain Lightning Hazards (Top-Left Floating Toast) */}
-      {settings.showChainLightning && chainAnalysis.dangerPairs.length > 0 && (
+      {settings.plannerMode === "analysis" && settings.showChainLightning !== "none" && chainAnalysis.dangerPairs.length > 0 && (
         <div className="absolute top-4 left-4 z-30 transition-all">
           {isChainAlertDismissed ? (
             <button

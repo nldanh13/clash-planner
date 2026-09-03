@@ -95,7 +95,7 @@ export function InventorySidebar({
   }, [buildingLimits, placedCounts]);
 
   return (
-    <aside className="w-full lg:w-[320px] shrink-0 flex flex-col gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-3 shadow-xl h-[calc(100vh-140px)] sticky top-20 overflow-hidden text-slate-200">
+    <aside className="w-full lg:w-[320px] shrink-0 flex flex-col gap-2.5 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-3 shadow-xl max-h-[75vh] lg:h-[calc(100vh-140px)] lg:max-h-none lg:sticky lg:top-20 overflow-hidden text-slate-200">
       {/* Header: Search Box */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl">
@@ -119,7 +119,7 @@ export function InventorySidebar({
         </div>
 
         {/* Category Pills Slider */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center flex-wrap gap-1 pb-1">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const isActive = activeCategory === cat.key;

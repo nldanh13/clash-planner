@@ -1,0 +1,47 @@
+  const plan=summarizePlan(plannerItem,currentPlannerLevel,safeTargetLevel,plannerItem.quantity);
+  // --- Upgrade Tracker: một công cụ tính toán duy nhất, 2 cách nhìn -----
+  // (1) "town-hall": duyệt TẤT CẢ nhân tố (bỏ Wall/"Chưa kiểm" — xem
+  // plannerItems), khoảng cách = cấp tối đa cho phép ở Town Hall đã chọn
+  // (maxTownHall, mặc định = TH hiện tại) trừ cấp hiện tại — bức tranh đầy
+  // đủ, không thiên vị lối chơi nào, nhóm theo từng loại nhân tố.
+  const townHallRows=useMemo(()=>plannerItems.map(item=>{
+    const current=currentLevelFor(item,player,manualLevels);
+    const target=targetForTownHall(item,maxTownHall);
+    return {item,current,target,plan:summarizePlan(item,current,target,item.quantity)};
+  }).filter(row=>row.target>row.current&&row.plan.steps.length),[player,manualLevels,maxTownHall]);
+  const townHallGroups=useMemo(()=>trackerKindOrder.map(kind=>{
+    const rows=townHallRows.filter(row=>row.item.kind===kind);
+    const costs=emptyCosts();
+    let totalHours=0;
+    for(const row of rows){addCosts(costs,row.plan.costs);totalHours+=row.plan.totalHours}
+    return {kind,rows,costs,totalHours};
+  }).filter(group=>group.rows.length),[townHallRows]);
+  const townHallTotals=useMemo(()=>{
+    const costs=emptyCosts();
+    const laneHours:Record<UpgradeLane,number>={Builder:0,Laboratory:0,Blacksmith:0,"Pet House":0,Instant:0};
+    let hasEstimated = false;
+    for(const row of townHallRows){
+        if (row.item.dataStatus === "unchecked") continue;
+        if (row.item.dataStatus === "estimated") hasEstimated = true;
+        addCosts(costs,row.plan.costs);
+        laneHours[row.item.lane]+=row.plan.totalHours;
+    }
+    return {costs,laneHours,count:townHallRows.filter(r => r.item.dataStatus !== "unchecked").length, hasEstimated};
+  },[townHallRows]);
+
+  // (2) "suggest": luôn khóa ở Town Hall hiện tại — cùng khoảng cách như
+  // trên, nhưng điểm ưu tiên (priorityFor) được nhân thêm hệ số theo lối
+  // chơi/phong cách tấn công/mối lo phòng thủ đã chọn (styleScoreFor), rồi
+  // xếp hạng để trả lời "nên làm gì tiếp theo" thay vì liệt kê phẳng.
+  const effectiveTownHall=player?.townHallLevel||guestTownHall;
+  const suggestRows=useMemo(()=>{
+    const townHall=player?.townHallLevel||guestTownHall;
+    return plannerItems.map(item=>{
+      const current=currentLevelFor(item,player,manualLevels);
+      const target=targetForTownHall(item,townHall);
+      const plan=summarizePlan(item,current,target,item.quantity);
+      const priority=priorityFor(item);
+      const score=styleScoreFor(item,priority.score,playstyle,attackFocus,defenseFocusPick);
+      const reason=styleReasonFor(item,playstyle,attackFocus,defenseFocusPick)||priority.reason;
+      return {item,current,target,plan,priority,score,reason};
+    }).filter(row=>row.target>row.current&&row.plan.steps.length)

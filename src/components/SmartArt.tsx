@@ -100,7 +100,6 @@ export const resourceClass: Record<Resource, string> = {
   Gold: "res-gold", Elixir: "res-elixir", "Dark Elixir": "res-dark",
   "Shiny Ore": "res-shiny", "Glowy Ore": "res-glowy", "Starry Ore": "res-starry"
 };
-
 export function CostBadges({ costs }: { costs: Partial<Record<Resource, number>> }) {
   const entries = (Object.entries(costs) as [Resource, number][]).filter(([, v]) => (v || 0) > 0);
   if (!entries.length) return <span className="cost-badges"><span className="cost-badge">0</span></span>;
@@ -108,7 +107,7 @@ export function CostBadges({ costs }: { costs: Partial<Record<Resource, number>>
     const Icon = resourceIcon[resource];
     return (
       <span key={resource} className={`cost-badge ${resourceClass[resource]}`} title={resource}>
-        <Icon />
+        <Icon aria-label={resource} />
         {new Intl.NumberFormat("vi-VN").format(Math.round(value))}
       </span>
     );

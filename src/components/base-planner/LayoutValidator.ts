@@ -13,6 +13,7 @@ export interface ValidationIssue {
 export interface ValidationResult {
   isValid: boolean; // True only if there are NO critical issues
   validBuildings: PlacedBuilding[]; // Best-effort array of structurally valid buildings (no overlaps, no out-of-bounds)
+  sanitizedBuildings: PlacedBuilding[]; // Strictly valid buildings (also respects TH limits and unlocks)
   issues: ValidationIssue[];
   hasCriticals: boolean;
   hasWarnings: boolean;
@@ -21,15 +22,16 @@ export interface ValidationResult {
 export function validateLayout(buildings: unknown, thLevel: number): ValidationResult {
   const issues: ValidationIssue[] = [];
   const validBuildings: PlacedBuilding[] = [];
+  const sanitizedBuildings: PlacedBuilding[] = [];
   
   if (!Array.isArray(buildings)) {
     issues.push({ type: "critical", message: "Dữ liệu layout không phải là một mảng hợp lệ." });
-    return { isValid: false, validBuildings: [], issues, hasCriticals: true, hasWarnings: false };
+    return { isValid: false, validBuildings: [], sanitizedBuildings: [], issues, hasCriticals: true, hasWarnings: false };
   }
 
   if (buildings.length > 500) {
     issues.push({ type: "critical", message: `Số lượng công trình quá lớn (${buildings.length}), vượt giới hạn 500.` });
-    return { isValid: false, validBuildings: [], issues, hasCriticals: true, hasWarnings: false };
+    return { isValid: false, validBuildings: [], sanitizedBuildings: [], issues, hasCriticals: true, hasWarnings: false };
   }
 
   const limits = getAllBuildingLimits(thLevel);
@@ -45,12 +47,10 @@ export function validateLayout(buildings: unknown, thLevel: number): ValidationR
     }
 
     const { instanceId, buildingId, x, y } = b as Record<string, unknown>;
-
     if (typeof instanceId !== "string" || !instanceId) {
       issues.push({ type: "critical", message: `Phần tử thứ ${i + 1} thiếu hoặc sai định dạng instanceId.` });
       continue;
     }
-
     if (seenInstanceIds.has(instanceId)) {
       issues.push({ type: "critical", instanceId, message: `Trùng lặp mã công trình (instanceId: ${instanceId}).` });
       continue;
@@ -61,7 +61,6 @@ export function validateLayout(buildings: unknown, thLevel: number): ValidationR
       issues.push({ type: "critical", instanceId, message: `Loại công trình không tồn tại: ${buildingId}.` });
       continue;
     }
-
     if (!Number.isFinite(x) || !Number.isFinite(y) || Math.floor(Number(x)) !== x || Math.floor(Number(y)) !== y) {
       issues.push({ type: "critical", instanceId, message: `Tọa độ x, y không hợp lệ ở công trình ${buildingId}.` });
       continue;
@@ -100,21 +99,25 @@ export function validateLayout(buildings: unknown, thLevel: number): ValidationR
 
     const limit = limits[buildingId] || 0;
     const currentCount = currentCounts[buildingId] || 0;
-
-    if (limit === 0) {
-      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} chưa được mở khóa ở TH${thLevel}.` });
-    } else if (currentCount >= limit) {
-      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} vượt quá giới hạn số lượng ở TH${thLevel} (Tối đa: ${limit}).` });
-    }
-
-    currentCounts[buildingId] = currentCount + 1;
-    validBuildings.push({
+    
+    const validBuilding: PlacedBuilding = {
       instanceId,
       buildingId,
       x: numX,
       y: numY,
       level: typeof (b as any).level === "number" ? (b as any).level : undefined
-    });
+    };
+
+    validBuildings.push(validBuilding);
+
+    if (limit === 0) {
+      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} chưa được mở khóa ở TH${thLevel}.` });
+    } else if (currentCount >= limit) {
+      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} vượt quá giới hạn số lượng ở TH${thLevel} (Tối đa: ${limit}).` });
+    } else {
+      sanitizedBuildings.push(validBuilding);
+      currentCounts[buildingId] = currentCount + 1;
+    }
   }
 
   const hasCriticals = issues.some(i => i.type === "critical");
@@ -123,6 +126,7 @@ export function validateLayout(buildings: unknown, thLevel: number): ValidationR
   return {
     isValid: !hasCriticals,
     validBuildings,
+    sanitizedBuildings,
     issues,
     hasCriticals,
     hasWarnings

@@ -84,6 +84,9 @@ describe("LayoutValidator", () => {
     expect(res.isValid).toBe(true); // Warning, not critical
     expect(res.hasWarnings).toBe(true);
     expect(res.issues.some(i => i.message.includes("vượt quá giới hạn"))).toBe(true);
+    expect(res.validBuildings.length).toBe(2);
+    expect(res.sanitizedBuildings.length).toBe(1);
+    expect(res.sanitizedBuildings[0].instanceId).toBe("1");
   });
 
   it("warns when building is not unlocked at Town Hall", () => {
@@ -94,5 +97,33 @@ describe("LayoutValidator", () => {
     expect(res.isValid).toBe(true);
     expect(res.hasWarnings).toBe(true);
     expect(res.issues.some(i => i.message.includes("chưa được mở khóa"))).toBe(true);
+    expect(res.validBuildings.length).toBe(1);
+    expect(res.sanitizedBuildings.length).toBe(0);
+  });
+
+  it("recovers layout properly by using sanitizedBuildings", () => {
+    const buildings = [
+      { instanceId: "1", buildingId: "town-hall", x: 20, y: 20 },
+      { instanceId: "2", buildingId: "town-hall", x: 10, y: 10 }, // Over limit
+      { instanceId: "3", buildingId: "eagle-artillery", x: 30, y: 30 }, // Locked at TH10
+      { instanceId: "4", buildingId: "cannon", x: 20, y: 20 } // Overlaps with TH
+    ];
+    
+    // First pass
+    const res1 = validateLayout(buildings, 10);
+    expect(res1.isValid).toBe(false); // Has overlap critical error
+    expect(res1.hasWarnings).toBe(true);
+    
+    // Recovery using sanitizedBuildings
+    const res2 = validateLayout(res1.sanitizedBuildings, 10);
+    expect(res2.isValid).toBe(true);
+    expect(res2.hasCriticals).toBe(false);
+    expect(res2.hasWarnings).toBe(false);
+    expect(res2.issues.length).toBe(0);
+    
+    // Only the first valid TH should remain
+    expect(res2.validBuildings.length).toBe(1);
+    expect(res2.validBuildings[0].buildingId).toBe("town-hall");
+    expect(res2.validBuildings[0].instanceId).toBe("1");
   });
 });

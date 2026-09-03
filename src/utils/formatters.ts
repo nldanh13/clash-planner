@@ -13,13 +13,25 @@ export const pct = (items: { level: number; maxLevel: number }[]) =>
 export const fmtNumber = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(Math.round(value));
 
-export const fmtTime = (hours: number) => {
+export const fmtTimeExact = (hours: number) => {
   if (hours <= 0) return "Không tốn thời gian";
   const days = Math.floor(hours / 24),
     rest = Math.round(hours % 24);
   if (days && rest) return `${days} ngày ${rest} giờ`;
   if (days) return `${days} ngày`;
   return `${rest} giờ`;
+};
+
+export const fmtTime = (hours: number, full = false) => {
+  if (hours <= 0) return "Không tốn thời gian";
+  const days = Math.floor(hours / 24);
+  if (!full && days >= 365) {
+    const years = Math.floor(days / 365);
+    const months = Math.floor((days % 365) / 30);
+    if (months > 0) return `${years} năm ${months} tháng`;
+    return `${years} năm`;
+  }
+  return fmtTimeExact(hours);
 };
 
 export const fmtCost = (costs: Partial<Record<Resource, number>>) =>

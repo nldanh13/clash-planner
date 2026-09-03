@@ -1,0 +1,351 @@
+        </ul>
+      </div>
+    </div>}
+
+    {player && tab !== "base-planner" && <>
+      <section className="profile-hero">
+        <div className="th-art"><div className="aura"/><img src={thImage(player.townHallLevel)} alt={`Town Hall ${player.townHallLevel}`}/><span>TH<strong>{player.townHallLevel}</strong></span></div>
+        <div className="profile-copy"><p>HỒ SƠ NGƯỜI CHƠI</p><h1>{player.name}</h1><h2>{player.tag} {player.clan&&<>· {player.clan.name}</>}</h2>
+          <div className="profile-badges"><span><Trophy/>{player.trophies} cúp</span><span><Swords/>{player.warStars} sao war</span><span><Zap/>Cấp kinh nghiệm {player.expLevel}</span>{player.builderHallLevel&&<span><Hammer/>BH{player.builderHallLevel}</span>}</div>
+          <small className="sync-time"><Clock3/>Đồng bộ lúc {syncedAt?.toLocaleTimeString("vi-VN")||"bản lưu trên máy"}</small>
+        </div>
+      </section>
+
+      <section className="stats">
+        <article><Crown/><div><small>Hero</small><strong>{homeHeroes.length} · {progress.heroes}%</strong></div></article>
+        <article><Users/><div><small>Quân đã mở</small><strong>{homeTroops.filter(x=>!x.name.startsWith("Super ")).length} · {progress.troops}%</strong></div></article>
+        <article><FlaskConical/><div><small>Phép đã mở</small><strong>{homeSpells.length} · {progress.spells}%</strong></div></article>
+        <article><Sparkles/><div><small>Trang bị</small><strong>{equipment.length} · {progress.equipment}%</strong></div></article>
+      </section>
+    </>}
+
+    <nav className="tabs">
+      <button className={tab==="overview"?"active":""} onClick={()=>setTab("overview")}>Hồ sơ người chơi</button>
+      <button className={tab==="planner"?"active":""} onClick={()=>setTab("planner")}>Upgrade Tracker</button>
+      <button className={tab==="roadmap"?"active":""} onClick={()=>setTab("roadmap")}>Roadmap TH1–18</button>
+      <button className={tab==="base-planner"?"active":""} onClick={()=>setTab("base-planner")}>
+        Base Planner (Lưới 44x44)
+      </button>
+    </nav>
+
+    {tab==="overview"&&(!player?<section className="empty-banner">
+      {loading?<><LoaderCircle className="spin"/><h1>Đang kết nối War Report…</h1></>
+        :<><Info/><h1>Chưa có dữ liệu người chơi</h1><p>Nhập Player Tag ở trên rồi bấm "Tải tài khoản" để xem tình trạng làng, quân và hero. Muốn tính nâng cấp ngay mà chưa có tag? Sang tab <b>Upgrade Tracker</b> — công cụ đó dùng được ngay cả khi chưa kết nối tài khoản.</p></>}
+    </section>:<>
+      <section className="panel army-panel">
+        <p className="roster-hint"><Info/>Hiển thị toàn bộ hero/quân/phép/pet/máy công thành có trong game — mục nào chưa mở khóa vẫn hiện, làm mờ và có khóa; rê chuột vào để xem điều kiện mở.</p>
+        <RosterGroup title="Hero" subtitle="Toàn bộ hero hiện có trong game" items={rosterHeroes} player={player} manualLevels={manualLevels}/>
+        <RosterGroup title="Quân đội" subtitle="Quân thường dùng để tấn công (không tính quân Super tạm thời)" items={rosterTroops} player={player} manualLevels={manualLevels}/>
+        <RosterGroup title="Phép thuật" subtitle="Phép từ Spell Factory và Dark Spell Factory" items={rosterSpells} player={player} manualLevels={manualLevels}/>
+        <RosterGroup title="Máy công thành" subtitle="Mở khóa qua Workshop, dùng để phá lớp phòng thủ ngoài" items={rosterSiege} player={player} manualLevels={manualLevels}/>
+        <RosterGroup title="Pet" subtitle="Ghép cùng hero qua Pet House" items={rosterPets} player={player} manualLevels={manualLevels}/>
+        <RosterGroup title="Trang bị" subtitle="Toàn bộ trang bị hero, nâng qua Blacksmith — xem nhãn hero trên từng thẻ" items={rosterEquipment} player={player} manualLevels={manualLevels}/>
+      </section>
+
+      <section className="panel village-panel">
+        <div className="section-head">
+          <div><p>NHẬP DỮ LIỆU KHÔNG CÓ TRONG API</p><h2>Tình trạng công trình và bẫy</h2></div>
+          <span className="road-current">{manualFilled}/{manualUpgradeItems.length} đã nhập · {manualPercent}%</span>
+        </div>
+        <div className="paste-panel">
+          <div className="paste-head">
+            <div>
+              <strong>Lấy dữ liệu chính xác từ game — không cần gõ tay</strong>
+              <ol className="paste-steps">
+                <li>Trong game: <b>Cài đặt → More Settings → Data Export → Copy</b>.</li>
+                <li>Quay lại đây, bấm "Đọc từ clipboard" hoặc dán tay (Ctrl+V / Cmd+V) vào ô bên dưới.</li>
+                <li>Bấm "Xử lý dữ liệu" — cấp công trình, phòng thủ, bẫy tự điền đúng theo làng thật, không cần chỉnh tay từng mục. Hero, quân, phép, trang bị đã tự đồng bộ qua API nên được bỏ qua ở đây, cùng với dữ liệu Builder Base.</li>
+              </ol>
+            </div>
+            <button className="ghost" onClick={openVillagePaste}><ClipboardPaste/> Đọc từ clipboard</button>
+          </div>
+          <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)} placeholder="Dán nội dung Data Export tại đây…" rows={3}/>
+          <div className="paste-actions">
+            <button onClick={()=>applyVillagePaste(pasteText)} disabled={!pasteText.trim()}>Xử lý dữ liệu</button>
+          </div>
+          {pasteReport&&<div className="paste-report">
+            {pasteReport.error?<p className="paste-error"><AlertTriangle/>{pasteReport.error}</p>:<>
+              <p>
+                Đọc {pasteReport.total} bản ghi · nhận diện {pasteReport.recognized} loại · cập nhật {pasteReport.updated} loại · không đổi {pasteReport.unchanged} loại.
+              </p>
+              <p>
+                Bỏ qua: Wall {pasteReport.wallSkipped} · Builder Base {pasteReport.builderBaseSkipped} · chưa hỗ trợ {pasteReport.unsupportedSkipped}.
+              </p>
+              {pasteReport.changes?.length?<ul>{pasteReport.changes.map(c=><li key={c.id}><span>{itemKindLabel[c.kind]}</span><b>{c.name}</b><small>{c.before} → {c.after}</small></li>)}</ul>:<p className="no-data">Không có thay đổi nào so với dữ liệu hiện tại.</p>}
+            </>}
+          </div>}
+        </div>
+        <div className="truth-note"><Info/><div><strong>Wall đã được bỏ qua.</strong><p>Planner không còn tính chi phí hoặc thời gian của tường. Dữ liệu dán vào chỉ giữ lại công trình, phòng thủ và bẫy.</p></div></div>
+        <div className="truth-note"><Clock3/><div><strong>Nhớ dán lại sau khi nâng cấp xong.</strong><p>Data Export chỉ là ảnh chụp tại đúng thời điểm bạn Copy — công trình nào đang nâng cấp lúc đó sẽ được ghi nhận ở cấp TRƯỚC khi nâng. Dán lại dữ liệu mới sau khi nâng cấp hoàn tất để Upgrade Tracker tính đúng.</p></div></div>
+        <div className="village-groups">
+          {(["building","defense","trap"] as UpgradeItem["kind"][]).map(kind=>{
+            const items=manualByKind[kind]||[];
+            if(!items.length)return null;
+            return <section className="village-group" key={kind}>
+              <div className="group-title"><div><h2>{itemKindLabel[kind]}</h2><p>Cấp hiện tại theo dữ liệu đã dán, so với mục tiêu ở TH{player.townHallLevel}.</p></div><span>{items.length} mục</span></div>
+              <div className="village-grid">
+                {items.map(item=>{
+                  const current=currentLevelFor(item,player,manualLevels);
+                  const thTarget=targetForTownHall(item,player.townHallLevel);
+                  const pctToTh=thTarget?Math.min(100,Math.round(current/thTarget*100)):0;
+                  return <article className="village-item" key={item.id}>
+                    <SmartArt item={item} size="sm"/>
+                    <div className="village-item-copy">
+                      <strong>{item.name}{item.quantity>1?` ×${item.quantity}`:""}</strong>
+                      <small>{thTarget?`Cấp ${current}/${thTarget}`:"Chưa mở ở TH này"}</small>
+                      <div className="mini-bar village-progress"><i style={{width:`${pctToTh}%`}}/></div>
+                    </div>
+                  </article>
+                })}
+              </div>
+            </section>
+          })}
+        </div>
+      </section>
+    </>)}
+
+    {tab==="planner"&&<section className="panel planner-panel">
+        <div className="section-head">
+          <div><p>MỘT CÔNG CỤ TÍNH TOÁN DUY NHẤT</p><h2>Upgrade Tracker</h2></div>
+          <span className="road-current">{plannerItems.length} mục dữ liệu · bỏ qua Wall</span>
+        </div>
+
+        {/* Đổi chỗ: mode-switch (3 chế độ xem, không liên quan lối chơi) lên
+            đầu tiên. Bộ chọn "Lối chơi" chỉ tác động tới cách chấm điểm ưu
+            tiên của chế độ "Gợi ý cho tôi" nên chuyển hẳn vào bên trong nhánh
+            đó — tránh gây hiểu lầm là nó ảnh hưởng luôn cả "Toàn bộ theo
+            Town Hall" hay "Tra cứu chi tiết" (2 chế độ này chỉ liệt kê/tính
+            theo cấp, không xếp hạng nên lối chơi không có tác dụng gì ở đó). */}
+        <div className="mode-switch mode-switch-3">
+          <button className={calcMode==="suggest"?"active":""} onClick={()=>setCalcMode("suggest")}>Gợi ý cho tôi</button>
+          <button className={calcMode==="town-hall"?"active":""} onClick={()=>setCalcMode("town-hall")}>Toàn bộ theo Town Hall</button>
+          <button className={calcMode==="single"?"active":""} onClick={()=>setCalcMode("single")}>Tra cứu chi tiết</button>
+        </div>
+
+        {calcMode==="suggest"&&<div className="planner-main">
+          <div className="style-picker">
+            <div className="style-group">
+              <small>Lối chơi</small>
+              <div className="pill-switch">
+                <button className={playstyle==="rush"?"active":""} onClick={()=>setPlaystyle("rush")}>Tấn công trước</button>
+                <button className={playstyle==="balanced"?"active":""} onClick={()=>setPlaystyle("balanced")}>Cân bằng</button>
+                <button className={playstyle==="defense"?"active":""} onClick={()=>setPlaystyle("defense")}>Phòng thủ chắc</button>
+                <button className={playstyle==="rush-hall"?"active":""} onClick={()=>setPlaystyle("rush-hall")}>Rush Hall</button>
+              </div>
+              <p className="style-hint">{playstyleHint[playstyle]}</p>
+            </div>
+            <div className="style-group">
+              <small>Phong cách tấn công</small>
+              <div className="pill-switch">
+                <button className={attackFocus==="ground"?"active":""} onClick={()=>setAttackFocus("ground")}>Trên bộ</button>
+                <button className={attackFocus==="air"?"active":""} onClick={()=>setAttackFocus("air")}>Trên không</button>
+                <button className={attackFocus==="both"?"active":""} onClick={()=>setAttackFocus("both")}>Cả hai</button>
+              </div>
+            </div>
+            <div className="style-group">
+              <small>Mối lo phòng thủ</small>
+              <div className="pill-switch">
+                <button className={defenseFocusPick==="ground"?"active":""} onClick={()=>setDefenseFocusPick("ground")}>Chống quân bộ</button>
+                <button className={defenseFocusPick==="air"?"active":""} onClick={()=>setDefenseFocusPick("air")}>Chống quân bay</button>
+                <button className={defenseFocusPick==="both"?"active":""} onClick={()=>setDefenseFocusPick("both")}>Cả hai</button>
+              </div>
+            </div>
+          </div>
+          {!player&&<label className="tracker-builder">
+            <small>Chưa kết nối tài khoản — giả định Town Hall</small>
+            <input type="range" min="1" max="18" step="1" value={guestTownHall} onChange={e=>setGuestTownHall(clampInteger(e.target.valueAsNumber,1,18,8))}/>
+            <strong>TH{guestTownHall}</strong>
+          </label>}
+          <p className="roster-hint"><Info/>Xếp hạng theo lối chơi bạn chọn ở trên, luôn tính tại Town Hall hiện tại (TH{effectiveTownHall}){!player&&" (giả định, vì chưa kết nối tài khoản)"}. Đổi lựa chọn phía trên là danh sách cập nhật ngay.</p>
+          <div className="planner-summary">
+            <article><small><Castle/> Tính tới</small><strong>TH{maxTownHall}</strong><span>Mặc định = Town Hall hiện tại, kéo thanh bên dưới để đổi</span></article>
+            <article><small><Wrench/> Việc còn lại</small><strong>{townHallTotals.count}</strong><span>Wall đã bỏ qua theo yêu cầu</span></article>
+            <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={townHallTotals.costs}/></strong><span>Tính theo số lượng từng loại</span>{townHallTotals.hasEstimated && <span className="text-yellow-400 text-xs mt-1 block">⚠️ Tổng có dùng số liệu ước tính</span>}</article>
+          </div>
+          <div className="lane-grid">
+            {(["Builder","Laboratory","Blacksmith","Pet House"] as UpgradeLane[]).map(lane => {
+              const totalHours = townHallTotals.laneHours[lane];
+              if (lane === "Builder") {
+                return (
+                  <article key={lane}>
+                    <small><Hammer/> Thợ xây (Builder)</small>
+                    <strong title={fmtTimeExact(totalHours / builderCount)}>{fmtTime(totalHours / builderCount)}</strong>
+                    <span title={fmtTimeExact(totalHours)}>Tổng: {fmtTime(totalHours, true)} chia cho {builderCount} thợ</span>
+                  </article>
+                );
+              }
+              return (
+                <article key={lane}>
+                  <small>{lane === "Laboratory" ? <FlaskConical/> : lane === "Blacksmith" ? <Hammer/> : <PawPrint/>} {lane}</small>
+                  <strong title={fmtTimeExact(totalHours)}>{fmtTime(totalHours)}</strong>
+                  <span>Hàng chờ riêng</span>
+                </article>
+              );
+            })}
+          </div>
+          <label className="tracker-builder">
+            <small>Tính tới Town Hall</small>
+            <input type="range" min="1" max="18" step="1" value={maxTownHall} onChange={e=>setMaxTownHall(clampInteger(e.target.valueAsNumber,1,18,18))}/>
+            <strong>TH{maxTownHall}</strong>
+          </label>
+          <label className="tracker-builder">
+            <small>Số thợ xây để ước tính</small>
+            <input type="range" min="1" max="6" step="1" value={builderCount} onChange={e=>setBuilderCount(clampInteger(e.target.valueAsNumber,1,6,5))}/>
+            <strong>{builderCount} thợ xây</strong>
+          </label>
+          <div className="village-groups">
+            {townHallGroups.map(group=><section className="village-group" key={group.kind}>
+              <div className="group-title"><div><h2>{itemKindLabel[group.kind]}</h2><p>Cấp hiện tại so với cấp tối đa cho phép ở TH{maxTownHall}.</p></div><span>{group.rows.length} mục · {fmtCost(group.costs)} · {fmtTime(group.totalHours)}</span></div>
+              <div className="upgrade-table">
+                <div className="upgrade-row max-head"><span>Mục</span><span>Cấp</span><span>Chi phí</span><span>Thời gian</span><span>Điều kiện</span></div>
+                {group.rows.map(row=><div className="upgrade-row" key={row.item.id}>
+                  <span className="upgrade-item-cell"><SmartArt item={row.item} size="sm" townHallLevel={row.target}/><span><b>{row.item.name}</b><small>{dataStatusLabel[row.item.dataStatus]}{row.item.quantity>1?` ×${row.item.quantity}`:""}</small></span></span>
+                  <span>{row.current} → {row.target}</span>
+                  <span>{fmtCost(row.plan.costs)}</span>
+                  <span>{fmtTime(row.plan.totalHours)}</span>
+                  <span>TH{row.plan.requiredTownHall}{row.plan.requires.length?` · ${row.plan.requires.join(", ")}`:""}</span>
+                </div>)}
+              </div>
+            </section>)}
+            {!townHallGroups.length&&<p className="no-data">Không còn mục cần nâng để tới TH{maxTownHall}.</p>}
+          </div>
+        </div>}
+
+        {calcMode==="single"&&<div className="planner-layout">
+          <aside className="planner-controls">
+            <label>
+              <small>Lọc loại nâng cấp</small>
+              <select value={plannerKind} onChange={e=>setPlannerKind(e.target.value as UpgradeItem["kind"]|"all")}>
+                <option value="all">Tất cả</option>
+                {Object.entries(itemKindLabel).filter(([kind])=>kind!=="wall").map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}
+              </select>
+            </label>
+            <label>
+              <small>Chọn mục nâng cấp</small>
+              <select value={plannerItemId} onChange={e=>{const next=upgradeItems.find(x=>x.id===e.target.value)||upgradeItems[0];setPlannerItemId(next.id);setTargetLevel(next.levels.at(-1)?.level||1)}}>
+                {plannerItemGroups.map(group=><optgroup label={itemKindLabel[group.kind]} key={group.kind}>
+                  {group.items.map(item=><option key={item.id} value={item.id}>{item.name}{item.quantity>1?` ×${item.quantity}`:""}</option>)}
+                </optgroup>)}
+              </select>
+            </label>
+            {!plannerItem.apiTracked&&<label>
+              <small>Cấp hiện tại nhập tay</small>
+              <input type="number" min="0" max={maxPlannerLevel} step="1" value={currentPlannerLevel} onChange={e=>setManualLevel(plannerItem,e.target.valueAsNumber)}/>
+            </label>}
+            {plannerItem.apiTracked&&!player&&<p className="no-data">Mục này lấy cấp từ dữ liệu API (hero/quân/phép) — cần kết nối tài khoản mới có cấp hiện tại, tạm coi là cấp 0.</p>}
+            <label>
+              <small>Mục tiêu level</small>
+              <input type="number" min={currentPlannerLevel} max={maxPlannerLevel} step="1" value={safeTargetLevel} onChange={e=>setTargetLevel(clampInteger(e.target.valueAsNumber,currentPlannerLevel,maxPlannerLevel,currentPlannerLevel))}/>
+            </label>
+            <label>
+              <small>Số thợ xây để ước tính</small>
+              <input type="range" min="1" max="6" step="1" value={builderCount} onChange={e=>setBuilderCount(clampInteger(e.target.valueAsNumber,1,6,5))}/>
+              <strong>{builderCount} thợ xây</strong>
+            </label>
+            <div className="source-box">
+              <strong>Nguồn dữ liệu</strong>
+              {upgradeSources.map(source=><p key={source}>{source}</p>)}
+            </div>
+          </aside>
+          <div className="planner-main">
+            <div className="planner-item-head">
+              <SmartArt item={plannerItem} size="sm" townHallLevel={safeTargetLevel}/>
+              <div><small>{itemKindLabel[plannerItem.kind]} · {plannerItem.lane}</small><strong>{plannerItem.name}{plannerItem.quantity>1?` ×${plannerItem.quantity}`:""}</strong></div>
+            </div>
+            {/* Gộp 7 thẻ cũ (Hiện tại/Mục tiêu/TH cần đạt/Dữ liệu/Chi phí/Thời
+                gian/Ước tính song song) xuống còn 4 thẻ — mỗi thẻ có icon,
+                chỉ giữ thông tin cần để ra quyết định nâng cấp, phần "Dữ
+                liệu" (độ chính xác số liệu) chuyển thành ghi chú nhỏ dưới
+                thẻ chi phí thay vì chiếm hẳn 1 thẻ riêng. */}
+            <div className="planner-summary">
+              <article><small><Target/> Tiến độ</small><strong>Lv {currentPlannerLevel} → Lv {safeTargetLevel}</strong><span>{plan.steps.length} cấp cần nâng × {plannerItem.quantity} · Tối đa Lv {maxPlannerLevel}</span></article>
+              <article><small><Castle/> Town Hall cần đạt</small><strong>TH{plan.requiredTownHall}</strong><span>{plannerItem.id==="town-hall"?"Theo cấp TH mục tiêu":"Theo điều kiện từng level"}</span></article>
+              <article><small><Coins/> Tổng chi phí</small><strong><CostBadges costs={plan.costs}/></strong><span>{dataStatusLabel[plannerItem.dataStatus]} · {plannerItem.source}</span></article>
+              <article><small><Clock3/> Thời gian</small><strong title={fmtTimeExact(plan.totalHours)}>{fmtTime(plan.totalHours)}</strong><span>{plannerItem.lane==="Builder"?`${fmtTime(plan.totalHours/builderCount)} nếu chia ${builderCount} thợ xây`:"Lab/Blacksmith/Pet House chạy 1 hàng chờ riêng"}</span></article>
+            </div>
+            {plan.requires.length>0&&<div className="requires-box"><AlertTriangle/><div><strong>Cần chuẩn bị trước</strong><p>{plan.requires.join(" · ")}</p></div></div>}
+            {/* Mục có ít cấp (đa số công trình/phòng thủ) thì hiện từng chấm
+                cấp như cũ — dễ nhìn. Hero/trang bị đời mới có thể lên tới
+                level 100 (Barbarian King) nên hiện hết từng chấm sẽ tràn
+                trang; những mục đó đổi sang 1 thanh tiến độ gọn hơn nhiều. */}
+            {plannerItem.levels.length>30
+              ? <div className="level-progress">
+                  <div className="level-progress-bar"><span style={{width:`${Math.min(100,Math.round((safeTargetLevel/maxPlannerLevel)*100))}%`}}/></div>
+                  <div className="level-progress-labels"><span>Lv {currentPlannerLevel}</span><span>Mục tiêu Lv {safeTargetLevel}</span><span>Tối đa Lv {maxPlannerLevel}</span></div>
+                </div>
+              : <div className="level-strip">
+                  {plannerItem.levels.map(level=>{
+                    const state=level.level<=currentPlannerLevel?"done":level.level<=safeTargetLevel?"target":"future";
+                    return <span key={level.level} className={state} title={`${plannerItem.name} level ${level.level}`}>{level.level}</span>
+                  })}
+                </div>}
+            <div className="upgrade-table">
+              <div className="upgrade-row head"><span>Cấp</span><span>Điều kiện</span><span>Chi phí</span><span>Thời gian</span><span>Ghi chú</span></div>
+              {plan.steps.length?(showAllLevels?plan.steps:plan.steps.slice(0,LEVEL_TABLE_PREVIEW)).map(step=><div className="upgrade-row" key={step.level}>
+                <span><b>{currentPlannerLevel+1===step.level?"Tiếp theo":"Level"} {step.level}</b></span>
+                <span>TH{step.townHall}</span>
+                <span>{fmtNumber(step.cost*plannerItem.quantity)} {step.resource}</span>
+                <span>{fmtTime(step.timeHours*plannerItem.quantity)}</span>
+                <span>{dataStatusLabel[plannerItem.dataStatus]}. {plannerItem.quantity>1?`Áp dụng cho ${plannerItem.quantity} mục. `:""}{step.requires?.join(", ")||"Không có điều kiện phụ"}</span>
+              </div>):<p className="no-data">Mục này đã đạt hoặc vượt level mục tiêu.</p>}
+            </div>
+            {plan.steps.length>LEVEL_TABLE_PREVIEW&&<button className="show-more-levels" onClick={()=>setShowAllLevels(x=>!x)}>
+              {showAllLevels?"Thu gọn danh sách":`Xem thêm ${plan.steps.length-LEVEL_TABLE_PREVIEW} cấp nữa (tổng ${plan.steps.length} cấp còn lại)`}
+            </button>}
+          </div>
+        </div>}
+      </section>}
+
+      {tab==="roadmap"&&(!player?<section className="empty-banner">
+        {loading?<><LoaderCircle className="spin"/><h1>Đang kết nối War Report…</h1></>
+          :<><Info/><h1>Chưa có dữ liệu người chơi</h1><p>Nhập Player Tag ở trên rồi bấm "Tải tài khoản" để xem roadmap Town Hall 1 → 18 theo tài khoản của bạn.</p></>}
+      </section>:(()=>{
+        const info=townHallInfo[roadTH-1];
+        const roadState=roadTH<player.townHallLevel?"past":roadTH===player.townHallLevel?"current":"future";
+        const progressPct=((player.townHallLevel-1)/17)*100;
+        return <section className="panel roadmap-panel">
+          <div className="section-head"><div><p>TOÀN BỘ HÀNH TRÌNH</p><h2>Town Hall 1 → Town Hall 18</h2></div><span className="road-current">Bạn đang ở TH{player.townHallLevel}</span></div>
+          <div className="th-track" style={{"--progress":`${progressPct}%`} as React.CSSProperties}>
+            {townHallInfo.map(({level,title})=>{
+              const state=level<player.townHallLevel?"past":level===player.townHallLevel?"current":"future";
+              return <button key={level} className={`th-node ${state}${roadTH===level?" active":""}`} onClick={()=>setRoadTH(level)} title={`TH${level} · ${title}`}>
+                <span className="th-node-img"><img src={thImage(level)} alt={`Town Hall ${level}`}/>{state==="past"&&<i className="th-node-done"><Check/></i>}{state==="future"&&<i className="th-node-lock"><Lock/></i>}</span>
+                <small>TH{level}</small>
+                <em>{title}</em>
+              </button>;
+            })}
+          </div>
+          <div className={`th-detail ${roadState}`}>
+            <div className="th-detail-head">
+              <div className="th-detail-art"><img src={thImage(roadTH)} alt={`Town Hall ${roadTH}`}/></div>
+              <div className="th-detail-copy">
+                <span className={`th-badge ${roadState}`}>{roadState==="past"?"Đã hoàn thành":roadState==="current"?"Chặng hiện tại":"Chặng sắp tới"}</span>
+                <h3>TH{roadTH} · {info.title}</h3>
+                <p>{info.blurb}</p>
+                {info.unlocks.note&&<p className="th-note"><Info/>{info.unlocks.note}</p>}
+              </div>
+              <div className="th-detail-nav">
+                <button disabled={roadTH<=1} onClick={()=>setRoadTH(x=>Math.max(1,x-1))}>‹ TH{roadTH-1}</button>
+                <button disabled={roadTH>=18} onClick={()=>setRoadTH(x=>Math.min(18,x+1))}>TH{roadTH+1} ›</button>
+              </div>
+            </div>
+            <div className="th-unlock-grid">
+              {unlockGroups.map(group=>{
+                const values=info.unlocks[group.key] as string[]|undefined;
+                if(!values||!values.length)return null;
+                const Icon=group.icon;
+                return <div className="th-unlock-group" key={group.key}>
+                  <header><Icon/><strong>{group.label}</strong><span>{values.length}</span></header>
+                  <div className="th-unlock-pills">{values.map(v=><span key={v}>{v}</span>)}</div>
+                </div>;
+              })}
+              {!Object.values(info.unlocks).some(v=>Array.isArray(v)&&v.length)&&<p className="no-data">Không có mở khóa mới nào ghi nhận ở mốc này.</p>}
+            </div>
+          </div>
+        </section>;
+      })())}
+
+      {tab==="base-planner"&&<BasePlannerTab initialTownHall={player?.townHallLevel||guestTownHall||11}/>}
+    <footer><span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span><span>Tiến độ thủ công lưu riêng theo từng Player Tag</span><span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span></footer>
+  </main>
+}

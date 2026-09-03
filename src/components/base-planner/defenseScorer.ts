@@ -140,7 +140,7 @@ export function evaluateBaseDefense(buildings: PlacedBuilding[], townHallLevel: 
   coreScore = Math.min(30, coreSpacingPts + storageShieldPts);
 
   // --- 2. HỆ SỐ CHỐNG SÉT LAN (Max 20 Điểm) ---
-  const chainAnalysis = scanChainLightningHazards(buildings, 1);
+  const chainAnalysis = scanChainLightningHazards(buildings, 2);
   let chainScore = 20;
   if (chainAnalysis.criticalCount > 0) {
     chainScore -= Math.min(14, chainAnalysis.criticalCount * 2.5);

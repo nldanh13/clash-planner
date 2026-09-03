@@ -1,106 +1,96 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   AlertTriangle,
-  Award,
   Castle,
-  Check, CheckCircle2,
-  Coins,
-  Crown,
-  Download,
-  Eye,
-  FileCode,
-  Flame,
+  CheckCircle2,
   FolderOpen,
-  Hammer,
-  HelpCircle,
-  Image as ImageIcon,
-  Info,
-  Layers,
   LayoutGrid,
-  Maximize2,
-  RotateCcw,
+  Plus,
   Shield,
-  Sparkles,
-  Swords,
-  Trash2,
-  Undo,
-  Upload,
-  Zap,
 } from "lucide-react";
-import { CanvasGridBoard } from "./CanvasGridBoard";
-import { DefenseScorePanel } from "./DefenseScorePanel";
-import { InventorySidebar } from "./InventorySidebar";
-import { LayoutManagerModal } from "./LayoutManagerModal";
-import { TacticalToolbar } from "./TacticalToolbar";
+import { exportLayoutAsImage, exportLayoutAsJSON, importLayoutFromJSON } from "./ExportUtils";
+import { validateLayout, type ValidationIssue } from "./LayoutValidator";
 import { getAllBuildingLimits } from "./buildingLimits";
-import { validateLayout } from "./LayoutValidator";
-import { scanChainLightningHazards } from "./chainLightningUtils";
+import { CURRENT_CATALOG_VERSION } from "./catalog";
 import { evaluateBaseDefense } from "./defenseScorer";
+import { scanChainLightningHazards } from "./chainLightningUtils";
 import {
-  exportLayoutAsImage,
-  exportLayoutAsJSON,
-  getPresetLayout,
-  importLayoutFromJSON,
-} from "./ExportUtils";
-import {
+  duplicateLayout,
   getActiveLayoutId,
   getSavedLayouts,
+  renameLayout,
   saveLayout,
   setActiveLayoutId,
 } from "./layoutStorage";
 import { useBasePlannerHistory } from "./useBasePlannerHistory";
 import type { LayoutProject, PlacedBuilding, TacticalSettings } from "./types";
+import TacticalToolbar from "./TacticalToolbar";
+import { EditorBlueprintHeader } from "./EditorBlueprintHeader";
+import { BlueprintManagerModal } from "./BlueprintManagerModal";
+import { NewBlueprintWizardModal } from "./NewBlueprintWizardModal";
+import { InventorySidebar } from "./InventorySidebar";
+import { CanvasGridBoard } from "./CanvasGridBoard";
+import { DefenseScorePanel } from "./DefenseScorePanel";
 
 interface BasePlannerTabProps {
   initialTownHall?: number;
+  onBackToPreviousTab?: () => void;
 }
 
-export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
-  // Current active layout metadata
-  const [activeLayout, setActiveLayout] = useState<LayoutProject>(() => {
-    const all = getSavedLayouts();
+export function BasePlannerTab({
+  initialTownHall = 11,
+  onBackToPreviousTab,
+}: BasePlannerTabProps) {
+  // Active Layout state: auto-load last active or first layout if available
+  const [activeLayout, setActiveLayout] = useState<LayoutProject | null>(() => {
     const activeId = getActiveLayoutId();
-    const found = all.find((l) => l.id === activeId);
-    return found || all[0] || {
-      id: "default-layout",
-      name: `Bố cục TH${initialTownHall}`,
-      townHallLevel: initialTownHall,
-      buildings: getPresetLayout(initialTownHall),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const saved = getSavedLayouts();
+    if (activeId) {
+      const found = saved.find((l) => l.id === activeId);
+      if (found) return found;
+    }
+    return saved[0] || null;
   });
 
-  const [townHallLevel, setTownHallLevel] = useState<number>(activeLayout.townHallLevel || initialTownHall);
+  // Modals state: Manager modal opens automatically on initial entry into Base Planner tab
+  const [isManagerOpen, setIsManagerOpen] = useState<boolean>(true);
+  const [isNewWizardOpen, setIsNewWizardOpen] = useState<boolean>(false);
+  const [wizardInitialTH, setWizardInitialTH] = useState<number>(initialTownHall);
+
+  // Save status
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "error">("saved");
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(() =>
+    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  );
+
   const [selectedDefId, setSelectedDefId] = useState<string | null>(null);
   const [selectedPlacedId, setSelectedPlacedId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [notification, setNotification] = useState<string | null>(null);
-  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
-  const [autoSaveTime, setAutoSaveTime] = useState<string | null>(() =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  );
-  const [pendingRecovery, setPendingRecovery] = useState<{ layout: LayoutProject; validBuildings: import("./types").PlacedBuilding[]; issues: import("./LayoutValidator").ValidationIssue[] } | null>(null);
-  const [pendingTHChange, setPendingTHChange] = useState<{ newTH: number; validBuildings: PlacedBuilding[]; issues: import("./LayoutValidator").ValidationIssue[] } | null>(null);
 
-  useEffect(() => {
-    // Check initial layout for validation issues (localStorage migration)
-    const res = validateLayout(activeLayout.buildings, activeLayout.townHallLevel);
-    if (!res.isValid || res.hasWarnings) {
-      setPendingRecovery({ layout: activeLayout, validBuildings: res.validBuildings, issues: res.issues });
-    }
-  }, []);
+  // Validation recovery
+  const [pendingRecovery, setPendingRecovery] = useState<{
+    layout: LayoutProject;
+    validBuildings: PlacedBuilding[];
+    sanitizedBuildings: PlacedBuilding[];
+    issues: ValidationIssue[];
+  } | null>(null);
+
+  // Mobile Segmented View: 'map' (default) vs 'inventory'
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<"map" | "inventory">("map");
 
   const [settings, setSettings] = useState<TacticalSettings>({
+    plannerMode: "design",
+    showBuildingNames: true,
+    showBuildingLevels: false,
     showRanges: "selected",
-    showChainLightning: true,
+    showChainLightning: "none",
     showHeatmap: false,
-    showDefenseScore: true,
+    showDefenseScore: false,
     showGrid: true,
-    showCoordinates: true,
+    showCoordinates: false,
     wallBrushActive: false,
     eraserActive: false,
-    chainMaxDistance: 2,
   });
 
   // Undo/Redo History
@@ -114,10 +104,35 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
     canUndo,
     canRedo,
   } = useBasePlannerHistory({
-    initialState: () => activeLayout.buildings || getPresetLayout(activeLayout.townHallLevel || initialTownHall),
+    initialState: () => activeLayout?.buildings || [],
   });
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Always ensure manager is open when entering Base Planner tab without active layout
+  useEffect(() => {
+    if (!activeLayout) {
+      setIsManagerOpen(true);
+    }
+  }, [activeLayout]);
+
+  // Close manager logic adhering to specs:
+  // - If active layout exists: close modal and return to its editor
+  // - If no active layout exists: return user to the previous tab
+  const handleCloseManager = () => {
+    if (activeLayout) {
+      setIsManagerOpen(false);
+    } else {
+      if (onBackToPreviousTab) {
+        onBackToPreviousTab();
+      } else {
+        setIsManagerOpen(true);
+      }
+    }
+  };
+
+  // townHallLevel is strictly derived from activeLayout
+  const townHallLevel = activeLayout ? activeLayout.townHallLevel : wizardInitialTH;
 
   // Dynamic Building Limits for current TH
   const buildingLimits = useMemo(() => {
@@ -129,54 +144,6 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
     return evaluateBaseDefense(buildings, townHallLevel);
   }, [buildings, townHallLevel]);
 
-  // Push buildings update and persist to active layout
-  const handleUpdateBuildings = useCallback(
-    (newBuildings: PlacedBuilding[], replace: boolean = false) => {
-      if (replace) {
-        replaceState(newBuildings);
-      } else {
-        pushState(newBuildings);
-      }
-
-      const updated: LayoutProject = {
-        ...activeLayout,
-        townHallLevel,
-        buildings: newBuildings,
-        updatedAt: new Date().toISOString(),
-      };
-      setActiveLayout(updated);
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(() => {
-        saveLayout(updated);
-        setAutoSaveTime(
-          new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-        );
-      }, 500); // 500ms debounce
-    },
-    [activeLayout, pushState, replaceState, townHallLevel]
-  );
-
-  // Auto-Save Interval (every 30 seconds)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const updated: LayoutProject = {
-        ...activeLayout,
-        townHallLevel,
-        buildings,
-        updatedAt: new Date().toISOString(),
-      };
-      saveLayout(updated);
-      setAutoSaveTime(
-        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      );
-    }, 30000);
-
-    return () => clearInterval(timer);
-  }, [activeLayout, buildings, townHallLevel]);
-
   // Notify user with auto-dismiss
   const showToast = (msg: string) => {
     setNotification(msg);
@@ -185,42 +152,77 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
     }, 4000);
   };
 
-  // Change Town Hall Level
-  const handleTownHallChange = (newTH: number) => {
-    const safe = Math.max(1, Math.min(18, newTH));
-    
-    // Check validation against new limits
-    const { isValid, validBuildings, issues } = validateLayout(buildings, safe);
+  // Push buildings update and persist to active layout with 500ms debounce
+  const handleUpdateBuildings = useCallback(
+    (newBuildings: PlacedBuilding[], replace: boolean = false) => {
+      if (replace) {
+        replaceState(newBuildings);
+      } else {
+        pushState(newBuildings);
+      }
 
-    if ((!isValid || issues.length > 0) && safe < townHallLevel) {
-      // Show confirmation prompt
-      setPendingTHChange({ newTH: safe, validBuildings, issues });
-      return;
+      if (!activeLayout) return;
+
+      setSaveStatus("saving");
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        try {
+          const updated = saveLayout({
+            ...activeLayout,
+            buildings: newBuildings,
+          });
+          setActiveLayout(updated);
+          setSaveStatus("saved");
+          setLastSavedTime(
+            new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          );
+        } catch {
+          setSaveStatus("error");
+        }
+      }, 500); // 500ms debounce autosave
+    },
+    [activeLayout, pushState, replaceState]
+  );
+
+  // Manual Instant Save
+  const handleSaveManual = () => {
+    if (!activeLayout) return;
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
-
-    applyTownHallChange(safe, buildings);
-  };
-
-  const applyTownHallChange = (newTH: number, newBuildings: PlacedBuilding[]) => {
-    setTownHallLevel(newTH);
-    setEntireState(newBuildings);
-    const updated: LayoutProject = {
-      ...activeLayout,
-      townHallLevel: newTH,
-      buildings: newBuildings,
-      updatedAt: new Date().toISOString(),
-    };
-    setActiveLayout(updated);
-    saveLayout(updated);
-    showToast(`Đã chuyển cấp độ sang Town Hall ${newTH}.`);
-    setPendingTHChange(null);
+    try {
+      const updated = saveLayout({
+        ...activeLayout,
+        buildings,
+      });
+      setActiveLayout(updated);
+      setSaveStatus("saved");
+      const timeStr = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      setLastSavedTime(timeStr);
+      showToast(`Đã lưu bản thiết kế lúc ${timeStr}!`);
+    } catch {
+      setSaveStatus("error");
+      showToast("Lưu bản thiết kế thất bại.");
+    }
   };
 
   // Switch Active Layout from Project Manager
   const handleSelectLayout = (layout: LayoutProject) => {
     const res = validateLayout(layout.buildings, layout.townHallLevel);
     if (!res.isValid || res.hasWarnings) {
-      setPendingRecovery({ layout, validBuildings: res.validBuildings, issues: res.issues });
+      setPendingRecovery({
+        layout,
+        validBuildings: res.validBuildings,
+        sanitizedBuildings: res.sanitizedBuildings,
+        issues: res.issues,
+      });
       return;
     }
     applySelectedLayout(layout);
@@ -229,26 +231,66 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   const applySelectedLayout = (layout: LayoutProject) => {
     setActiveLayout(layout);
     setActiveLayoutId(layout.id);
-    setTownHallLevel(layout.townHallLevel);
     setEntireState(layout.buildings || []);
     setSelectedPlacedId(null);
     setSelectedDefId(null);
-    showToast(`Đã tải bản thiết kế: "${layout.name}" (TH${layout.townHallLevel})`);
+    setSaveStatus("saved");
+    setLastSavedTime(
+      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    );
+    showToast(`Đã mở bản thiết kế: "${layout.name}" (TH${layout.townHallLevel})`);
   };
 
-  // Load Preset Layout
-  const handleLoadPreset = () => {
-    const preset = getPresetLayout(townHallLevel);
-    setEntireState(preset);
-    const updated: LayoutProject = {
-      ...activeLayout,
-      townHallLevel,
-      buildings: preset,
-      updatedAt: new Date().toISOString(),
-    };
-    setActiveLayout(updated);
-    saveLayout(updated);
-    showToast(`Đã nạp mẫu bố cục chuẩn cho Town Hall ${townHallLevel}.`);
+  // Rename layout
+  const handleRename = (newName: string) => {
+    if (!activeLayout) return { success: false, error: "Chưa chọn bản thiết kế." };
+    const res = renameLayout(activeLayout.id, newName);
+    if (res.success) {
+      setActiveLayout((prev) => (prev ? { ...prev, name: newName } : null));
+      showToast(`Đã đổi tên thành: "${newName}"`);
+    }
+    return res;
+  };
+
+  // Duplicate layout
+  const handleDuplicate = () => {
+    if (!activeLayout) return;
+    const cloned = duplicateLayout(activeLayout.id);
+    if (cloned) {
+      applySelectedLayout(cloned);
+      showToast(`Đã tạo bản sao: "${cloned.name}"`);
+    }
+  };
+
+  // Duplicate to another TH
+  const handleDuplicateToTownHall = (targetTH: number) => {
+    if (!activeLayout) return;
+    const cloned = duplicateLayout(activeLayout.id, targetTH);
+    if (cloned) {
+      applySelectedLayout(cloned);
+      showToast(`Đã tạo bản sao tại TH${targetTH}: "${cloned.name}"`);
+    }
+  };
+
+  // Open Manager with safe check
+  const handleOpenManager = () => {
+    if (saveStatus === "unsaved" || saveStatus === "saving") {
+      handleSaveManual();
+    }
+    setIsManagerOpen(true);
+  };
+
+  // Fit Map zoom
+  const handleFitMap = () => {
+    setZoomLevel(1);
+    const container = document.querySelector(".grid-canvas-viewport");
+    if (container) {
+      container.scrollTo({
+        left: container.scrollWidth / 2 - container.clientWidth / 2,
+        top: container.scrollHeight / 2 - container.clientHeight / 2,
+        behavior: "smooth",
+      });
+    }
   };
 
   // Clear Map
@@ -265,9 +307,9 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   // Export PNG
   const handleExportPNG = async () => {
     try {
-      await exportLayoutAsImage(buildings, townHallLevel);
+      await exportLayoutAsImage(buildings, townHallLevel, activeLayout?.name);
       showToast("Đã xuất file ảnh PNG bản đồ thành công!");
-    } catch (e) {
+    } catch {
       showToast("Lỗi khi xuất ảnh bản đồ.");
     }
   };
@@ -275,9 +317,9 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
   // Export JSON
   const handleExportJSON = () => {
     try {
-      exportLayoutAsJSON(buildings, townHallLevel);
+      exportLayoutAsJSON(buildings, townHallLevel, activeLayout?.name);
       showToast("Đã xuất dữ liệu bố cục JSON thành công!");
-    } catch (e) {
+    } catch {
       showToast("Lỗi khi xuất JSON.");
     }
   };
@@ -289,16 +331,18 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
 
     try {
       const data = await importLayoutFromJSON(file);
-      const newLayout: LayoutProject = {
+      const newLayout = saveLayout({
         id: `imported-${Date.now()}`,
         name: data.name || `TH${data.townHallLevel} Nhập khẩu`,
         townHallLevel: data.townHallLevel,
+        purpose: "hybrid",
+        creationMethod: "import",
         buildings: data.buildings,
+        catalogVersion: CURRENT_CATALOG_VERSION,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      };
-      saveLayout(newLayout);
-      handleSelectLayout(newLayout);
+      });
+      applySelectedLayout(newLayout);
       showToast(`Đã nhập bố cục "${data.name}" thành công!`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Lỗi khi nhập tệp JSON.");
@@ -315,9 +359,9 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
 
   // Count chain issues
   const chainAnalysis = useMemo(() => {
-    if (!settings.showChainLightning) return { dangerPairs: [] };
-    return scanChainLightningHazards(buildings, settings.chainMaxDistance);
-  }, [buildings, settings.showChainLightning, settings.chainMaxDistance]);
+    if (settings.showChainLightning === "none") return { dangerPairs: [] };
+    return scanChainLightningHazards(buildings, 2);
+  }, [buildings, settings.showChainLightning]);
 
   return (
     <section className="base-planner-module">
@@ -329,170 +373,212 @@ export function BasePlannerTab({ initialTownHall = 11 }: BasePlannerTabProps) {
         </div>
       )}
 
-      {/* Top Header Control & Tactical Toolbar */}
-      <TacticalToolbar
-        townHallLevel={townHallLevel}
-        onTownHallChange={handleTownHallChange}
-        settings={settings}
-        onUpdateSettings={setSettings}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={undo}
-        onRedo={redo}
-        onClear={handleClearMap}
-        onLoadPreset={handleLoadPreset}
-        onExportPNG={handleExportPNG}
-        onExportJSON={handleExportJSON}
-        onImportJSON={handleImportJSON}
-        chainIssuesCount={chainAnalysis.dangerPairs.length}
-        zoomLevel={zoomLevel}
-        onZoomChange={setZoomLevel}
-        placedCount={buildings.length}
-        defenseScore={defenseScoreResult}
-        activeLayoutName={activeLayout.name}
-        onOpenLayoutManager={() => setIsLayoutModalOpen(true)}
-        autoSaveTime={autoSaveTime}
-      />
-
-      {/* Main Workspace: Inventory Sidebar (Left) + Canvas Grid & Defense Score (Right) */}
-      <div className="planner-workspace-grid">
-        {/* Left: Inventory Sidebar */}
-        <InventorySidebar
-          townHallLevel={townHallLevel}
-          buildingLimits={buildingLimits}
-          placedBuildings={buildings}
-          selectedBuildingDefId={selectedDefId}
-          onSelectBuildingDef={setSelectedDefId}
-          onStartDragNew={handleStartDragNew}
-          wallBrushActive={settings.wallBrushActive}
-          onToggleWallBrush={() =>
-            setSettings((s) => ({
-              ...s,
-              wallBrushActive: !s.wallBrushActive,
-              eraserActive: false,
-            }))
-          }
-        />
-
-        {/* Center/Right: 60 FPS HTML5 Canvas Grid Board + Collapsible Defense Scorer */}
-        <div className="planner-canvas-container flex flex-col gap-4">
-          <CanvasGridBoard
-            buildings={buildings}
-            onUpdateBuildings={handleUpdateBuildings}
-            selectedDefId={selectedDefId}
-            onClearSelectedDef={() => setSelectedDefId(null)}
-            selectedPlacedId={selectedPlacedId}
-            onSelectPlacedId={setSelectedPlacedId}
-            buildingLimits={buildingLimits}
-            settings={settings}
-            zoomLevel={zoomLevel}
+      {/* When NO layout is selected, manager modal is opened directly (no intermediate screen) */}
+      {!activeLayout ? null : (
+        <>
+          {/* Top Header Information & Lifecycle Controls */}
+          <EditorBlueprintHeader
+            layout={activeLayout}
+            saveStatus={saveStatus}
+            lastSavedTime={lastSavedTime}
+            onSaveManual={handleSaveManual}
+            onOpenManager={handleOpenManager}
+            onRename={handleRename}
+            onDuplicate={handleDuplicate}
+            onOpenNewWizard={(th) => {
+              setWizardInitialTH(th || activeLayout.townHallLevel);
+              setIsNewWizardOpen(true);
+            }}
+            onDuplicateToTownHall={handleDuplicateToTownHall}
           />
 
-          {/* Real-Time Defense Score & Analytics Panel */}
-          {settings.showDefenseScore && (
-            <div className="w-full">
-              <DefenseScorePanel
-                defenseScore={defenseScoreResult}
-                onClose={() => setSettings((s) => ({ ...s, showDefenseScore: false }))}
-              />
-            </div>
-          )}
-        </div>
-      </div>
+          {/* Tactical Toolbar for In-Canvas Design & Analysis operations */}
+          <TacticalToolbar
+            settings={settings}
+            onUpdateSettings={setSettings}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+            onClear={handleClearMap}
+            onExportPNG={handleExportPNG}
+            onExportJSON={handleExportJSON}
+            onImportJSON={handleImportJSON}
+            chainIssuesCount={chainAnalysis.dangerPairs.length}
+            zoomLevel={zoomLevel}
+            onZoomChange={setZoomLevel}
+            placedCount={buildings.length}
+            defenseScore={defenseScoreResult}
+            onFitMap={handleFitMap}
+          />
 
-      {/* Layout Manager Modal */}
-      <LayoutManagerModal
-        isOpen={isLayoutModalOpen}
-        onClose={() => setIsLayoutModalOpen(false)}
+          {/* Mobile Segmented Workspace Tabs (lg:hidden) */}
+          <div className="lg:hidden flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0">
+            <button
+              onClick={() => setMobileWorkspaceTab("map")}
+              className={`flex-1 min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mobileWorkspaceTab === "map"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+              aria-label="Xem Bản đồ"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>Bản đồ (Lưới 44x44)</span>
+            </button>
+            <button
+              onClick={() => setMobileWorkspaceTab("inventory")}
+              className={`flex-1 min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mobileWorkspaceTab === "inventory"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+              aria-label={
+                settings.plannerMode === "design"
+                  ? "Xem Kho công trình"
+                  : "Xem Phân tích phòng thủ"
+              }
+            >
+              {settings.plannerMode === "design" ? (
+                <>
+                  <Shield className="w-4 h-4" />
+                  <span>Kho công trình</span>
+                  {selectedDefId && (
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  )}
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4" />
+                  <span>Phân tích ({defenseScoreResult?.tier || "C"})</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Main Planner Grid Body */}
+          <div className="planner-main-layout w-full max-w-full min-w-0 overflow-hidden">
+            {/* Left: Building Inventory / Sidebar */}
+            <aside
+              className={`planner-sidebar-panel ${
+                mobileWorkspaceTab === "map" ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              {settings.plannerMode === "design" ? (
+                <InventorySidebar
+                  townHallLevel={townHallLevel}
+                  buildingLimits={buildingLimits}
+                  placedBuildings={buildings}
+                  selectedBuildingDefId={selectedDefId}
+                  onSelectBuildingDef={setSelectedDefId}
+                  onStartDragNew={handleStartDragNew}
+                  wallBrushActive={settings.wallBrushActive}
+                  onToggleWallBrush={() =>
+                    setSettings((s) => ({
+                      ...s,
+                      wallBrushActive: !s.wallBrushActive,
+                      eraserActive: false,
+                    }))
+                  }
+                />
+              ) : (
+                <DefenseScorePanel
+                  defenseScore={defenseScoreResult}
+                  onClose={() => setSettings((s) => ({ ...s, plannerMode: "design" }))}
+                />
+              )}
+            </aside>
+
+            {/* Center: Grid Canvas */}
+            <main
+              className={`planner-canvas-panel ${
+                mobileWorkspaceTab === "inventory" ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              <CanvasGridBoard
+                buildings={buildings}
+                onUpdateBuildings={handleUpdateBuildings}
+                selectedDefId={selectedDefId}
+                onClearSelectedDef={() => setSelectedDefId(null)}
+                selectedPlacedId={selectedPlacedId}
+                onSelectPlacedId={setSelectedPlacedId}
+                buildingLimits={buildingLimits}
+                settings={settings}
+                zoomLevel={zoomLevel}
+              />
+            </main>
+          </div>
+        </>
+      )}
+
+      {/* Blueprint Manager Modal (Central Hub) */}
+      <BlueprintManagerModal
+        isOpen={isManagerOpen}
+        onClose={handleCloseManager}
         activeLayout={activeLayout}
-        onSelectLayout={handleSelectLayout}
-        onRefreshLayouts={() => {
-          const all = getSavedLayouts();
-          const current = all.find((l) => l.id === activeLayout.id);
-          if (current) setActiveLayout(current);
+        onSelectLayout={(layout) => {
+          handleSelectLayout(layout);
+          setIsManagerOpen(false);
         }}
-        autoSaveTime={autoSaveTime}
+        onOpenNewWizard={() => {
+          setWizardInitialTH(activeLayout?.townHallLevel || initialTownHall);
+          setIsNewWizardOpen(true);
+        }}
       />
 
-      {/* Recovery / Migration Modal */}
+      {/* New Blueprint Creation Wizard Modal (4-step unified flow) */}
+      <NewBlueprintWizardModal
+        isOpen={isNewWizardOpen}
+        onClose={() => setIsNewWizardOpen(false)}
+        onCreated={(createdLayout) => {
+          applySelectedLayout(createdLayout);
+          setIsNewWizardOpen(false);
+          setIsManagerOpen(false);
+        }}
+        initialTownHall={wizardInitialTH}
+      />
+
+      {/* Recovery Modal for validation errors */}
       {pendingRecovery && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-[#1e272e] border border-[#ffaf40] p-6 rounded-lg max-w-lg w-full shadow-xl">
-            <h2 className="text-xl font-bold text-[#ffaf40] flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-6 h-6" /> Phát hiện lỗi dữ liệu Layout
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-[#121c24] border border-amber-500/40 p-6 rounded-2xl max-w-lg w-full shadow-2xl">
+            <h2 className="text-base font-bold text-amber-400 flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5" /> Phát hiện xung đột dữ liệu bố cục
             </h2>
-            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
-              Bản đồ <strong>{pendingRecovery.layout.name}</strong> chứa các dữ liệu không hợp lệ (có thể do nhập file lỗi, khác phiên bản, hoặc thay đổi giới hạn Town Hall).
+            <p className="text-slate-300 mb-4 text-xs leading-relaxed">
+              Bản thiết kế &quot;{pendingRecovery.layout.name}&quot; có một số công trình vượt giới
+              hạn hoặc không khớp với Town Hall {pendingRecovery.layout.townHallLevel}.
             </p>
-            <ul className="text-xs text-gray-400 mb-6 bg-black/40 p-3 rounded h-32 overflow-y-auto space-y-1">
+            <ul className="text-xs text-slate-400 mb-6 bg-black/40 p-3 rounded-xl h-28 overflow-y-auto space-y-1">
               {pendingRecovery.issues.map((issue, idx) => (
                 <li key={idx} className="flex gap-2">
-                  <span className={issue.type === "critical" ? "text-[#ff3f34]" : "text-[#ffaf40]"}>•</span>
-                  {issue.message}
+                  <span className={issue.type === "critical" ? "text-rose-400" : "text-amber-400"}>
+                    •
+                  </span>
+                  <span>{issue.message}</span>
                 </li>
               ))}
             </ul>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => {
-                  const safeLayout = { ...pendingRecovery.layout, buildings: pendingRecovery.validBuildings };
-                  saveLayout(safeLayout);
+                  const sanitized = {
+                    ...pendingRecovery.layout,
+                    buildings: pendingRecovery.sanitizedBuildings,
+                  };
+                  saveLayout(sanitized);
+                  applySelectedLayout(sanitized);
                   setPendingRecovery(null);
-                  applySelectedLayout(safeLayout);
                 }}
-                className="w-full py-2.5 bg-[#ffaf40] text-black font-semibold rounded hover:bg-opacity-90 flex items-center justify-center gap-2"
+                className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                <Check className="w-4 h-4" /> Khôi phục tự động (Giữ lại công trình hợp lệ)
+                Tự động chuẩn hóa và mở bản thiết kế
               </button>
               <button
-                onClick={() => {
-                  setPendingRecovery(null);
-                  // If we are currently loading the initial layout and we cancel, what happens?
-                  // Active layout remains unchanged but isn't applied if it was a selection.
-                  // If it was the initial load, it is already applied... wait, applySelectedLayout wasn't called.
-                }}
-                className="w-full py-2.5 bg-slate-700 text-white rounded hover:bg-slate-600 transition-colors"
+                onClick={() => setPendingRecovery(null)}
+                className="w-full py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-700 transition-colors"
               >
                 Hủy bỏ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TH Downgrade Validation Modal */}
-      {pendingTHChange && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-[#1e272e] border border-[#ff3f34] p-6 rounded-lg max-w-lg w-full shadow-xl">
-            <h2 className="text-xl font-bold text-[#ff3f34] flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-6 h-6" /> Cảnh báo Hạ Cấp Town Hall
-            </h2>
-            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
-              Bạn đang chuyển xuống Town Hall {pendingTHChange.newTH}, nhưng bản đồ hiện tại đang có các công trình vượt quá giới hạn của cấp độ này.
-            </p>
-            <ul className="text-xs text-gray-400 mb-6 bg-black/40 p-3 rounded h-32 overflow-y-auto space-y-1">
-              {pendingTHChange.issues.map((issue, idx) => (
-                <li key={idx} className="flex gap-2"><span className={issue.type === "critical" ? "text-[#ff3f34]" : "text-[#ffaf40]"}>•</span> {issue.message}</li>
-              ))}
-            </ul>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => applyTownHallChange(pendingTHChange.newTH, pendingTHChange.validBuildings)}
-                className="w-full py-2 bg-[#ff3f34] text-white font-semibold rounded hover:bg-red-700 transition-colors"
-              >
-                Xóa các công trình không hợp lệ
-              </button>
-              <button
-                onClick={() => applyTownHallChange(pendingTHChange.newTH, buildings)}
-                className="w-full py-2 bg-[#ffc048] text-black font-semibold rounded hover:bg-yellow-600 transition-colors"
-              >
-                Giữ nguyên bản đồ (Lưu cảnh báo)
-              </button>
-              <button
-                onClick={() => setPendingTHChange(null)}
-                className="w-full py-2 bg-gray-600 text-white font-semibold rounded hover:bg-gray-500 transition-colors mt-2"
-              >
-                Hủy đổi Town Hall
               </button>
             </div>
           </div>

@@ -330,6 +330,6 @@ export function getPresetLayout(townHallLevel: number): PlacedBuilding[] {
   add("seeking-air-mine", 11, 15);
   add("seeking-air-mine", 30, 15);
 
-  const { validBuildings } = validateLayout(list, townHallLevel);
-  return validBuildings;
+  const { sanitizedBuildings } = validateLayout(list, townHallLevel);
+  return sanitizedBuildings;
 }

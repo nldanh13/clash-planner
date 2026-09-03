@@ -92,18 +92,18 @@ const item = (data: Omit<UpgradeItem, "quantity" | "apiTracked" | "source" | "da
   quantity: 1,
   apiTracked: ["hero","troop","spell","siege","equipment","pet"].includes(data.kind),
   dataStatus: "estimated",
-  source: "Internal upgrade dataset seed. Replace individual rows with exact game values as patches change.",
+  source: "Dữ liệu gốc nội bộ. Cần cập nhật số liệu chính xác khi có bản vá từ game.",
   ...data
 });
 
 export const upgradeSources = [
-  "Clash Ninja documents tracker concepts: builder/lab/pet queues, TH1-TH18, season boosts and upgrade timelines.",
-  "Pixel Crux exposes structured tracker categories for buildings, walls, traps, heroes, troops, spells, siege machines, pets and totals.",
-  "Supercell patch notes are the authority for economy reductions; this app's seed data should be updated after each game patch."
+  "Clash Ninja: Tham khảo khái niệm về tracker, hàng chờ, TH1-TH18, giảm giá mùa giải và tiến độ.",
+  "Pixel Crux: Tham khảo cấu trúc phân loại công trình, tường, bẫy, tướng, quân, phép, máy công thành và thú cưng.",
+  "Supercell (Patch Notes): Dữ liệu gốc nên được đối chiếu và cập nhật sau mỗi bản vá chính thức."
 ];
 
 export const upgradeItems: UpgradeItem[] = [
-  item({id:"town-hall",name:"Town Hall",kind:"building",lane:"Builder",unlockTownHall:1,apiTracked:true,dataStatus:"exact",source:"Supercell patch notes + verified app seed",levels:[
+  item({id:"town-hall",name:"Town Hall",kind:"building",lane:"Builder",unlockTownHall:1,apiTracked:true,dataStatus:"exact",source:"Ghi chú cập nhật Supercell + dữ liệu gốc đã xác minh",levels:[
     {level:2,townHall:1,cost:1000,resource:"Gold",timeHours:0.08},{level:3,townHall:2,cost:4000,resource:"Gold",timeHours:3},
     {level:4,townHall:3,cost:25000,resource:"Gold",timeHours:d(1)},{level:5,townHall:4,cost:150000,resource:"Gold",timeHours:d(2)},
     {level:6,townHall:5,cost:750000,resource:"Gold",timeHours:d(4)},{level:7,townHall:6,cost:1200000,resource:"Gold",timeHours:d(6)},
