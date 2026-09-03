@@ -21,14 +21,11 @@ async function startServer() {
     }
     
     try {
-      // Extract the path after /api/warreport/
-      const apiPath = req.params.all;
-      const targetUrl = `https://clashapi.colinschmale.dev/${apiPath}`;
-      
-      const queryParams = new URLSearchParams(req.query as any).toString();
-      const finalUrl = queryParams ? `${targetUrl}?${queryParams}` : targetUrl;
+      // Forward the exact sub-path and query parameters after /api/warreport/
+      const subPathAndQuery = req.originalUrl.replace(/^\/api\/warreport\/?/, "");
+      const targetUrl = `https://clashapi.colinschmale.dev/${subPathAndQuery}`;
 
-      const response = await fetch(finalUrl, {
+      const response = await fetch(targetUrl, {
         method: req.method,
         headers: {
           "apikey": apiKey,

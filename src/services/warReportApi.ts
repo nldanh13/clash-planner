@@ -13,6 +13,7 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
     if (res.status === 401 || res.status === 403)
       throw new Error("War Report đã thay đổi quyền hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (WAR_REPORT_API_KEY).");
     if (res.status === 502) throw new Error("Proxy không thể kết nối đến War Report. Hãy chắc chắn bạn đã cấu hình backend proxy.");
+    if (res.status === 503) throw new Error("Chưa cấu hình WAR_REPORT_API_KEY trong môi trường. Vui lòng thêm WAR_REPORT_API_KEY trong phần Cài đặt.");
     throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
   }
   const payload = (await res.json()) as Partial<Player>;
