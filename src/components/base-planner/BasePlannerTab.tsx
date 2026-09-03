@@ -609,8 +609,12 @@ export function BasePlannerTab({
               {settings.viewMode === "isometric" ? (
                 <IsometricGridBoard
                   buildings={buildings}
+                  onUpdateBuildings={handleUpdateBuildings}
+                  selectedDefId={selectedDefId}
+                  onClearSelectedDef={() => setSelectedDefId(null)}
                   selectedPlacedId={selectedPlacedId}
                   onSelectPlacedId={setSelectedPlacedId}
+                  buildingLimits={buildingLimits}
                   settings={settings}
                 />
               ) : (

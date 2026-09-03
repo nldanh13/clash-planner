@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Maximize, ZoomIn, ZoomOut } from "lucide-react";
+import { Maximize, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
@@ -7,6 +7,7 @@ import {
   getBuildingRect,
   type DeploymentAnalysis,
 } from "./deploymentZones";
+import { buildOccupancyMatrix, canPlaceBuildingFast, type GridOccupancyMatrix } from "./gridMatrix";
 import {
   DEFAULT_ISO_CONFIG,
   canvasToGrid,
@@ -19,36 +20,87 @@ import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
 
 interface IsometricGridBoardProps {
   buildings: PlacedBuilding[];
+  onUpdateBuildings: (newBuildings: PlacedBuilding[], replace?: boolean) => void;
+  selectedDefId: string | null;
+  onClearSelectedDef: () => void;
   selectedPlacedId: string | null;
   onSelectPlacedId: (instanceId: string | null) => void;
+  buildingLimits: Record<string, number>;
   settings: TacticalSettings;
 }
 
 /**
- * Read-only isometric tactical view. Reuses the exact same `computeDeploymentAnalysis`
- * mask as CanvasGridBoard (2D) — there is exactly one deployment-rule implementation,
- * this component only projects its output into iso screen space. Editing (placing/
- * moving buildings) stays in the 2D board; this view is for inspection: pan, zoom,
- * select a building to see its footprint + deployment halo from an isometric angle.
+ * Isometric tactical view. Reuses the exact same `computeDeploymentAnalysis` mask
+ * and `gridMatrix` occupancy/placement validation as CanvasGridBoard (2D) — there
+ * is exactly one deployment-rule and one collision implementation, this component
+ * only projects them into iso screen space and pan/zoom.
+ *
+ * Editing is click-based rather than 2D's continuous drag (pixel-perfect drag
+ * hit-testing against 3D box faces is a much larger, separate problem): pick a
+ * building from the sidebar then click a tile to place it, click an existing
+ * building to select it, click an empty tile while a building is selected to
+ * move it there, Delete/Backspace or arrow keys to remove/nudge the selection.
  */
-export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlacedId, settings }: IsometricGridBoardProps) {
+export function IsometricGridBoard({
+  buildings,
+  onUpdateBuildings,
+  selectedDefId,
+  onClearSelectedDef,
+  selectedPlacedId,
+  onSelectPlacedId,
+  buildingLimits,
+  settings,
+}: IsometricGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [viewport, setViewport] = useState<IsoViewport>({ panX: 0, panY: 0, zoom: 1 });
   const [isPanning, setIsPanning] = useState(false);
+  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
   const didDragRef = useRef(false);
+
+  const occupancyMatrix: GridOccupancyMatrix = useMemo(() => buildOccupancyMatrix(buildings), [buildings]);
+
+  const placedCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const b of buildings) map[b.buildingId] = (map[b.buildingId] || 0) + 1;
+    return map;
+  }, [buildings]);
 
   const selectedBuilding = useMemo(
     () => buildings.find((b) => b.instanceId === selectedPlacedId) || null,
     [buildings, selectedPlacedId]
   );
+  const selectedBuildingDef = selectedBuilding ? BUILDINGS_BY_ID.get(selectedBuilding.buildingId) || null : null;
 
   const deploymentAnalysis: DeploymentAnalysis | null = useMemo(() => {
     if (settings.deploymentDisplayMode === "off") return null;
     return computeDeploymentAnalysis(buildings);
   }, [buildings, settings.deploymentDisplayMode]);
+
+  // What footprint (if any) is "active" at the hovered tile: a new building from
+  // the sidebar, or the currently-selected building being relocated.
+  const activePlacement = useMemo(() => {
+    if (selectedDefId) {
+      const def = BUILDINGS_BY_ID.get(selectedDefId);
+      if (def) return { kind: "new" as const, def, ignoreInstanceId: null as string | null };
+    } else if (selectedBuilding && selectedBuildingDef) {
+      return { kind: "move" as const, def: selectedBuildingDef, ignoreInstanceId: selectedBuilding.instanceId };
+    }
+    return null;
+  }, [selectedDefId, selectedBuilding, selectedBuildingDef]);
+
+  const hoverValidity = useMemo(() => {
+    if (!activePlacement || !hoverCell) return null;
+    return canPlaceBuildingFast(
+      occupancyMatrix,
+      activePlacement.def.id,
+      hoverCell.x,
+      hoverCell.y,
+      activePlacement.ignoreInstanceId
+    ).valid;
+  }, [activePlacement, hoverCell, occupancyMatrix]);
 
   // Center the whole 44x44 board in the viewport on mount / container resize,
   // unless the user has already panned/zoomed manually.
@@ -172,6 +224,22 @@ export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlaced
       ctx.stroke();
     }
 
+    // 3b. Placement/move preview footprint at the hovered tile.
+    if (activePlacement && hoverCell) {
+      const { def } = activePlacement;
+      const valid = hoverValidity === true;
+      const p0 = project(hoverCell.x, hoverCell.y);
+      const p1 = project(hoverCell.x + def.width, hoverCell.y);
+      const p2 = project(hoverCell.x + def.width, hoverCell.y + def.height);
+      const p3 = project(hoverCell.x, hoverCell.y + def.height);
+      drawDiamond(
+        [p0, p1, p2, p3],
+        valid ? "rgba(115, 228, 154, 0.35)" : "rgba(255, 115, 128, 0.4)",
+        valid ? "#73e49a" : "#ff7380",
+        2
+      );
+    }
+
     // 4. Buildings, depth-sorted (painter's algorithm) so nearer boxes correctly occlude farther ones.
     const drawable = buildings
       .map((b) => {
@@ -226,11 +294,51 @@ export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlaced
         ctx.setLineDash([]);
       }
     }
-  }, [buildings, deploymentAnalysis, selectedBuilding, selectedPlacedId, settings.deploymentDisplayMode, settings.showGrid, viewport]);
+  }, [
+    activePlacement,
+    buildings,
+    deploymentAnalysis,
+    hoverCell,
+    hoverValidity,
+    selectedBuilding,
+    selectedPlacedId,
+    settings.deploymentDisplayMode,
+    settings.showGrid,
+    viewport,
+  ]);
 
   // ==========================================
-  // POINTER EVENTS: drag-to-pan, click-to-select, wheel-to-zoom
+  // POINTER EVENTS: drag-to-pan, click-to-place/select/move, wheel-to-zoom
   // ==========================================
+  const getCanvasGridCell = useCallback(
+    (e: { clientX: number; clientY: number }): { x: number; y: number } | null => {
+      if (!canvasRef.current) return null;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const canvasPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const gridPt = canvasToGrid(canvasPt, viewport);
+      const gx = Math.floor(gridPt.x);
+      const gy = Math.floor(gridPt.y);
+      if (gx < 0 || gy < 0 || gx >= GRID_SIZE || gy >= GRID_SIZE) return null;
+      return { x: gx, y: gy };
+    },
+    [viewport]
+  );
+
+  const findBuildingAt = useCallback(
+    (gx: number, gy: number) => {
+      return buildings
+        .map((b) => {
+          const def = BUILDINGS_BY_ID.get(b.buildingId);
+          if (!def) return null;
+          return { b, def, depth: depthKeyForRect(b.x, b.y, def.width, def.height) };
+        })
+        .filter((v): v is { b: PlacedBuilding; def: BuildingDef; depth: number } => v !== null)
+        .sort((a, c) => c.depth - a.depth) // topmost (nearest) first
+        .find(({ b, def }) => gx >= b.x && gx < b.x + def.width && gy >= b.y && gy < b.y + def.height);
+    },
+    [buildings]
+  );
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -240,38 +348,112 @@ export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlaced
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isPanning || !panStartRef.current) return;
-    const dx = e.clientX - panStartRef.current.clientX;
-    const dy = e.clientY - panStartRef.current.clientY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDragRef.current = true;
-    hasUserAdjustedView.current = true;
-    setViewport((prev) => ({ ...prev, panX: panStartRef.current!.panX + dx, panY: panStartRef.current!.panY + dy }));
+    if (isPanning && panStartRef.current) {
+      const dx = e.clientX - panStartRef.current.clientX;
+      const dy = e.clientY - panStartRef.current.clientY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDragRef.current = true;
+      hasUserAdjustedView.current = true;
+      setViewport((prev) => ({ ...prev, panX: panStartRef.current!.panX + dx, panY: panStartRef.current!.panY + dy }));
+      return;
+    }
+    setHoverCell(getCanvasGridCell(e));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsPanning(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
 
-    if (!didDragRef.current && canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const canvasPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const gridPt = canvasToGrid(canvasPt, viewport);
-      const gx = Math.floor(gridPt.x);
-      const gy = Math.floor(gridPt.y);
+    if (!didDragRef.current) {
+      const cell = getCanvasGridCell(e);
+      if (cell) {
+        const { x: gx, y: gy } = cell;
 
-      const hit = buildings
-        .map((b) => {
-          const def = BUILDINGS_BY_ID.get(b.buildingId);
-          if (!def) return null;
-          return { b, def, depth: depthKeyForRect(b.x, b.y, def.width, def.height) };
-        })
-        .filter((v): v is { b: PlacedBuilding; def: BuildingDef; depth: number } => v !== null)
-        .sort((a, c) => c.depth - a.depth) // topmost (nearest) first
-        .find(({ b, def }) => gx >= b.x && gx < b.x + def.width && gy >= b.y && gy < b.y + def.height);
+        // 1. Placing a new building from the sidebar selection.
+        if (selectedDefId) {
+          const def = BUILDINGS_BY_ID.get(selectedDefId);
+          if (def) {
+            const max = buildingLimits[def.id] || 0;
+            const current = placedCounts[def.id] || 0;
+            if (max === 0 || current < max) {
+              const { valid } = canPlaceBuildingFast(occupancyMatrix, def.id, gx, gy);
+              if (valid) {
+                const newBuilding: PlacedBuilding = {
+                  instanceId: `b-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                  buildingId: def.id,
+                  x: gx,
+                  y: gy,
+                };
+                onUpdateBuildings([...buildings, newBuilding]);
+                onSelectPlacedId(newBuilding.instanceId);
+                if (def.id !== "wall" && current + 1 >= max) onClearSelectedDef();
+              }
+            }
+          }
+          panStartRef.current = null;
+          return;
+        }
 
-      onSelectPlacedId(hit ? hit.b.instanceId : null);
+        const hitBuilding = findBuildingAt(gx, gy);
+
+        // 2. Clicked an existing building -> select it.
+        if (hitBuilding) {
+          onSelectPlacedId(hitBuilding.b.instanceId);
+          panStartRef.current = null;
+          return;
+        }
+
+        // 3. Clicked empty ground while a building is selected -> move it there.
+        if (selectedBuilding && selectedBuildingDef) {
+          const { valid } = canPlaceBuildingFast(occupancyMatrix, selectedBuilding.buildingId, gx, gy, selectedBuilding.instanceId);
+          if (valid) {
+            const updated = buildings.map((b) => (b.instanceId === selectedBuilding.instanceId ? { ...b, x: gx, y: gy } : b));
+            onUpdateBuildings(updated);
+          }
+          panStartRef.current = null;
+          return;
+        }
+
+        // 4. Clicked empty ground with nothing active -> deselect.
+        onSelectPlacedId(null);
+      }
     }
     panStartRef.current = null;
+  };
+
+  const handleRemoveSelected = () => {
+    if (!selectedPlacedId) return;
+    onUpdateBuildings(buildings.filter((b) => b.instanceId !== selectedPlacedId));
+    onSelectPlacedId(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (!selectedPlacedId || !selectedBuilding || !selectedBuildingDef) return;
+
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      handleRemoveSelected();
+      return;
+    }
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault();
+      let dx = 0;
+      let dy = 0;
+      if (e.key === "ArrowUp") dy = -1;
+      if (e.key === "ArrowDown") dy = 1;
+      if (e.key === "ArrowLeft") dx = -1;
+      if (e.key === "ArrowRight") dx = 1;
+
+      const newX = selectedBuilding.x + dx;
+      const newY = selectedBuilding.y + dy;
+      if (newX < 0 || newY < 0 || newX + selectedBuildingDef.width > GRID_SIZE || newY + selectedBuildingDef.height > GRID_SIZE) return;
+
+      const { valid } = canPlaceBuildingFast(occupancyMatrix, selectedBuilding.buildingId, newX, newY, selectedBuilding.instanceId);
+      if (valid) {
+        const updated = buildings.map((b) => (b.instanceId === selectedPlacedId ? { ...b, x: newX, y: newY } : b));
+        onUpdateBuildings(updated);
+      }
+    }
   };
 
   useEffect(() => {
@@ -305,13 +487,17 @@ export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlaced
     <div className="grid-canvas-viewport relative overflow-hidden" ref={containerRef}>
       <canvas
         ref={canvasRef}
+        tabIndex={0}
         role="application"
         aria-label="Bản đồ Isometric Clash of Clans"
-        className={`w-full h-full outline-none ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+        className={`w-full h-full outline-none ${
+          isPanning ? "cursor-grabbing" : selectedDefId ? "cursor-copy" : "cursor-grab"
+        }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onKeyDown={handleKeyDown}
       />
 
       <div className="absolute top-4 right-4 z-30 flex flex-col gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-xl p-1 shadow-2xl">
@@ -348,8 +534,82 @@ export function IsometricGridBoard({ buildings, selectedPlacedId, onSelectPlaced
       </div>
 
       <div className="absolute bottom-3 left-3 z-30 text-[10px] text-slate-400 bg-slate-950/70 backdrop-blur-sm px-2 py-1 rounded-lg border border-slate-800">
-        Chế độ xem Isometric (chỉ xem) — kéo để xoay góc nhìn, cuộn để zoom, bấm để chọn công trình.
+        {selectedDefId
+          ? "Bấm vào ô hợp lệ để đặt công trình — kéo nền để xoay góc nhìn."
+          : "Kéo để xoay góc nhìn, cuộn để zoom. Bấm để chọn, bấm ô trống để di chuyển công trình đã chọn."}
       </div>
+
+      {/* Floating Inspector Panel — same info/actions as the 2D board's, from an isometric angle. */}
+      {selectedBuilding && selectedBuildingDef && (
+        <div className="building-inspector-card">
+          <div className="inspector-head">
+            <div className="inspector-title">
+              <span className="color-dot" style={{ backgroundColor: selectedBuildingDef.color }} />
+              <strong>{selectedBuildingDef.name}</strong>
+            </div>
+            <button
+              className="close-inspector-btn"
+              onClick={() => onSelectPlacedId(null)}
+              title="Đóng"
+              aria-label="Đóng bảng chi tiết"
+            >
+              <X />
+            </button>
+          </div>
+
+          <div className="inspector-body">
+            <div className="inspector-stat-row">
+              <span>Tọa độ:</span>
+              <b>
+                ({selectedBuilding.x}, {selectedBuilding.y})
+              </b>
+            </div>
+            <div className="inspector-stat-row">
+              <span>Kích thước:</span>
+              <b>
+                {selectedBuildingDef.width}x{selectedBuildingDef.height} ô
+              </b>
+            </div>
+            {selectedBuildingDef.range && (
+              <div className="inspector-stat-row">
+                <span>Tầm bắn:</span>
+                <b>
+                  {selectedBuildingDef.minRange ? `${selectedBuildingDef.minRange} - ` : ""}
+                  {selectedBuildingDef.range} ô
+                </b>
+              </div>
+            )}
+            <div
+              className="inspector-stat-row"
+              title={
+                HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
+                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
+                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
+              }
+            >
+              <span>Vùng cấm triển khai:</span>
+              <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category) ? "text-slate-400" : "text-sky-400"}>
+                {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
+                  ? "Không có (bẫy ẩn)"
+                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
+              </b>
+            </div>
+            <p className="inspector-desc">{selectedBuildingDef.description}</p>
+          </div>
+
+          <div className="inspector-actions">
+            <button
+              className="inspector-delete-btn"
+              onClick={handleRemoveSelected}
+              title="Xóa công trình này khỏi bản đồ"
+              aria-label="Xóa công trình"
+            >
+              <Trash2 />
+              <span>Xóa bỏ</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
