@@ -19,10 +19,13 @@ import { calculateFirepowerHeatmap, getHeatmapColor } from "./heatmapUtils";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
   computeDeploymentAnalysis,
+  computeDeploymentMasks,
   getBuildingRect,
   type DeploymentAnalysis,
 } from "./deploymentZones";
-import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
+import { DECORATIONS_BY_ID } from "./decorationCatalog";
+import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
+import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -36,6 +39,13 @@ interface CanvasGridBoardProps {
   zoomLevel: number;
   zoomMode?: "fit" | "manual";
   onZoomChange?: (zoom: number, mode?: "fit" | "manual") => void;
+  /** Cosmetic-only decoration layer — see decorationCatalog.ts. Optional so every other caller/test compiles untouched. */
+  decorations?: PlacedDecoration[];
+  onUpdateDecorations?: (newDecorations: PlacedDecoration[]) => void;
+  /** When set, clicking/dragging on the canvas paints this decoration type instead of placing a building. */
+  selectedDecorationDefId?: string | null;
+  /** Ghost preview tiles for the Shape Stamp tool (wall-shape presets), drawn as a translucent overlay before the user commits them. */
+  stampPreviewCoords?: { x: number; y: number }[] | null;
 }
 
 interface ActiveDrag {
@@ -63,6 +73,10 @@ export function CanvasGridBoard({
   zoomLevel,
   zoomMode = "fit",
   onZoomChange,
+  decorations = [],
+  onUpdateDecorations,
+  selectedDecorationDefId = null,
+  stampPreviewCoords = null,
 }: CanvasGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +85,7 @@ export function CanvasGridBoard({
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isPaintingWalls, setIsPaintingWalls] = useState(false);
+  const [isPaintingDecorations, setIsPaintingDecorations] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(false);
@@ -286,13 +301,52 @@ export function CanvasGridBoard({
         const replace = dragActionCommittedRef.current;
         onUpdateBuildings(buildings.filter((b) => b.instanceId !== target.instanceId), replace);
         dragActionCommittedRef.current = true;
-        
+
         if (selectedPlacedId === target.instanceId) {
           onSelectPlacedId(null);
         }
+        return;
+      }
+
+      // Nothing real at this tile — try erasing a decoration instead, so the
+      // eraser tool doubles as the decoration-removal tool (one mental model).
+      if (onUpdateDecorations && decorations.length > 0) {
+        const hit = decorations.find((d) => {
+          const def = DECORATIONS_BY_ID.get(d.decorationId);
+          if (!def) return false;
+          return x >= d.x && x < d.x + def.width && y >= d.y && y < d.y + def.height;
+        });
+        if (hit) {
+          onUpdateDecorations(decorations.filter((d) => d.instanceId !== hit.instanceId));
+        }
       }
     },
-    [buildings, occupancyMatrix, onSelectPlacedId, onUpdateBuildings, selectedPlacedId]
+    [buildings, decorations, occupancyMatrix, onSelectPlacedId, onUpdateBuildings, onUpdateDecorations, selectedPlacedId]
+  );
+
+  // Building-only occupancy mask (used for decoration collision — decorations
+  // must not overlap real buildings/walls, but their own tiles are tracked
+  // separately in `decorationOccupancyMask` below).
+  const buildingOccupancyMask = useMemo(() => computeDeploymentMasks(buildings).occupancyMask, [buildings]);
+  const decorationOccupancyMask = useMemo(() => buildDecorationOccupancyMask(decorations), [decorations]);
+
+  // Fast Decoration placement (brush-paint, same interaction feel as walls)
+  const tryPaintDecorationFast = useCallback(
+    (x: number, y: number) => {
+      if (!selectedDecorationDefId || !onUpdateDecorations) return;
+      const def = DECORATIONS_BY_ID.get(selectedDecorationDefId);
+      if (!def) return;
+      if (!isDecorationPlacementFree(buildingOccupancyMask, decorationOccupancyMask, x, y, def.width, def.height)) return;
+
+      const newDecoration: PlacedDecoration = {
+        instanceId: `deco-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        decorationId: def.id,
+        x,
+        y,
+      };
+      onUpdateDecorations([...decorations, newDecoration]);
+    },
+    [buildingOccupancyMask, decorationOccupancyMask, decorations, onUpdateDecorations, selectedDecorationDefId]
   );
 
   const { invalidBuildings } = React.useMemo(() => {
@@ -574,6 +628,54 @@ export function CanvasGridBoard({
       }
     }
 
+    // 4c. Cosmetic Decorations (never affects occupancy/deployment — visual only)
+    for (let i = 0; i < decorations.length; i++) {
+      const dcor = decorations[i];
+      const def = DECORATIONS_BY_ID.get(dcor.decorationId);
+      if (!def) continue;
+
+      const px = dcor.x * cellSize;
+      const py = dcor.y * cellSize;
+      const pw = def.width * cellSize;
+      const ph = def.height * cellSize;
+      const radius = Math.min(pw, ph) * 0.22;
+
+      ctx.beginPath();
+      if (typeof (ctx as CanvasRenderingContext2D & { roundRect?: Function }).roundRect === "function") {
+        ctx.roundRect(px + 1, py + 1, pw - 2, ph - 2, radius);
+      } else {
+        ctx.rect(px + 1, py + 1, pw - 2, ph - 2);
+      }
+      ctx.fillStyle = def.color;
+      ctx.globalAlpha = 0.88;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = def.accentColor || "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const fontSize = Math.max(8, Math.min(pw, ph) * 0.62);
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(def.emoji, px + pw / 2, py + ph / 2 + 1);
+    }
+
+    // 4d. Shape Stamp ghost preview (Decorative Design tool)
+    if (stampPreviewCoords && stampPreviewCoords.length > 0) {
+      ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1;
+      for (const c of stampPreviewCoords) {
+        if (c.x < 0 || c.y < 0 || c.x >= GRID_SIZE || c.y >= GRID_SIZE) continue;
+        const px = c.x * cellSize;
+        const py = c.y * cellSize;
+        ctx.fillRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+        ctx.strokeRect(px + 1.5, py + 1.5, cellSize - 3, cellSize - 3);
+      }
+    }
+
     // 4b. Selected Building's Deployment Halo (independent of the global
     // overlay toggle — a quick per-building inspector, distinct color from
     // both the amber selection border and the block/hole overlay above).
@@ -746,6 +848,7 @@ export function CanvasGridBoard({
     buildings,
     cellSize,
     chainAnalysis,
+    decorations,
     deploymentAnalysis,
     heatmapData,
     hoverCoord,
@@ -754,6 +857,7 @@ export function CanvasGridBoard({
     selectedPlacedBuilding,
     selectedPlacedId,
     settings,
+    stampPreviewCoords,
   ]);
 
   // ==========================================
@@ -794,6 +898,13 @@ export function CanvasGridBoard({
     if (settings.wallBrushActive) {
       setIsPaintingWalls(true);
       tryPaintWallFast(coord.x, coord.y);
+      return;
+    }
+
+    // 2b. Decoration brush mode (Decorative Design tool)
+    if (selectedDecorationDefId) {
+      setIsPaintingDecorations(true);
+      tryPaintDecorationFast(coord.x, coord.y);
       return;
     }
 
@@ -875,6 +986,12 @@ export function CanvasGridBoard({
       return;
     }
 
+    // Decoration Painting
+    if (isPaintingDecorations && selectedDecorationDefId) {
+      tryPaintDecorationFast(coord.x, coord.y);
+      return;
+    }
+
     // Erasing
     if (isErasing && settings.eraserActive) {
       tryEraseFast(coord.x, coord.y);
@@ -907,6 +1024,7 @@ export function CanvasGridBoard({
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsPointerDown(false);
     setIsPaintingWalls(false);
+    setIsPaintingDecorations(false);
     setIsErasing(false);
     if (isPanning) {
       setIsPanning(false);

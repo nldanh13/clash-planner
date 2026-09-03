@@ -27,7 +27,7 @@ import {
   setActiveLayoutId,
 } from "./layoutStorage";
 import { useBasePlannerHistory } from "./useBasePlannerHistory";
-import type { LayoutProject, PlacedBuilding, PlannerViewMode, TacticalSettings } from "./types";
+import type { LayoutProject, PlacedBuilding, PlacedDecoration, PlannerViewMode, TacticalSettings } from "./types";
 import TacticalToolbar from "./TacticalToolbar";
 import { EditorBlueprintHeader } from "./EditorBlueprintHeader";
 import { BlueprintManagerModal } from "./BlueprintManagerModal";
@@ -36,6 +36,7 @@ import { InventorySidebar } from "./InventorySidebar";
 import { CanvasGridBoard } from "./CanvasGridBoard";
 import { IsometricGridBoard } from "./IsometricGridBoard";
 import { DefenseScorePanel } from "./DefenseScorePanel";
+import { DecorativeDesignPanel } from "./DecorativeDesignPanel";
 
 interface BasePlannerTabProps {
   initialTownHall?: number;
@@ -118,6 +119,12 @@ export function BasePlannerTab({
   } = useBasePlannerHistory({
     initialState: () => activeLayout?.buildings || [],
   });
+
+  // Cosmetic decorations: deliberately NOT part of the undo/redo `buildings`
+  // history (kept as a simple, separately-saved layer — see decorationCatalog.ts).
+  const [decorations, setDecorations] = useState<PlacedDecoration[]>(() => activeLayout?.decorations || []);
+  const [selectedDecorationDefId, setSelectedDecorationDefId] = useState<string | null>(null);
+  const [stampPreviewCoords, setStampPreviewCoords] = useState<{ x: number; y: number }[] | null>(null);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -223,6 +230,22 @@ export function BasePlannerTab({
     [activeLayout, pushState, replaceState]
   );
 
+  // Decorations are cosmetic-only and saved immediately (no undo/redo history,
+  // no debounce — the interaction volume is far lower than building placement).
+  const handleUpdateDecorations = useCallback(
+    (newDecorations: PlacedDecoration[]) => {
+      setDecorations(newDecorations);
+      if (!activeLayout) return;
+      try {
+        const updated = saveLayout({ ...activeLayout, buildings, decorations: newDecorations });
+        setActiveLayout(updated);
+      } catch {
+        setSaveStatus("error");
+      }
+    },
+    [activeLayout, buildings]
+  );
+
   // Manual Instant Save
   const handleSaveManual = () => {
     if (!activeLayout) return;
@@ -233,6 +256,7 @@ export function BasePlannerTab({
       const updated = saveLayout({
         ...activeLayout,
         buildings,
+        decorations,
       });
       setActiveLayout(updated);
       setSaveStatus("saved");
@@ -268,6 +292,9 @@ export function BasePlannerTab({
     setActiveLayout(layout);
     setActiveLayoutId(layout.id);
     setEntireState(layout.buildings || []);
+    setDecorations(layout.decorations || []);
+    setSelectedDecorationDefId(null);
+    setStampPreviewCoords(null);
     setSelectedPlacedId(null);
     setSelectedDefId(null);
     setSaveStatus("saved");
@@ -549,6 +576,8 @@ export function BasePlannerTab({
               aria-label={
                 settings.plannerMode === "design"
                   ? "Xem Kho công trình"
+                  : settings.plannerMode === "decorate"
+                  ? "Xem Trang trí & Hình dạng"
                   : "Xem Phân tích phòng thủ"
               }
             >
@@ -559,6 +588,11 @@ export function BasePlannerTab({
                   {selectedDefId && (
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   )}
+                </>
+              ) : settings.plannerMode === "decorate" ? (
+                <>
+                  <Shield className="w-4 h-4" />
+                  <span>Trang trí</span>
                 </>
               ) : (
                 <>
@@ -601,6 +635,19 @@ export function BasePlannerTab({
                       eraserActive: false,
                     }))
                   }
+                />
+              ) : settings.plannerMode === "decorate" ? (
+                <DecorativeDesignPanel
+                  buildings={buildings}
+                  decorations={decorations}
+                  townHallLevel={townHallLevel}
+                  buildingLimits={buildingLimits}
+                  onUpdateBuildings={handleUpdateBuildings}
+                  onUpdateDecorations={handleUpdateDecorations}
+                  selectedDecorationDefId={selectedDecorationDefId}
+                  onSelectDecorationDefId={setSelectedDecorationDefId}
+                  onStampPreviewChange={setStampPreviewCoords}
+                  showToast={showToast}
                 />
               ) : (
                 <DefenseScorePanel
@@ -665,6 +712,10 @@ export function BasePlannerTab({
                     setZoomLevel(newZoom);
                     if (mode) setZoomMode(mode);
                   }}
+                  decorations={decorations}
+                  onUpdateDecorations={handleUpdateDecorations}
+                  selectedDecorationDefId={settings.plannerMode === "decorate" ? selectedDecorationDefId : null}
+                  stampPreviewCoords={settings.plannerMode === "decorate" ? stampPreviewCoords : null}
                 />
               )}
             </main>
@@ -683,6 +734,7 @@ export function BasePlannerTab({
         }}
         onOpenNewWizard={() => {
           setWizardInitialTH(activeLayout?.townHallLevel || initialTownHall);
+          setIsManagerOpen(false);
           setIsNewWizardOpen(true);
         }}
       />

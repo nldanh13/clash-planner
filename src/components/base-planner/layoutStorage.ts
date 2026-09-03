@@ -269,6 +269,8 @@ export function duplicateLayout(layoutId: string, targetTownHall?: number): Layo
     isPinned: false,
     deletedAt: undefined,
     buildings: sanitizedBuildings,
+    // Deep-cloned so editing the copy's decorations can never alias the source's array.
+    decorations: source.decorations ? JSON.parse(JSON.stringify(source.decorations)) : undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -308,6 +310,7 @@ export function createVariantLayout(
     isPinned: false,
     deletedAt: undefined,
     buildings: JSON.parse(JSON.stringify(source.buildings)),
+    decorations: source.decorations ? JSON.parse(JSON.stringify(source.decorations)) : undefined,
     createdAt: now,
     updatedAt: now,
   };

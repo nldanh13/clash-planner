@@ -307,8 +307,13 @@ export function BlueprintManagerModal({
 
   // Actions
   const handleOpenLayout = (layout: LayoutProject) => {
+    // `onSelectLayout` (see BasePlannerTab.tsx) already closes the manager itself.
+    // Calling `onClose()` here too used to be redundant AND buggy: `onClose` is
+    // `handleCloseManager`, which reads `activeLayout` from a stale closure and,
+    // when it was still null (e.g. picking the very first layout of a session),
+    // fell through to "no active layout -> leave the Base Planner tab entirely" —
+    // kicking the user straight back out right after they opened a layout.
     onSelectLayout(layout);
-    onClose();
   };
 
   const handleTogglePin = (layoutId: string) => {
@@ -603,7 +608,9 @@ export function BlueprintManagerModal({
             <button
               type="button"
               onClick={() => {
-                onClose();
+                // `onOpenNewWizard` (see BasePlannerTab.tsx) already closes the manager
+                // itself — see the comment on `handleOpenLayout` above for why calling
+                // the generic `onClose()` here too was buggy, not just redundant.
                 onOpenNewWizard();
               }}
               className="p-2 sm:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
@@ -670,7 +677,6 @@ export function BlueprintManagerModal({
               <button
                 type="button"
                 onClick={() => {
-                  onClose();
                   onOpenNewWizard();
                 }}
                 className="px-2.5 sm:px-4 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all shrink-0"
@@ -883,7 +889,6 @@ export function BlueprintManagerModal({
                     <button
                       type="button"
                       onClick={() => {
-                        onClose();
                         onOpenNewWizard();
                       }}
                       className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-2"
@@ -1665,7 +1670,6 @@ export function BlueprintManagerModal({
             onClose={() => setCatalogReport(null)}
             onOpenInEditor={(layout) => {
               onSelectLayout(layout);
-              onClose();
             }}
           />
         )}
