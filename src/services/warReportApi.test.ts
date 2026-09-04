@@ -75,7 +75,7 @@ describe('fetchPlayer', () => {
       status: 403,
     });
 
-    await expect(fetchPlayer('#1234')).rejects.toThrow('War Report đã thay đổi quyền');
+    await expect(fetchPlayer('#1234')).rejects.toThrow('từ chối quyền truy cập');
   });
 
   it('handles bad payload', async () => {

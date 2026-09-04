@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { BUILDINGS_CATALOG } from "./constants";
+import { getCachedImage, getBuildingImagePath } from "./imageMapper";
 import type { BuildingCategory, PlacedBuilding } from "./types";
 
 interface InventorySidebarProps {
@@ -218,12 +219,28 @@ export function InventorySidebar({
               >
                 {/* Thumb Visual Box */}
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-inner border border-white/10"
-                  style={{ backgroundColor: item.color }}
+                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-inner border border-white/10 overflow-hidden relative bg-slate-900"
                 >
-                  <span className="bg-black/40 px-1 py-0.5 rounded text-[8.5px] font-mono">
-                    {item.width}x{item.height}
-                  </span>
+                  {getBuildingImagePath(item.id) ? (
+                    <img 
+                      src={getBuildingImagePath(item.id)!} 
+                      alt={item.name} 
+                      className="w-full h-full object-contain scale-110 drop-shadow-md"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: item.color }}>
+                      <span className="bg-black/40 px-1 py-0.5 rounded text-[8.5px] font-mono">
+                        {item.width}x{item.height}
+                      </span>
+                    </div>
+                  )}
+                  {/* Small dimension overlay in corner if we use image */}
+                  {getBuildingImagePath(item.id) && (
+                    <span className="absolute bottom-0.5 right-0.5 bg-black/70 px-0.5 py-0 rounded text-[7px] font-mono text-white/80">
+                      {item.width}x{item.height}
+                    </span>
+                  )}
                 </div>
 
                 {/* Info & Counter */}

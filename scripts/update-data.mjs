@@ -15,7 +15,9 @@ const wantLevels = args.includes('--levels');
 
 if (!validateOnly) {
   console.log("Running coc-admin/scrape.mjs...");
-  const scrapeArgs = wantLevels ? ['--levels'] : [];
+  const scrapeArgs = ['--incremental'];
+  if (wantLevels) scrapeArgs.push('--levels');
+  
   try {
     execSync(`node coc-admin/scrape.mjs ${scrapeArgs.join(' ')}`, { stdio: 'inherit', cwd: root });
   } catch (e) {
@@ -124,6 +126,12 @@ try {
   }
   fs.renameSync(tmpDir, publicData);
   
+  // Also copy to dist/data if it exists (for production Express server)
+  const distData = path.resolve(root, 'dist', 'data');
+  if (fs.existsSync(path.resolve(root, 'dist'))) {
+    fs.cpSync(publicData, distData, { recursive: true, force: true });
+  }
+  
   // Cleanup old data and temp dirs
   if (fs.existsSync(oldData)) {
     fs.rmSync(oldData, { recursive: true, force: true });
@@ -133,6 +141,13 @@ try {
   }
   
   console.log("✅ Data successfully updated in public/data/.");
+
+  try {
+    console.log("Đang đồng bộ kho hình ảnh offline (scripts/download-images.mjs)...");
+    execSync('node scripts/download-images.mjs', { stdio: 'inherit', cwd: root });
+  } catch (imgErr) {
+    console.warn("⚠️ Đồng bộ kho ảnh offline có cảnh báo:", imgErr.message);
+  }
 } catch (e) {
   console.error("❌ Failed to write to public/data/:", e.message);
   process.exit(1);

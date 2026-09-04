@@ -62,6 +62,11 @@ export function readStoredChoice<T extends string>(key: string, allowed: T[], fa
   return allowed.includes(v) ? v : fallback;
 }
 
+export function readStoredNumber(key: string, allowed: number[], fallback: number): number {
+  const v = parseInt(localStorage.getItem(key) || "", 10);
+  return allowed.includes(v) ? v : fallback;
+}
+
 export function currentLevelFor(item: UpgradeItem, player: Player | null, manualLevels: Record<string, number>) {
   if (item.id === "town-hall") return player?.townHallLevel || 0;
   if (!item.apiTracked) return manualLevels[manualKey(player, item)] || 0;
@@ -75,14 +80,30 @@ export function currentLevelFor(item: UpgradeItem, player: Player | null, manual
   return pools.find(x => x.name === item.name)?.level || 0;
 }
 
-export function summarizePlan(item: UpgradeItem, currentLevel: number, targetLevel: number, quantity = 1) {
+export function summarizePlan(item: UpgradeItem, currentLevel: number, targetLevel: number, quantity = 1, goldPassDiscount = 0) {
   const steps = item.levels.filter(x => x.level > currentLevel && x.level <= targetLevel);
   const costs = emptyCosts();
-  for (const step of steps) costs[step.resource] = (costs[step.resource] || 0) + step.cost * quantity;
+  let totalHours = 0;
+  
+  const discountMultiplier = 1 - (goldPassDiscount / 100);
+
+  for (const step of steps) {
+    // Discount does not apply to Ores (Shiny, Glowy, Starry) for Equipment.
+    // It usually applies to Builder time/cost, Lab time/cost, and Pet House time/cost.
+    const isOre = step.resource === "Shiny Ore" || step.resource === "Glowy Ore" || step.resource === "Starry Ore";
+    
+    // Some costs are Instant or small, but we'll apply generally unless it's ore.
+    const actualCost = isOre ? step.cost : Math.ceil(step.cost * discountMultiplier);
+    const actualHours = step.timeHours * discountMultiplier;
+    
+    costs[step.resource] = (costs[step.resource] || 0) + actualCost * quantity;
+    totalHours += actualHours * quantity;
+  }
+  
   return {
     steps,
     costs,
-    totalHours: steps.reduce((sum, step) => sum + step.timeHours * quantity, 0),
+    totalHours,
     requiredTownHall: steps.length ? Math.max(...steps.map(x => x.townHall)) : 0,
     requires: steps.length ? Array.from(new Set(steps.flatMap(x => x.requires || []))) : []
   };

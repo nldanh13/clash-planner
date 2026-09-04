@@ -14,7 +14,8 @@ export function useUpgradeTracker({
   playstyle,
   attackFocus,
   defenseFocusPick,
-  guestTownHall
+  guestTownHall,
+  goldPassDiscount
 }: {
   player: Player | null;
   manualLevels: Record<string, number>;
@@ -23,12 +24,13 @@ export function useUpgradeTracker({
   attackFocus: StyleFocus;
   defenseFocusPick: StyleFocus;
   guestTownHall: number;
+  goldPassDiscount: number;
 }) {
   const townHallRows = useMemo(() => plannerItems.map(item => {
     const current = currentLevelFor(item, player, manualLevels);
     const target = targetForTownHall(item, maxTownHall);
-    return { item, current, target, plan: summarizePlan(item, current, target, item.quantity) };
-  }).filter(row => row.target > row.current && row.plan.steps.length), [player, manualLevels, maxTownHall]);
+    return { item, current, target, plan: summarizePlan(item, current, target, item.quantity, goldPassDiscount) };
+  }).filter(row => row.target > row.current && row.plan.steps.length), [player, manualLevels, maxTownHall, goldPassDiscount]);
 
   const townHallGroups = useMemo(() => trackerKindOrder.map(kind => {
     const rows = townHallRows.filter(row => row.item.kind === kind);
@@ -58,14 +60,14 @@ export function useUpgradeTracker({
     return plannerItems.map(item => {
       const current = currentLevelFor(item, player, manualLevels);
       const target = targetForTownHall(item, townHall);
-      const plan = summarizePlan(item, current, target, item.quantity);
+      const plan = summarizePlan(item, current, target, item.quantity, goldPassDiscount);
       const priority = priorityFor(item);
       const score = styleScoreFor(item, priority.score, playstyle, attackFocus, defenseFocusPick);
       const reason = styleReasonFor(item, playstyle, attackFocus, defenseFocusPick) || priority.reason;
       return { item, current, target, plan, priority, score, reason };
     }).filter(row => row.target > row.current && row.plan.steps.length)
       .sort((a, b) => b.score - a.score || b.plan.totalHours - a.plan.totalHours);
-  }, [player, manualLevels, playstyle, attackFocus, defenseFocusPick, effectiveTownHall]);
+  }, [player, manualLevels, playstyle, attackFocus, defenseFocusPick, effectiveTownHall, goldPassDiscount]);
 
   const suggestTotals = useMemo(() => {
     const costs = emptyCosts();

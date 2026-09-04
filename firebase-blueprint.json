@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "schema": {
+    "users": {
+      "type": "collection",
+      "description": "User profile and synced data",
+      "documentId": "uid",
+      "fields": {
+        "email": { "type": "string" },
+        "savedTags": { "type": "array", "description": "List of saved player tags" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "permissions": {
+        "read": "request.auth != null && request.auth.uid == uid",
+        "write": "request.auth != null && request.auth.uid == uid"
+      },
+      "subcollections": {
+        "layouts": {
+          "type": "collection",
+          "description": "Saved base layouts",
+          "documentId": "layoutId",
+          "fields": {
+            "name": { "type": "string" },
+            "townHallLevel": { "type": "number" },
+            "buildings": { "type": "string" },
+            "purpose": { "type": "string" },
+            "createdAt": { "type": "string" },
+            "updatedAt": { "type": "string" }
+          },
+          "permissions": {
+            "read": "request.auth != null && request.auth.uid == uid",
+            "write": "request.auth != null && request.auth.uid == uid"
+          }
+        }
+      }
+    }
+  }
+}

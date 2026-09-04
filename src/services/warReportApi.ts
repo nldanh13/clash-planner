@@ -13,9 +13,9 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
   if (!res.ok) {
     if (res.status === 404) throw new Error("Không tìm thấy người chơi. Hãy kiểm tra lại Player Tag.");
     if (res.status === 401 || res.status === 403)
-      throw new Error("War Report đã thay đổi quyền hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (WAR_REPORT_API_KEY).");
-    if (res.status === 502) throw new Error("Proxy không thể kết nối đến War Report. Hãy chắc chắn bạn đã cấu hình backend proxy.");
-    if (res.status === 503) throw new Error("Chưa cấu hình WAR_REPORT_API_KEY trong môi trường. Vui lòng thêm WAR_REPORT_API_KEY trong phần Cài đặt.");
+      throw new Error("Clash of Clans API từ chối quyền truy cập hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (COC_API_TOKEN).");
+    if (res.status === 502) throw new Error("Proxy không thể kết nối đến máy chủ API. Hãy chắc chắn bạn đã cấu hình đúng backend proxy.");
+    if (res.status === 503) throw new Error("Chưa cấu hình COC_API_TOKEN trong môi trường. Vui lòng thêm COC_API_TOKEN trong phần Cài đặt (Secrets).");
 
     if (contentType.includes("application/json")) {
       try {

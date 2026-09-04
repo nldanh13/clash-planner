@@ -1,3 +1,4 @@
+import { getCachedImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
@@ -273,6 +274,37 @@ export function IsometricGridBoard({
       drawDiamond([lift(bottom), lift(left), left, bottom], leftFaceColor, strokeColor, strokeWidth);
       // Roof (top face)
       drawDiamond([lift(top), lift(right), lift(bottom), lift(left)], roofColor, strokeColor, strokeWidth);
+
+      // Draw image on roof
+      const imgKey = b.buildingId === "town-hall" ? `town-hall-${b.level || 1}` : b.buildingId;
+      const img = getCachedImage(imgKey) || getCachedImage(b.buildingId);
+      if (img && def.category !== "wall") {
+        ctx.save();
+        // create clipping path for roof
+        ctx.beginPath();
+        ctx.moveTo(lift(top).x, lift(top).y);
+        ctx.lineTo(lift(right).x, lift(right).y);
+        ctx.lineTo(lift(bottom).x, lift(bottom).y);
+        ctx.lineTo(lift(left).x, lift(left).y);
+        ctx.closePath();
+        ctx.clip();
+        
+        // Compute bounding box of the roof to draw the image
+        const minX = lift(left).x;
+        const maxX = lift(right).x;
+        const minY = lift(top).y;
+        const maxY = lift(bottom).y;
+        const w = maxX - minX;
+        const h = maxY - minY;
+        
+        // drawImage with alpha
+        ctx.globalAlpha = 0.85;
+        // Just draw centered, no skewing for simplicity, or skew it? 
+        // Skewing perfectly is complex. Let's draw it centered inside the bounding box.
+        // It will look like a billboard or a flat icon on top of the prism.
+        ctx.drawImage(img, minX + w*0.1, minY + h*0.1, w*0.8, h*0.8);
+        ctx.restore();
+      }
     }
 
     // 5. Selected building's deployment halo (ground-level outline, drawn last so it stays visible).

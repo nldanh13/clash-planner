@@ -134,6 +134,7 @@ export function getTrashLayouts(): LayoutProject[] {
  */
 export function saveAllLayouts(layouts: LayoutProject[]): void {
   safeSetLocalStorage(STORAGE_KEY_LAYOUTS, JSON.stringify(layouts));
+  window.dispatchEvent(new Event("local-layout-saved"));
 }
 
 /**

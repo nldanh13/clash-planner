@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { AlertTriangle, ClipboardPaste, Info, LoaderCircle, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ClipboardPaste, Info, LoaderCircle, RefreshCw, Search, ShieldCheck, Database } from "lucide-react";
 import { usePlayer } from "./hooks/usePlayer";
+
+import { AdminPanel } from "./components/AdminPanel";
 import { useGameDatabase, getTownHallInfo } from "./hooks/useGameDatabase";
 import { readStoredRecord, writeStoredRecord } from "./storage/playerStorage";
 import { clampInteger, extractDataLevels, type VillagePasteReport, type VillagePasteData, type VillagePasteChange } from "./utils/villageImport";
@@ -15,8 +17,11 @@ import { Roadmap } from "./components/app/Roadmap";
 import { UpgradeTracker } from "./components/app/UpgradeTracker";
 import { RosterGroup } from "./components/app/Roster";
 import { manualKey } from "./utils/upgradeLogic";
+import { PWAInstallButton } from "./components/PWAInstallButton";
+import { UserMenu } from "./components/UserMenu";
+import { useCloudSync } from "./hooks/useCloudSync";
 
-export type Tab = "overview" | "planner" | "roadmap" | "base-planner";
+export type Tab = "overview" | "planner" | "roadmap" | "base-planner" | "admin";
 
 const plannerItems = upgradeItems.filter(item => item.kind !== "wall");
 const byUnlock = (a: any, b: any) => a.unlockTownHall - b.unlockTownHall || a.name.localeCompare(b.name);
@@ -29,6 +34,7 @@ const rosterEquipment = upgradeItems.filter(i => i.kind === "equipment")
   .sort((a, b) => a.unlockTownHall - b.unlockTownHall || (a.owner || "").localeCompare(b.owner || "") || a.name.localeCompare(b.name));
 
 export default function App() {
+  useCloudSync();
   const [tab, setTab] = useState<Tab>("overview");
   const [prevTab, setPrevTab] = useState<Tab>("overview");
   const [guestTownHall, setGuestTownHall] = useState(() => {
@@ -140,7 +146,12 @@ export default function App() {
         <form className="searchbox" onSubmit={e => { e.preventDefault(); loadPlayer() }}>
           <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập Player Tag, ví dụ #R0CV8RVU2" aria-label="Player Tag" /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : "Tải tài khoản"}</button>
         </form>
-        <button className="icon-button" onClick={() => loadPlayer()} disabled={loading} title="Đồng bộ lại"><RefreshCw className={loading ? "spin" : ""} /></button>
+        <div className="flex items-center gap-2">
+          <PWAInstallButton />
+          <button className="icon-button" onClick={() => loadPlayer()} disabled={loading} title="Đồng bộ lại"><RefreshCw className={loading ? "spin" : ""} /></button>
+          <div className="w-px h-5 bg-[#ffffff1a] mx-1"></div>
+          <UserMenu />
+        </div>
       </header>
 
       {error && <div className="error-banner"><AlertTriangle /><span>{error}</span></div>}
@@ -228,6 +239,7 @@ export default function App() {
 
       {tab === "planner" && <UpgradeTracker player={player} manualLevels={manualLevels} guestTownHall={guestTownHall} setGuestTownHall={setGuestTownHall} setManualLevels={setManualLevels} />}
       {tab === "roadmap" && <Roadmap player={player} loading={loading} />}
+      {tab === "admin" && <AdminPanel />}
       {tab === "base-planner" && (
         <BasePlannerTab
           initialTownHall={player?.townHallLevel || guestTownHall || 11}
@@ -237,9 +249,19 @@ export default function App() {
 
       {tab !== "base-planner" && (
         <footer>
-          <span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span>
-          <span>Tiến độ thủ công lưu riêng theo từng Player Tag</span>
-          <span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px" }}>
+              <span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span>
+              <span>Tiến độ thủ công lưu riêng theo từng Player Tag</span>
+              <button 
+                onClick={() => handleTabChange("admin")} 
+                style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px" }}
+              >
+                <ShieldCheck size={12} /> Admin
+              </button>
+            </div>
+            <span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span>
+          </div>
         </footer>
       )}
     </main>

@@ -169,6 +169,14 @@ export function BlueprintManagerModal({
   };
 
   useEffect(() => {
+    const handleSync = () => {
+      reloadData();
+    };
+    window.addEventListener("local-layout-saved", handleSync);
+    return () => window.removeEventListener("local-layout-saved", handleSync);
+  }, []);
+
+  useEffect(() => {
     if (isOpen) {
       reloadData();
       setRenamingId(null);

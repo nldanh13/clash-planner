@@ -26,6 +26,7 @@ import {
 import { DECORATIONS_BY_ID } from "./decorationCatalog";
 import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
+import { getCachedImage, preloadAllBaseImages } from "./imageMapper";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -82,6 +83,13 @@ export function CanvasGridBoard({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
+  const [hoverValidity, setHoverValidity] = useState<boolean | null>(null);
+  
+  const [redrawCounter, setRedrawCounter] = useState(0);
+  useEffect(() => {
+    preloadAllBaseImages(() => setRedrawCounter(c => c + 1));
+  }, []);
+
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isPaintingWalls, setIsPaintingWalls] = useState(false);
@@ -91,7 +99,6 @@ export function CanvasGridBoard({
   const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(false);
   const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(true);
   const [isChainAlertExpanded, setIsChainAlertExpanded] = useState(true);
-
   const panStartRef = useRef<{
     clientX: number;
     clientY: number;
@@ -504,9 +511,19 @@ export function CanvasGridBoard({
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.fillRect(px + 2, py + 3, pw - 4, ph - 4);
 
-      // Building Box
-      ctx.fillStyle = isInvalid ? "#7f8c8d" : (def.color || "#34495e");
-      ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
+      // Building Image / Box
+      const imgKey = b.buildingId === "town-hall" ? `town-hall-${b.level || 1}` : b.buildingId;
+      const img = getCachedImage(imgKey) || getCachedImage(b.buildingId);
+
+      if (img && !isInvalid) {
+        // We can draw a subtle backing if it's a bit too transparent, but usually it's fine.
+        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
+        ctx.drawImage(img, px + 1, py + 1, pw - 2, ph - 2);
+      } else {
+        ctx.fillStyle = isInvalid ? "#7f8c8d" : (def.color || "#34495e");
+        ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
+      }
 
       // Border & Selection Highlight
       if (isSelected) {

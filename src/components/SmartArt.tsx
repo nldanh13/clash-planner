@@ -91,9 +91,13 @@ export function SmartArt({ item, size, townHallLevel }: { item: UpgradeItem; siz
   return <img className={`upgrade-art${size === "sm" ? " sm" : ""}`} src={src} alt={item.name} onError={() => setStage(stage === "local" ? (remote ? "remote" : "icon") : "icon")} />;
 }
 
-export const resourceIcon: Record<Resource, LucideIcon> = {
-  Gold: Coins, Elixir: Droplet, "Dark Elixir": Moon,
-  "Shiny Ore": Coins, "Glowy Ore": Droplet, "Starry Ore": Moon
+export const resourceIcon: Record<Resource, string> = {
+  Gold: "/resources/gold.png",
+  Elixir: "/resources/elixir.png",
+  "Dark Elixir": "/resources/dark-elixir.png",
+  "Shiny Ore": "/resources/shiny-ore.png",
+  "Glowy Ore": "/resources/glowy-ore.png",
+  "Starry Ore": "/resources/starry-ore.png"
 };
 
 export const resourceClass: Record<Resource, string> = {
@@ -104,10 +108,9 @@ export function CostBadges({ costs }: { costs: Partial<Record<Resource, number>>
   const entries = (Object.entries(costs) as [Resource, number][]).filter(([, v]) => (v || 0) > 0);
   if (!entries.length) return <span className="cost-badges"><span className="cost-badge">0</span></span>;
   return <span className="cost-badges">{entries.map(([resource, value]) => {
-    const Icon = resourceIcon[resource];
     return (
       <span key={resource} className={`cost-badge ${resourceClass[resource]}`} title={resource}>
-        <Icon aria-label={resource} />
+        <img src={resourceIcon[resource]} alt={resource} className="w-3.5 h-3.5 object-contain inline-block" />
         {new Intl.NumberFormat("vi-VN").format(Math.round(value))}
       </span>
     );
