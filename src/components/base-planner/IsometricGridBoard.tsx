@@ -18,6 +18,7 @@ import {
   type IsoViewport,
 } from "./isometricUtils";
 import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
+import { useTranslation } from "../../i18n";
 
 interface IsometricGridBoardProps {
   buildings: PlacedBuilding[];
@@ -52,6 +53,7 @@ export function IsometricGridBoard({
   buildingLimits,
   settings,
 }: IsometricGridBoardProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -689,7 +691,7 @@ export function IsometricGridBoard({
         ref={canvasRef}
         tabIndex={0}
         role="application"
-        aria-label="Bản đồ Isometric Clash of Clans"
+        aria-label={t("basePlanner.isoCanvas.ariaLabel")}
         className={`w-full h-full outline-none touch-none ${
           isPanning ? "cursor-grabbing" : selectedDefId ? "cursor-copy" : "cursor-grab"
         }`}
@@ -705,8 +707,8 @@ export function IsometricGridBoard({
           type="button"
           onClick={handleZoomIn}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Phóng to"
-          aria-label="Phóng to"
+          title={t("basePlanner.isoCanvas.zoomInTitle")}
+          aria-label={t("basePlanner.isoCanvas.zoomInTitle")}
         >
           <ZoomIn className="w-4 h-4" />
         </button>
@@ -714,8 +716,8 @@ export function IsometricGridBoard({
           type="button"
           onClick={handleZoomOut}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Thu nhỏ"
-          aria-label="Thu nhỏ"
+          title={t("basePlanner.isoCanvas.zoomOutTitle")}
+          aria-label={t("basePlanner.isoCanvas.zoomOutTitle")}
         >
           <ZoomOut className="w-4 h-4" />
         </button>
@@ -723,8 +725,8 @@ export function IsometricGridBoard({
           type="button"
           onClick={handleResetView}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Vừa khung hình"
-          aria-label="Vừa khung hình"
+          title={t("basePlanner.isoCanvas.fitToScreenTitle")}
+          aria-label={t("basePlanner.isoCanvas.fitToScreenTitle")}
         >
           <Maximize className="w-4 h-4" />
         </button>
@@ -732,8 +734,8 @@ export function IsometricGridBoard({
 
       <div className="absolute bottom-3 left-3 z-30 text-[10px] text-slate-400 bg-slate-950/70 backdrop-blur-sm px-2 py-1 rounded-lg border border-slate-800">
         {selectedDefId
-          ? "Bấm vào ô hợp lệ để đặt công trình — kéo nền để xoay góc nhìn."
-          : "Kéo để xoay góc nhìn, cuộn để zoom. Bấm để chọn, bấm ô trống để di chuyển công trình đã chọn."}
+          ? t("basePlanner.isoCanvas.hintPlacing")
+          : t("basePlanner.isoCanvas.hintIdle")}
       </div>
 
       {/* Floating Inspector Panel — same info/actions as the 2D board's, from an isometric angle. */}
@@ -747,8 +749,8 @@ export function IsometricGridBoard({
             <button
               className="close-inspector-btn"
               onClick={() => onSelectPlacedId(null)}
-              title="Đóng"
-              aria-label="Đóng bảng chi tiết"
+              title={t("basePlanner.canvas.inspector.closeTitle")}
+              aria-label={t("basePlanner.canvas.inspector.closeAria")}
             >
               <X />
             </button>
@@ -756,23 +758,23 @@ export function IsometricGridBoard({
 
           <div className="inspector-body">
             <div className="inspector-stat-row">
-              <span>Tọa độ:</span>
+              <span>{t("basePlanner.canvas.inspector.coordinatesLabel")}</span>
               <b>
                 ({selectedBuilding.x}, {selectedBuilding.y})
               </b>
             </div>
             <div className="inspector-stat-row">
-              <span>Kích thước:</span>
+              <span>{t("basePlanner.canvas.inspector.sizeLabel")}</span>
               <b>
-                {selectedBuildingDef.width}x{selectedBuildingDef.height} ô
+                {selectedBuildingDef.width}x{selectedBuildingDef.height} {t("basePlanner.canvas.tileUnit")}
               </b>
             </div>
             {selectedBuildingDef.range && (
               <div className="inspector-stat-row">
-                <span>Tầm bắn:</span>
+                <span>{t("basePlanner.canvas.inspector.rangeLabel")}</span>
                 <b>
                   {selectedBuildingDef.minRange ? `${selectedBuildingDef.minRange} - ` : ""}
-                  {selectedBuildingDef.range} ô
+                  {selectedBuildingDef.range} {t("basePlanner.canvas.tileUnit")}
                 </b>
               </div>
             )}
@@ -780,15 +782,15 @@ export function IsometricGridBoard({
               className="inspector-stat-row"
               title={
                 HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
-                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
-                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
+                  ? t("basePlanner.canvas.inspector.hiddenNote")
+                  : t("basePlanner.canvas.inspector.blockRadiusNote", { radius: HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius })
               }
             >
-              <span>Vùng cấm triển khai:</span>
+              <span>{t("basePlanner.canvas.inspector.deploymentBlockLabel")}</span>
               <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category) ? "text-slate-400" : "text-sky-400"}>
                 {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
-                  ? "Không có (bẫy ẩn)"
-                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
+                  ? t("basePlanner.canvas.inspector.noneHidden")
+                  : t("basePlanner.canvas.inspector.expandedRadius", { radius: HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius })}
               </b>
             </div>
             <p className="inspector-desc">{selectedBuildingDef.description}</p>
@@ -798,11 +800,11 @@ export function IsometricGridBoard({
             <button
               className="inspector-delete-btn"
               onClick={handleRemoveSelected}
-              title="Xóa công trình này khỏi bản đồ"
-              aria-label="Xóa công trình"
+              title={t("basePlanner.canvas.inspector.deleteTitle")}
+              aria-label={t("basePlanner.canvas.inspector.deleteAria")}
             >
               <Trash2 />
-              <span>Xóa bỏ</span>
+              <span>{t("basePlanner.canvas.inspector.deleteLabel")}</span>
             </button>
           </div>
         </div>

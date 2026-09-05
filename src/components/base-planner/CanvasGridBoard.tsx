@@ -27,6 +27,7 @@ import { DECORATIONS_BY_ID } from "./decorationCatalog";
 import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
 import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
+import { useTranslation } from "../../i18n";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -79,6 +80,7 @@ export function CanvasGridBoard({
   selectedDecorationDefId = null,
   stampPreviewCoords = null,
 }: CanvasGridBoardProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -804,7 +806,7 @@ export function CanvasGridBoard({
         ctx.font = "bold 9px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(`${pair.distance}ô`, midX, midY);
+        ctx.fillText(`${pair.distance}${t("basePlanner.canvas.tileUnit")}`, midX, midY);
       }
     }
 
@@ -857,7 +859,7 @@ export function CanvasGridBoard({
       ctx.font = "bold 10px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(isValid ? "Hợp lệ" : "Đè vị trí!", px + pw / 2, py + ph / 2);
+      ctx.fillText(isValid ? t("basePlanner.canvas.validLabel") : t("basePlanner.canvas.overlapLabel"), px + pw / 2, py + ph / 2);
     }
   }, [
     activeDrag,
@@ -876,6 +878,7 @@ export function CanvasGridBoard({
     selectedPlacedId,
     settings,
     stampPreviewCoords,
+    t,
   ]);
 
   // ==========================================
@@ -1196,10 +1199,10 @@ export function CanvasGridBoard({
             <button
               onClick={() => setIsChainAlertDismissed(false)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-950/85 backdrop-blur-md border border-rose-500/50 text-rose-300 hover:text-white shadow-xl text-xs font-bold transition-all hover:scale-105"
-              title="Nhấn để mở lại cảnh báo sét lan"
+              title={t("basePlanner.canvas.chainAlert.reopenTitle")}
             >
               <Zap className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span>{chainAnalysis.dangerPairs.length} vị trí sét lan</span>
+              <span>{chainAnalysis.dangerPairs.length} {t("basePlanner.canvas.chainAlert.countSuffix")}</span>
             </button>
           ) : (
             <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-slate-950/85 backdrop-blur-md border border-rose-500/50 text-slate-200 shadow-2xl max-w-sm">
@@ -1209,7 +1212,7 @@ export function CanvasGridBoard({
                     <Zap className="w-3.5 h-3.5 animate-pulse" />
                   </div>
                   <strong className="text-xs text-rose-300 font-extrabold">
-                    Nguy cơ Sét lan (≤2 ô)
+                    {t("basePlanner.canvas.chainAlert.title")}
                   </strong>
                   <span className="bg-rose-600 text-white font-black text-[9.5px] px-2 py-0.5 rounded-full font-mono">
                     {chainAnalysis.dangerPairs.length}
@@ -1220,16 +1223,16 @@ export function CanvasGridBoard({
                   <button
                     onClick={() => setIsChainAlertExpanded(!isChainAlertExpanded)}
                     className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    title={isChainAlertExpanded ? "Thu gọn" : "Mở rộng"}
-                    aria-label={isChainAlertExpanded ? "Thu gọn cảnh báo sét" : "Mở rộng cảnh báo sét"}
+                    title={isChainAlertExpanded ? t("common.collapse") : t("common.expand")}
+                    aria-label={isChainAlertExpanded ? t("basePlanner.canvas.chainAlert.collapseAria") : t("basePlanner.canvas.chainAlert.expandAria")}
                   >
                     {isChainAlertExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                   <button
                     onClick={() => setIsChainAlertDismissed(true)}
                     className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-                    title="Đóng thông báo"
-                    aria-label="Đóng thông báo cảnh báo sét"
+                    title={t("basePlanner.canvas.chainAlert.closeTitle")}
+                    aria-label={t("basePlanner.canvas.chainAlert.closeAria")}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1239,11 +1242,11 @@ export function CanvasGridBoard({
               {isChainAlertExpanded && (
                 <div className="text-[11px] text-slate-300 leading-snug pt-1 border-t border-slate-800/80">
                   <p>
-                    <b className="text-rose-400">{chainAnalysis.criticalCount}</b> cặp cách ≤ 1 ô (nguy hiểm) &amp;{" "}
-                    <b className="text-amber-400">{chainAnalysis.warningCount}</b> cặp cách 2 ô (E-Dragon chain).
+                    <b className="text-rose-400">{chainAnalysis.criticalCount}</b> {t("basePlanner.canvas.chainAlert.criticalSuffix")}{" "}
+                    <b className="text-amber-400">{chainAnalysis.warningCount}</b> {t("basePlanner.canvas.chainAlert.warningSuffix")}
                   </p>
                   <span className="text-[10px] text-slate-400 italic block mt-1">
-                    Gợi ý: Dãn cách các trụ phòng thủ chủ lực ≥ 3 ô để vô hiệu hóa chuỗi sét.
+                    {t("basePlanner.canvas.chainAlert.hint")}
                   </span>
                 </div>
               )}
@@ -1263,10 +1266,10 @@ export function CanvasGridBoard({
                 </div>
                 <div className="flex flex-col">
                   <strong className="text-xs text-orange-300 font-extrabold tracking-wide">
-                    Mật độ Hỏa lực
+                    {t("basePlanner.canvas.heatmap.title")}
                   </strong>
                   <span className="text-[9.5px] text-slate-400 font-medium">
-                    Phân tích phủ sóng phòng thủ
+                    {t("basePlanner.canvas.heatmap.subtitle")}
                   </span>
                 </div>
               </div>
@@ -1274,8 +1277,8 @@ export function CanvasGridBoard({
               <button
                 onClick={() => setIsHeatmapHudExpanded(!isHeatmapHudExpanded)}
                 className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                title={isHeatmapHudExpanded ? "Thu gọn" : "Mở rộng"}
-                aria-label={isHeatmapHudExpanded ? "Thu gọn mật độ hỏa lực" : "Mở rộng mật độ hỏa lực"}
+                title={isHeatmapHudExpanded ? t("common.collapse") : t("common.expand")}
+                aria-label={isHeatmapHudExpanded ? t("basePlanner.canvas.heatmap.collapseAria") : t("basePlanner.canvas.heatmap.expandAria")}
               >
                 {isHeatmapHudExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
@@ -1287,25 +1290,25 @@ export function CanvasGridBoard({
                 <div className="grid grid-cols-4 gap-1.5 text-[10px]">
                   <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
                     <span className="w-2.5 h-2.5 rounded-sm bg-blue-500/80 shrink-0" />
-                    <span className="text-[9.5px] text-slate-300">Thấp</span>
+                    <span className="text-[9.5px] text-slate-300">{t("basePlanner.canvas.heatmap.legendLow")}</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
                     <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/80 shrink-0" />
-                    <span className="text-[9.5px] text-slate-300">Vừa</span>
+                    <span className="text-[9.5px] text-slate-300">{t("basePlanner.canvas.heatmap.legendMedium")}</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
                     <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shrink-0" />
-                    <span className="text-[9.5px] text-slate-300">Cao</span>
+                    <span className="text-[9.5px] text-slate-300">{t("basePlanner.canvas.heatmap.legendHigh")}</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded border border-slate-800">
                     <span className="w-2.5 h-2.5 rounded-sm bg-red-600 shrink-0" />
-                    <span className="text-[9.5px] text-red-300 font-bold">Hot</span>
+                    <span className="text-[9.5px] text-red-300 font-bold">{t("basePlanner.canvas.heatmap.legendHot")}</span>
                   </div>
                 </div>
 
                 {/* Metrics: Blind Spots + Quadrant Balance */}
                 <div className="flex items-center justify-between text-[10.5px] pt-1 border-t border-slate-850">
-                  <span className="text-slate-400">Vùng mù ngoài rìa:</span>
+                  <span className="text-slate-400">{t("basePlanner.canvas.heatmap.blindSpotsLabel")}</span>
                   <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-500/30">
                     {heatmapData.blindSpotsPercent}%
                   </span>
@@ -1314,7 +1317,7 @@ export function CanvasGridBoard({
                 {/* Quadrants */}
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-slate-400 font-semibold">
-                    Cân bằng hỏa lực 4 hướng:
+                    {t("basePlanner.canvas.heatmap.quadrantBalanceLabel")}
                   </span>
                   <div className="grid grid-cols-4 gap-1 text-[9.5px] font-mono text-center">
                     <div className="bg-slate-900/80 py-0.5 rounded border border-slate-800">
@@ -1338,7 +1341,7 @@ export function CanvasGridBoard({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2 text-[10px] text-slate-300 pt-0.5 font-mono">
-                <span>Vùng mù: <b className="text-amber-300">{heatmapData.blindSpotsPercent}%</b></span>
+                <span>{t("basePlanner.canvas.heatmap.blindSpotsCollapsedLabel")} <b className="text-amber-300">{heatmapData.blindSpotsPercent}%</b></span>
                 <span>NW:{heatmapData.quadrantBalance.nw}% SE:{heatmapData.quadrantBalance.se}%</span>
               </div>
             )}
@@ -1350,7 +1353,7 @@ export function CanvasGridBoard({
       <canvas
         ref={canvasRef}
         tabIndex={0}
-        aria-label="Bản đồ Clash of Clans"
+        aria-label={t("basePlanner.canvas.ariaLabel")}
         role="application"
         className={`grid-canvas-board outline-none ${
           isPanning
@@ -1390,8 +1393,8 @@ export function CanvasGridBoard({
             <button
               className="close-inspector-btn"
               onClick={() => onSelectPlacedId(null)}
-              title="Đóng"
-              aria-label="Đóng bảng chi tiết"
+              title={t("basePlanner.canvas.inspector.closeTitle")}
+              aria-label={t("basePlanner.canvas.inspector.closeAria")}
             >
               <X />
             </button>
@@ -1399,23 +1402,23 @@ export function CanvasGridBoard({
 
           <div className="inspector-body">
             <div className="inspector-stat-row">
-              <span>Tọa độ:</span>
+              <span>{t("basePlanner.canvas.inspector.coordinatesLabel")}</span>
               <b>
                 ({selectedPlacedBuilding.x}, {selectedPlacedBuilding.y})
               </b>
             </div>
             <div className="inspector-stat-row">
-              <span>Kích thước:</span>
+              <span>{t("basePlanner.canvas.inspector.sizeLabel")}</span>
               <b>
-                {selectedPlacedDef.width}x{selectedPlacedDef.height} ô
+                {selectedPlacedDef.width}x{selectedPlacedDef.height} {t("basePlanner.canvas.tileUnit")}
               </b>
             </div>
             {selectedPlacedDef.range && (
               <div className="inspector-stat-row">
-                <span>Tầm bắn:</span>
+                <span>{t("basePlanner.canvas.inspector.rangeLabel")}</span>
                 <b>
                   {selectedPlacedDef.minRange ? `${selectedPlacedDef.minRange} - ` : ""}
-                  {selectedPlacedDef.range} ô
+                  {selectedPlacedDef.range} {t("basePlanner.canvas.tileUnit")}
                 </b>
               </div>
             )}
@@ -1423,15 +1426,15 @@ export function CanvasGridBoard({
               className="inspector-stat-row"
               title={
                 HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
-                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
-                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
+                  ? t("basePlanner.canvas.inspector.hiddenNote")
+                  : t("basePlanner.canvas.inspector.blockRadiusNote", { radius: HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius })
               }
             >
-              <span>Vùng cấm triển khai:</span>
+              <span>{t("basePlanner.canvas.inspector.deploymentBlockLabel")}</span>
               <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category) ? "text-slate-400" : "text-sky-400"}>
                 {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
-                  ? "Không có (bẫy ẩn)"
-                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
+                  ? t("basePlanner.canvas.inspector.noneHidden")
+                  : t("basePlanner.canvas.inspector.expandedRadius", { radius: HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius })}
               </b>
             </div>
             <p className="inspector-desc">{selectedPlacedDef.description}</p>
@@ -1441,11 +1444,11 @@ export function CanvasGridBoard({
             <button
               className="inspector-delete-btn"
               onClick={handleRemoveSelected}
-              title="Xóa công trình này khỏi bản đồ"
-              aria-label="Xóa công trình"
+              title={t("basePlanner.canvas.inspector.deleteTitle")}
+              aria-label={t("basePlanner.canvas.inspector.deleteAria")}
             >
               <Trash2 />
-              <span>Xóa bỏ</span>
+              <span>{t("basePlanner.canvas.inspector.deleteLabel")}</span>
             </button>
           </div>
         </div>
