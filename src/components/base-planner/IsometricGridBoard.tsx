@@ -1,9 +1,6 @@
 import { preloadAllBaseImages, getLeveledBuildingImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Maximize, Trash2, Unlock, X, ZoomIn, ZoomOut } from "lucide-react";
-import { getBuildingImagePath, preloadImage, getCachedImage } from "./imageMapper";
-import { upgradeItems } from "../../upgradeData";
-import { targetForTownHall } from "../../utils/upgradeLogic";
 import { BUILDINGS_BY_ID, GRID_SIZE, MAP_BORDER } from "./constants";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
@@ -59,7 +56,6 @@ export function IsometricGridBoard({
   townHallLevel = 11,
 }: IsometricGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const drawBoardRef = useRef<() => void>();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [viewport, setViewport] = useState<IsoViewport>({ panX: 0, panY: 0, zoom: 1 });
@@ -205,7 +201,12 @@ export function IsometricGridBoard({
 
     const project = (gx: number, gy: number) => gridToCanvas(gx, gy, viewport);
 
-    const drawDiamond = (points: Array<{ x: number; y: number }>, fill: string, stroke?: string, lineWidth = 1) => {
+    const drawDiamond = (
+      points: Array<{ x: number; y: number }>,
+      fill: string | CanvasGradient,
+      stroke?: string,
+      lineWidth = 1
+    ) => {
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
@@ -217,6 +218,24 @@ export function IsometricGridBoard({
         ctx.lineWidth = lineWidth;
         ctx.stroke();
       }
+    };
+
+    // Soft radial ground shadow under a footprint — reads as ambient
+    // occlusion so the box looks like it's resting in a shallow dent rather
+    // than pasted flat on top of the grass with a hard-edged silhouette.
+    const drawGroundShadow = (points: Array<{ x: number; y: number }>) => {
+      const cx = (points[0].x + points[1].x + points[2].x + points[3].x) / 4;
+      const cy = (points[0].y + points[1].y + points[2].y + points[3].y) / 4;
+      const radius = Math.max(
+        Math.hypot(points[1].x - points[3].x, points[1].y - points[3].y),
+        Math.hypot(points[0].x - points[2].x, points[0].y - points[2].y)
+      ) / 2;
+      if (!Number.isFinite(radius) || radius <= 0) return;
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      gradient.addColorStop(0, "rgba(0,0,0,0.4)");
+      gradient.addColorStop(0.75, "rgba(0,0,0,0.16)");
+      gradient.addColorStop(1, "rgba(0,0,0,0)");
+      drawDiamond(points, gradient);
     };
 
     // 1. Ground plane: the 3-tile grass border ring first (darker — real
@@ -318,6 +337,8 @@ export function IsometricGridBoard({
       const left = project(b.x, b.y + def.height);
       const lift = (p: { x: number; y: number }) => ({ x: p.x, y: p.y - heightPx });
 
+      drawGroundShadow([top, right, bottom, left]);
+
       const baseColor = def.category === "wall" ? "#7d8796" : def.color || "#34495e";
       const roofColor = shadeColor(baseColor, 12);
       const rightFaceColor = shadeColor(baseColor, -18);
@@ -325,49 +346,66 @@ export function IsometricGridBoard({
       const strokeColor = isSelected ? "#ffc857" : "rgba(0,0,0,0.35)";
       const strokeWidth = isSelected ? 2.5 : 1;
 
-      // Right face (between E and S corners, extruded to ground)
-      drawDiamond([lift(right), lift(bottom), bottom, right], rightFaceColor, strokeColor, strokeWidth);
-      // Left face (between S and W corners, extruded to ground)
-      drawDiamond([lift(bottom), lift(left), left, bottom], leftFaceColor, strokeColor, strokeWidth);
-      // Roof (top face)
-      drawDiamond([lift(top), lift(right), lift(bottom), lift(left)], roofColor, strokeColor, strokeWidth);
+      const liftedTop = lift(top);
+      const liftedRight = lift(right);
+      const liftedBottom = lift(bottom);
+      const liftedLeft = lift(left);
 
-        // Draw image on roof (including walls)
-        const img = getLeveledBuildingImage(
-          b.buildingId,
-          b.level,
-          townHallLevel,
-          () => setRedrawCounter((c) => c + 1)
-        );
-        if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-          try {
-            const minX = lift(left).x;
-            const maxX = lift(right).x;
-            const minY = lift(top).y;
-            const maxY = lift(bottom).y;
-            const w = maxX - minX;
-            const h = maxY - minY;
-            
-            if (w > 2 && h > 2 && Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(minX) && Number.isFinite(minY)) {
-              ctx.save();
-              // create clipping path for roof
-              ctx.beginPath();
-              ctx.moveTo(lift(top).x, lift(top).y);
-              ctx.lineTo(lift(right).x, lift(right).y);
-              ctx.lineTo(lift(bottom).x, lift(bottom).y);
-              ctx.lineTo(lift(left).x, lift(left).y);
-              ctx.closePath();
-              ctx.clip();
-              
-              // drawImage with alpha
-              ctx.globalAlpha = 0.85;
-              ctx.drawImage(img, minX + w * 0.1, minY + h * 0.1, w * 0.8, h * 0.8);
-              ctx.restore();
-            }
-          } catch {
-            // Guard against canvas draw failures
-          }
+      // Right/left faces darken toward the ground (cheap ambient occlusion —
+      // real light doesn't reach the base-to-grass seam as brightly as the
+      // shoulder just under the roofline), instead of one flat slab of color.
+      const rightFaceGradient = ctx.createLinearGradient(liftedRight.x, liftedRight.y, right.x, right.y);
+      rightFaceGradient.addColorStop(0, rightFaceColor);
+      rightFaceGradient.addColorStop(1, shadeColor(rightFaceColor, -14));
+      const leftFaceGradient = ctx.createLinearGradient(liftedLeft.x, liftedLeft.y, left.x, left.y);
+      leftFaceGradient.addColorStop(0, leftFaceColor);
+      leftFaceGradient.addColorStop(1, shadeColor(leftFaceColor, -14));
+
+      // Right face (between E and S corners, extruded to ground)
+      drawDiamond([liftedRight, liftedBottom, bottom, right], rightFaceGradient, strokeColor, strokeWidth);
+      // Left face (between S and W corners, extruded to ground)
+      drawDiamond([liftedBottom, liftedLeft, left, bottom], leftFaceGradient, strokeColor, strokeWidth);
+      // Roof (top face)
+      drawDiamond([liftedTop, liftedRight, liftedBottom, liftedLeft], roofColor, strokeColor, strokeWidth);
+
+      // Building sprite, sheared to lie flat on the roof plane instead of
+      // being squared-off and clipped into the diamond. The projection is an
+      // affine map (see isometricUtils.ts), so the sprite's rectangle maps
+      // onto the roof parallelogram exactly — (0,0)->top, (naturalWidth,0)
+      // ->right, (0,naturalHeight)->left — with no distortion at the corners.
+      const img = getLeveledBuildingImage(
+        b.buildingId,
+        b.level,
+        townHallLevel,
+        () => setRedrawCounter((c) => c + 1)
+      );
+      if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        try {
+          const nw = img.naturalWidth;
+          const nh = img.naturalHeight;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(liftedTop.x, liftedTop.y);
+          ctx.lineTo(liftedRight.x, liftedRight.y);
+          ctx.lineTo(liftedBottom.x, liftedBottom.y);
+          ctx.lineTo(liftedLeft.x, liftedLeft.y);
+          ctx.closePath();
+          ctx.clip(); // floating-point safety net; the transform below should already land exactly on this outline
+          ctx.transform(
+            (liftedRight.x - liftedTop.x) / nw,
+            (liftedRight.y - liftedTop.y) / nw,
+            (liftedLeft.x - liftedTop.x) / nh,
+            (liftedLeft.y - liftedTop.y) / nh,
+            liftedTop.x,
+            liftedTop.y
+          );
+          ctx.globalAlpha = 0.94;
+          ctx.drawImage(img, 0, 0, nw, nh);
+          ctx.restore();
+        } catch {
+          // Guard against canvas draw failures
         }
+      }
     }
 
     // 5. Selected building's deployment halo (ground-level outline, drawn last so it stays visible).
