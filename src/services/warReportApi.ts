@@ -29,7 +29,7 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
         }
       }
     }
-    throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
+    throw new Error(`Máy chủ Clash of Clans phản hồi lỗi ${res.status}.`);
   }
 
   if (res.redirected || (contentType && !contentType.includes("application/json") && !contentType.includes("+json"))) {
@@ -40,10 +40,10 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
   try {
     payload = (await res.json()) as Partial<Player>;
   } catch {
-    throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
+    throw new Error("Dữ liệu phản hồi từ Clash of Clans API không hợp lệ hoặc bị lỗi cấu trúc.");
   }
   if (!payload || typeof payload !== "object" || !Number.isFinite(payload.townHallLevel)) {
-    throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
+    throw new Error("Dữ liệu phản hồi từ Clash of Clans API không hợp lệ hoặc bị lỗi cấu trúc.");
   }
   const data: Player = {
     ...payload,

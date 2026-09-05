@@ -328,7 +328,7 @@ export const PlayerSearchModal: React.FC<PlayerSearchModalProps> = ({
 
         {/* Footer info note */}
         <div className="px-5 py-3 border-t border-[#1e2c3b] bg-[#0c141c] flex items-center justify-between text-[11px] text-[#637788]">
-          <span>Dữ liệu đồng bộ trực tiếp từ War Report CoC</span>
+          <span>Dữ liệu đồng bộ trực tiếp từ API Clash of Clans</span>
           <kbd className="px-2 py-0.5 rounded bg-[#182330] border border-[#273747] text-[#8ea2b3] font-mono text-[10px]">
             ESC để đóng
           </kbd>

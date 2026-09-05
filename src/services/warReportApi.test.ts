@@ -84,6 +84,6 @@ describe('fetchPlayer', () => {
       json: () => Promise.resolve({ tag: '#1234' }), // missing townHallLevel
     });
 
-    await expect(fetchPlayer('#1234')).rejects.toThrow('Dữ liệu phản hồi từ War Report không hợp lệ');
+    await expect(fetchPlayer('#1234')).rejects.toThrow('Dữ liệu phản hồi từ Clash of Clans API không hợp lệ');
   });
 });

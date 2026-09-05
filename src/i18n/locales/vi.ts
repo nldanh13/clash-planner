@@ -43,7 +43,7 @@ export const vi = {
   },
   app: {
     brandName: "Clash Path",
-    brandTagline: "Đồng bộ từ War Report",
+    brandTagline: "Đồng bộ dữ liệu Clash of Clans",
     searchPlaceholder: "Nhập Player Tag, ví dụ #R0CV8RVU2",
     syncTooltip: "Đồng bộ lại dữ liệu",
     syncNow: "Đồng bộ",
@@ -52,7 +52,7 @@ export const vi = {
       trigger: "Tra cứu hồ sơ",
       triggerTooltip: "Tra cứu hồ sơ người chơi (Phím tắt: / hoặc ⌘K)",
       title: "Tra cứu hồ sơ người chơi",
-      subtitle: "Đồng bộ Hero, quân đội, phép và trang bị qua War Report API",
+      subtitle: "Đồng bộ Hero, quân đội, phép và trang bị qua API Clash of Clans",
       inputPlaceholder: "Nhập Player Tag, ví dụ #R0CV8RVU2",
       submit: "Tra cứu & Đồng bộ",
       changeTag: "Đổi",
@@ -66,7 +66,7 @@ export const vi = {
     },
     banners: {
       notFound:
-        "Không tìm thấy Player Tag này trên War Report. Hệ thống chỉ đồng bộ được các tài khoản đã từng được tra cứu trên war-report.com — thử mở hồ sơ của bạn ở đó trước, rồi quay lại đây.",
+        "Không tìm thấy Player Tag này. Hãy kiểm tra lại mã Player Tag (bắt đầu bằng dấu '#') rồi thử lại.",
       stale:
         'Dữ liệu đang hiển thị là bản lưu từ lần đồng bộ trước, có thể đã cũ. Bấm "{syncLabel}" hoặc biểu tượng đồng bộ ở góc trên bên phải để cập nhật số liệu mới nhất.',
       dataWarningTitle: "Cảnh báo dữ liệu:",
@@ -92,7 +92,7 @@ export const vi = {
       manualTitle: "Tình trạng công trình và bẫy",
       manualCountLabel: "{filled}/{total} đã nhập · {percent}%",
       pasteDescription:
-        "War Report không cung cấp cấp độ của công trình phòng thủ, bẫy và máy khai thác — những mục này bạn cần tự nhập tay ở dưới, hoặc dán dữ liệu JSON xuất ra từ công cụ bên ngoài vào ô dưới đây để cập nhật hàng loạt.",
+        "API Clash of Clans không cung cấp cấp độ của công trình phòng thủ, bẫy và máy khai thác — những mục này bạn cần tự nhập tay ở dưới, hoặc dán dữ liệu JSON xuất ra từ công cụ bên ngoài vào ô dưới đây để cập nhật hàng loạt.",
       pastePlaceholder: "Dán dữ liệu JSON vào đây...",
       pasteApply: "Áp dụng",
       pasteInvalid: "Dữ liệu không hợp lệ.",
@@ -103,7 +103,7 @@ export const vi = {
       manualEmpty: "Chưa mở khóa công trình nào ở mốc Town Hall này.",
     },
     footer: {
-      dataSource: "Dữ liệu người chơi: War Report / API chính thức Clash of Clans",
+      dataSource: "Dữ liệu người chơi: API chính thức Clash of Clans",
       manualProgressNote: "Tiến độ thủ công lưu riêng theo từng Player Tag",
       admin: "Admin",
       disclaimer:
@@ -117,7 +117,7 @@ export const vi = {
     ctaSearch: "Tra cứu hồ sơ của bạn",
     ctaBasePlanner: "Khám phá Base Planner",
     features: {
-      overviewHint: "Đồng bộ trực tiếp từ War Report",
+      overviewHint: "Đồng bộ trực tiếp từ Clash of Clans",
       plannerHint: "Thứ tự nâng cấp tối ưu",
       roadmapHint: "Toàn cảnh lộ trình phát triển",
       basePlannerTitle: "Base Planner 44×44",
@@ -191,12 +191,12 @@ export const vi = {
     },
   },
   overview: {
-    connecting: "Đang kết nối War Report…",
+    connecting: "Đang kết nối Clash of Clans…",
     connectingDetail: "Đang đồng bộ thông tin tài khoản, cấp độ Town Hall và quân đội.",
     readyBadge: "Sẵn sàng lập kế hoạch",
     emptyTitle: "Chưa có dữ liệu người chơi",
     emptyDescription:
-      'Nhập Player Tag ở thanh tìm kiếm phía trên rồi bấm "{syncLabel}" để lấy tình trạng làng, cấp độ Hero, quân, phép và trang bị qua War Report API.',
+      'Nhập Player Tag ở thanh tìm kiếm phía trên rồi bấm "{syncLabel}" để lấy tình trạng làng, cấp độ Hero, quân, phép và trang bị qua API Clash of Clans.',
     guidance: {
       townHallTitle: "Town Hall & Công trình",
       townHallHint: "Theo dõi chi phí & thời gian thợ xây",
@@ -1046,7 +1046,7 @@ export const vi = {
     scraper: {
       title: "Quét Cập nhật Dữ liệu Mới & Cấp độ Clash of Clans",
       description:
-        "Tự động chạy scraper trên máy chủ để cập nhật danh mục công trình, cấp độ, thông số Town Hall 1–18 từ War Report API và đồng bộ vào kho lưu trữ cục bộ.",
+        "Tự động chạy scraper trên máy chủ để cập nhật danh mục công trình, cấp độ, thông số Town Hall 1–18 từ API Clash of Clans và đồng bộ vào kho lưu trữ cục bộ.",
       scanning: "Đang quét dữ liệu, vui lòng đợi...",
       start: "Bắt đầu Quét & Cập nhật Dữ liệu",
     },
