@@ -1,6 +1,9 @@
 import { preloadAllBaseImages, getLeveledBuildingImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Maximize, Trash2, Unlock, X, ZoomIn, ZoomOut } from "lucide-react";
+import { getBuildingImagePath, preloadImage, getCachedImage } from "./imageMapper";
+import { upgradeItems } from "../../upgradeData";
+import { targetForTownHall } from "../../utils/upgradeLogic";
 import { BUILDINGS_BY_ID, GRID_SIZE, MAP_BORDER } from "./constants";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
@@ -56,6 +59,7 @@ export function IsometricGridBoard({
   townHallLevel = 11,
 }: IsometricGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawBoardRef = useRef<() => void>();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [viewport, setViewport] = useState<IsoViewport>({ panX: 0, panY: 0, zoom: 1 });
