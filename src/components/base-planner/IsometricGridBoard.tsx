@@ -61,6 +61,19 @@ export function IsometricGridBoard({
   const [viewport, setViewport] = useState<IsoViewport>({ panX: 0, panY: 0, zoom: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  // setHoverCell always receives a brand-new {x,y} object, and the full
+  // canvas (every placed building) redraws on every hoverCell change — so a
+  // naive setHoverCell(newCell) on every pointermove re-renders once per
+  // pixel of mouse movement even while sitting still on the same tile. On a
+  // maxed base (100+ buildings) that's the difference between "smooth" and
+  // "the tab hangs". Only actually update state when the grid cell changes.
+  const updateHoverCell = useCallback((next: { x: number; y: number } | null) => {
+    setHoverCell((prev) => {
+      if (prev === next) return prev;
+      if (prev && next && prev.x === next.x && prev.y === next.y) return prev;
+      return next;
+    });
+  }, []);
   const panStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
   const didDragRef = useRef(false);
 
@@ -390,18 +403,19 @@ export function IsometricGridBoard({
         // the ground plane.
         const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
         ctx.globalAlpha = 1;
-        // A tight drop shadow right under the sprite (on top of the wider
-        // ambient one from drawGroundShadow) reads as contact with the
-        // ground instead of a flat cutout pasted on the grass. A small
-        // contrast/saturation lift compensates for these being fairly flat
-        // icon-style crops rather than the game's own in-scene lighting.
-        ctx.save();
-        ctx.filter = "saturate(1.12) contrast(1.06)";
-        ctx.shadowColor = "rgba(0,0,0,0.45)";
-        ctx.shadowBlur = Math.max(2, drawWidth * 0.05);
-        ctx.shadowOffsetY = Math.max(1, drawHeight * 0.02);
+        // A tight contact-shadow ellipse right at the sprite's base (on top
+        // of the wider ambient one from drawGroundShadow) reads as the
+        // object touching the ground instead of a flat cutout pasted on the
+        // grass. A plain fill, not ctx.shadowBlur/ctx.filter — those force a
+        // full offscreen composite pass PER drawImage call, which is fine
+        // for a handful of buildings but brings a maxed ~44x44 base (100+
+        // buildings, 200+ walls) to a crawl since this whole loop reruns on
+        // every redraw (every pan/zoom tick, every hovered tile).
+        ctx.beginPath();
+        ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0,0,0,0.32)";
+        ctx.fill();
         ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
-        ctx.restore();
       } else {
         // Loading placeholder only — a flat footprint tint, not a fake box,
         // so there's no shape to "un-flatten" once the real sprite arrives.
@@ -500,7 +514,7 @@ export function IsometricGridBoard({
     if (isPanning && panStartRef.current) {
       if (isMapFixed) {
         // When map is locked, panning is prevented so user can place/inspect stably
-        setHoverCell(getCanvasGridCell(e));
+        updateHoverCell(getCanvasGridCell(e));
         return;
       }
       const dx = e.clientX - panStartRef.current.clientX;
@@ -511,7 +525,7 @@ export function IsometricGridBoard({
       setViewport((prev) => ({ ...prev, panX: clamped.panX, panY: clamped.panY }));
       return;
     }
-    setHoverCell(getCanvasGridCell(e));
+    updateHoverCell(getCanvasGridCell(e));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
