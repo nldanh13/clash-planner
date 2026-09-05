@@ -20,6 +20,7 @@ html,body{
   margin:0;
   min-width:320px;
   min-height:100vh;
+  min-height:100dvh;
   max-width:100%;
   overflow-x:hidden;
   scrollbar-gutter:stable;
@@ -43,6 +44,7 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 .app-header-area {
   position: sticky;
@@ -51,6 +53,7 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
   background: #10151eed;
   backdrop-filter: blur(16px);
   width: 100%;
+  padding-top: env(safe-area-inset-top);
 }
 .topbar {
   height: 60px;
@@ -209,6 +212,10 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
     height: 42px;
     border-top: 1px solid #ffffff0d;
     padding: 0;
+    /* Fades the row's edges so a horizontally-scrollable nav visibly hints
+       there's more to swipe to, instead of cutting tabs off with no cue. */
+    mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
   }
   .topbar-nav button {
     height: 42px;
@@ -359,7 +366,11 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
 
 .planner-toast {
   position: fixed;
-  top: 90px;
+  /* Anchored to the bottom instead of a fixed "top: 90px" so it never
+     depends on the topbar's height — which grows on mobile once the nav
+     wraps to a second row. Safe-area padding keeps it clear of the
+     iPhone home-indicator. */
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
   right: 24px;
   z-index: 999;
   display: flex;
@@ -584,8 +595,12 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   z-index: 9999 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   background: #07111a !important;
-  padding: 8px 12px 12px 12px !important;
+  /* max() keeps the fixed 8/12px padding on normal phones while growing to
+     clear the iPhone notch/home-indicator (safe-area-inset) when present. */
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -599,6 +614,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
 
 .base-planner-module.planner-fullscreen .inventory-sidebar {
   max-height: calc(100vh - 120px) !important;
+  max-height: calc(100dvh - 120px) !important;
   top: 0 !important;
 }
 
@@ -612,6 +628,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   border-radius: 12px;
   padding: 12px;
   max-height: calc(100vh - 200px);
+  max-height: calc(100dvh - 200px);
   position: sticky;
   top: 96px;
   overflow: hidden;
@@ -761,6 +778,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
   overflow-y: auto;
   padding-right: 4px;
   max-height: calc(100vh - 430px);
+  max-height: calc(100dvh - 430px);
 }
 
 .inventory-item-card {
