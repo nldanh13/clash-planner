@@ -1050,6 +1050,22 @@ export const vi = {
       scanning: "Đang quét dữ liệu, vui lòng đợi...",
       start: "Bắt đầu Quét & Cập nhật Dữ liệu",
     },
+    images: {
+      tab: "Quản lý Ảnh",
+      intro:
+        "Tải ảnh lên cho từng công trình theo từng cấp độ, từng cấp Town Hall, và từng món trang trí. Bạn có thể tải thẳng ảnh chất lượng cao lên — máy chủ sẽ tự động thu nhỏ và nén lại cho phù hợp với web, không cần tự chỉnh sửa trước.",
+      townHallsTitle: "Town Hall (Cấp 1–18)",
+      buildingsTitle: "Công trình theo từng cấp độ ({count})",
+      searchPlaceholder: "Tìm công trình theo tên hoặc id...",
+      levelCount: "{count} cấp độ",
+      levelLabel: "Cấp {level}",
+      decorationsTitle: "Trang trí ({count})",
+      uploadButton: "Tải ảnh",
+      uploading: "Đang tải...",
+      uploadError: "Lỗi tải ảnh lên.",
+      cacheHint:
+        "Mẹo: sau khi tải ảnh mới, nếu Base Planner chưa hiển thị ảnh vừa cập nhật, hãy tải lại trang (F5) — trình duyệt có thể đang giữ ảnh cũ trong bộ nhớ đệm.",
+    },
   },
   roadmap: {
     unlockGroups: {

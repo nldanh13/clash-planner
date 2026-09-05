@@ -2,6 +2,67 @@ import express from "express";
 import path from "path";
 import { timingSafeEqual } from "crypto";
 import { createServer as createViteServer } from "vite";
+import multer from "multer";
+import sharp from "sharp";
+import { BUILDINGS_BY_ID } from "./src/components/base-planner/constants";
+import { DECORATIONS_BY_ID } from "./src/components/base-planner/decorationCatalog";
+
+// In-memory only — every upload is validated then resized/re-encoded by sharp
+// before ever touching disk, so nothing user-supplied is written verbatim.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /^image\//.test(file.mimetype)),
+});
+
+/**
+ * Resolves an admin image-upload request to the public/ relative path it
+ * should be saved at, plus the max dimension to downscale it to. Returns
+ * null for a request that doesn't map to a real catalog entry — ids come
+ * from an admin-only, password-gated form, but are still validated against
+ * the actual catalogs (not just a regex) before they ever reach the
+ * filesystem, since they end up as part of a file path.
+ */
+function resolveUploadTarget(
+  target: unknown,
+  id: unknown,
+  level: unknown
+): { relPath: string; maxDim: number } | { error: string } {
+  if (typeof id !== "string" || !/^[a-z0-9-]+$/.test(id)) {
+    return { error: "ID không hợp lệ." };
+  }
+
+  if (target === "townhall") {
+    const lvl = Number(level);
+    if (!Number.isInteger(lvl) || lvl < 1 || lvl > 18) {
+      return { error: "Cấp độ Town Hall phải là số nguyên từ 1 đến 18." };
+    }
+    return { relPath: `town-halls/th-${lvl}.png`, maxDim: 1100 };
+  }
+
+  if (target === "building") {
+    if (!BUILDINGS_BY_ID.has(id)) {
+      return { error: "Công trình không tồn tại trong danh mục." };
+    }
+    if (level === undefined || level === null || level === "") {
+      return { relPath: `buildings/${id}.png`, maxDim: 720 };
+    }
+    const lvl = Number(level);
+    if (!Number.isInteger(lvl) || lvl < 1 || lvl > 30) {
+      return { error: "Cấp độ công trình không hợp lệ." };
+    }
+    return { relPath: `buildings/${id}-${lvl}.png`, maxDim: 720 };
+  }
+
+  if (target === "decoration") {
+    if (!DECORATIONS_BY_ID.has(id)) {
+      return { error: "Trang trí không tồn tại trong danh mục." };
+    }
+    return { relPath: `decorations/${id}.png`, maxDim: 600 };
+  }
+
+  return { error: "target không hợp lệ (phải là building, townhall hoặc decoration)." };
+}
 
 // Fail-closed admin auth: without ADMIN_PASSWORD set, the admin endpoints run
 // shell commands (npm run update-data / download-images.mjs), so a missing
@@ -139,6 +200,67 @@ async function startServer() {
     } catch (error: any) {
       res.status(500).json({ error: "Không thể khởi chạy tiến trình tải ảnh." });
     }
+  });
+
+  // Admin API to upload/replace a building, Town Hall, or decoration image.
+  // Every upload is re-encoded by sharp (resized to a sane on-web max, kept
+  // to PNG) before being written to disk, so an admin can drop in a
+  // full-resolution source image without thinking about file size.
+  app.post("/api/admin/upload-image", requireAdmin, upload.single("image"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Thiếu file ảnh (field 'image')." });
+      }
+
+      const resolved = resolveUploadTarget(req.body?.target, req.body?.id, req.body?.level);
+      if ("error" in resolved) {
+        return res.status(400).json({ error: resolved.error });
+      }
+      const { relPath, maxDim } = resolved;
+
+      let processed: Buffer;
+      try {
+        processed = await sharp(req.file.buffer)
+          .resize({ width: maxDim, height: maxDim, fit: "inside", withoutEnlargement: true })
+          .png({ compressionLevel: 9 })
+          .toBuffer();
+      } catch {
+        return res.status(400).json({ error: "File tải lên không phải ảnh hợp lệ." });
+      }
+
+      const { mkdir, writeFile } = await import("node:fs/promises");
+      const publicAbs = path.join(process.cwd(), "public", relPath);
+      await mkdir(path.dirname(publicAbs), { recursive: true });
+      await writeFile(publicAbs, processed);
+
+      // Production serves the prebuilt dist/ snapshot (see the static-serving
+      // branch below), not public/ directly — mirror the file there too so an
+      // upload takes effect immediately instead of waiting for the next
+      // `npm run build`. Best-effort: dist/ doesn't exist in dev.
+      try {
+        const distAbs = path.join(process.cwd(), "dist", relPath);
+        await mkdir(path.dirname(distAbs), { recursive: true });
+        await writeFile(distAbs, processed);
+      } catch {
+        // No dist/ yet (dev mode) — fine, Vite serves public/ directly.
+      }
+
+      res.json({ success: true, path: `/${relPath}`, sizeBytes: processed.length });
+    } catch (error: any) {
+      console.error("Upload image error:", error);
+      res.status(500).json({ error: "Lỗi xử lý ảnh tải lên." });
+    }
+  });
+
+  // multer throws (via next(err)) rather than rejecting the handler promise —
+  // without this, a too-large upload would fall through to Express's default
+  // HTML error page instead of the JSON error every other admin route returns.
+  app.use("/api/admin/upload-image", (err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof multer.MulterError) {
+      const message = err.code === "LIMIT_FILE_SIZE" ? "Ảnh vượt quá dung lượng cho phép (tối đa 15MB)." : "Lỗi tải file lên.";
+      return res.status(400).json({ error: message });
+    }
+    next(err);
   });
 
   // Ensure NO API call ever falls through to SPA HTML
