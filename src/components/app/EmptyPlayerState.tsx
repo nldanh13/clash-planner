@@ -1,7 +1,15 @@
-import { Castle, Compass, LoaderCircle, Shield, Sparkles, Swords } from "lucide-react";
+import { Castle, Compass, LoaderCircle, Search, Shield, Sparkles, Swords } from "lucide-react";
 import { useTranslation } from "../../i18n";
 
-export function EmptyPlayerState({ loading, message }: { loading: boolean; message?: string }) {
+export function EmptyPlayerState({ 
+  loading, 
+  message, 
+  onOpenSearch 
+}: { 
+  loading: boolean; 
+  message?: string; 
+  onOpenSearch?: () => void;
+}) {
   const { t } = useTranslation();
   return (
     <section className="empty-banner !min-h-[380px] !p-8 relative overflow-hidden bg-gradient-to-b from-[#1B202A] to-[#14171F] border border-[#2C3340] rounded-2xl shadow-xl">
@@ -52,9 +60,20 @@ export function EmptyPlayerState({ loading, message }: { loading: boolean; messa
             {t("overview.emptyTitle")}
           </h1>
 
-          <p className="text-sm text-[#B0BECA] leading-relaxed mb-6 max-w-md">
+          <p className="text-sm text-[#B0BECA] leading-relaxed mb-5 max-w-md">
             {message || t("overview.emptyDescription", { syncLabel: t("common.syncProfile") })}
           </p>
+
+          {onOpenSearch && (
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              className="mb-6 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--gold)] hover:bg-[#f6ce75] text-[#1b1204] text-xs font-extrabold transition-all shadow-md hover:scale-[1.02]"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>{t("app.searchModal.trigger")}</span>
+            </button>
+          )}
 
           {/* Quick Guidance Badges */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full text-left pt-4 border-t border-slate-800/80">

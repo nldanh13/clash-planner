@@ -27,6 +27,7 @@ import { DECORATIONS_BY_ID } from "./decorationCatalog";
 import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
 import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
+import { getMaxBuildingLevel } from "./buildingLevels";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -40,6 +41,7 @@ interface CanvasGridBoardProps {
   zoomLevel: number;
   zoomMode?: "fit" | "manual";
   onZoomChange?: (zoom: number, mode?: "fit" | "manual") => void;
+  townHallLevel?: number;
   /** Cosmetic-only decoration layer — see decorationCatalog.ts. Optional so every other caller/test compiles untouched. */
   decorations?: PlacedDecoration[];
   onUpdateDecorations?: (newDecorations: PlacedDecoration[]) => void;
@@ -74,6 +76,7 @@ export function CanvasGridBoard({
   zoomLevel,
   zoomMode = "fit",
   onZoomChange,
+  townHallLevel = 11,
   decorations = [],
   onUpdateDecorations,
   selectedDecorationDefId = null,
@@ -180,9 +183,9 @@ export function CanvasGridBoard({
   const calculateFitScale = useCallback(() => {
     if (!containerRef.current) return null;
     const el = containerRef.current;
-    // 32px safe margin (16px padding on each side)
-    const availW = Math.max(120, el.clientWidth - 32);
-    const availH = Math.max(120, el.clientHeight - 32);
+    // 72px safe margin for right toolbar, 130px safe margin for bottom tray
+    const availW = Math.max(120, el.clientWidth - 72);
+    const availH = Math.max(120, el.clientHeight - 130);
     const scale = Math.min(availW / BASE_BOARD_PIXELS, availH / BASE_BOARD_PIXELS);
     return Math.max(0.35, Math.min(1.6, Number(scale.toFixed(2))));
   }, []);
@@ -472,6 +475,8 @@ export function CanvasGridBoard({
 
     // 4. Draw Placed Buildings & Walls
     const vulnerableIds = chainAnalysis.vulnerableInstanceIds;
+    const safeTH = Math.max(1, Math.min(18, townHallLevel || 11));
+    const defaultWallLevel = getMaxBuildingLevel(safeTH, "wall");
 
     // Render walls first for clean layering
     for (let i = 0; i < buildings.length; i++) {
@@ -481,15 +486,30 @@ export function CanvasGridBoard({
       const px = b.x * cellSize;
       const py = b.y * cellSize;
       const isSelected = selectedPlacedId === b.instanceId;
+      const wallLevel = b.level ?? defaultWallLevel;
 
-      // Wall block styling
-      ctx.fillStyle = isSelected ? "#ffd32a" : "#718093";
-      ctx.fillRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+      // Draw leveled wall image if available
+      const wallImg = getLeveledBuildingImage("wall", wallLevel, safeTH, () =>
+        setRedrawCounter((c) => c + 1)
+      );
 
-      // Inner highlight
-      ctx.strokeStyle = isSelected ? "#fffa65" : "#a4b0be";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(px + 1.5, py + 1.5, cellSize - 3, cellSize - 3);
+      if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
+        ctx.drawImage(wallImg, px, py, cellSize, cellSize);
+      } else {
+        // High-contrast fallback block while image is loading
+        ctx.fillStyle = isSelected ? "#ffd32a" : "#64748b";
+        ctx.fillRect(px + 0.5, py + 0.5, cellSize - 1, cellSize - 1);
+        ctx.strokeStyle = isSelected ? "#fffa65" : "#94a3b8";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+      }
+
+      // Selection indicator
+      if (isSelected) {
+        ctx.strokeStyle = "#ffc857";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 0.5, py + 0.5, cellSize - 1, cellSize - 1);
+      }
     }
 
     // Render non-wall buildings
@@ -513,10 +533,12 @@ export function CanvasGridBoard({
       ctx.fillRect(px + 2, py + 3, pw - 4, ph - 4);
 
       // Building Image / Box
-      const img = getLeveledBuildingImage(b.buildingId, b.level, () => setRedrawCounter((c) => c + 1));
+      const img = getLeveledBuildingImage(b.buildingId, b.level, safeTH, () =>
+        setRedrawCounter((c) => c + 1)
+      );
 
       if (img && !isInvalid) {
-        // We can draw a subtle backing if it's a bit too transparent, but usually it's fine.
+        // Subtle backing for clean contrast
         ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
         ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
         ctx.drawImage(img, px + 1, py + 1, pw - 2, ph - 2);
@@ -607,8 +629,9 @@ export function CanvasGridBoard({
           }
 
           if (displayName) {
+            const buildingLevel = b.level ?? getMaxBuildingLevel(safeTH, b.buildingId);
             const hasSubText =
-              (settings.showBuildingLevels && b.level && ph >= 2 * cellSize + 6) ||
+              (settings.showBuildingLevels && buildingLevel && ph >= 2 * cellSize + 4) ||
               (settings.showCoordinates && ph >= 3 * cellSize && cellSize >= 14);
             const textY = py + ph / 2 - (hasSubText ? Math.round(baseFontSize * 0.55) : 0);
 
@@ -619,14 +642,14 @@ export function CanvasGridBoard({
             ctx.fillText(displayName, px + pw / 2, textY);
 
             // Secondary row: Level or Coordinates
-            if (settings.showBuildingLevels && b.level && ph >= 2 * cellSize + 6) {
+            if (settings.showBuildingLevels && buildingLevel && ph >= 2 * cellSize + 4) {
               const subFontSize = Math.max(7, baseFontSize - 2);
               ctx.font = `bold ${subFontSize}px sans-serif`;
-              const subText = cellSize < 15 ? `L${b.level}` : `Lvl ${b.level}`;
+              const subText = cellSize < 15 ? `L${buildingLevel}` : `Lv.${buildingLevel}`;
               if (ctx.measureText(subText).width <= maxTextWidth) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
                 ctx.fillText(subText, px + pw / 2, textY + baseFontSize + 2);
-                ctx.fillStyle = isSelected ? "#fef08a" : "rgba(255, 255, 255, 0.85)";
+                ctx.fillStyle = isSelected ? "#fef08a" : "#facc15";
                 ctx.fillText(subText, px + pw / 2, textY + baseFontSize + 1);
               }
             } else if (settings.showCoordinates && ph >= 3 * cellSize && cellSize >= 14) {
@@ -1375,81 +1398,6 @@ export function CanvasGridBoard({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       />
-
-      {/* Floating Inspector Panel */}
-      {selectedPlacedBuilding && selectedPlacedDef && (
-        <div className="building-inspector-card">
-          <div className="inspector-head">
-            <div className="inspector-title">
-              <span
-                className="color-dot"
-                style={{ backgroundColor: selectedPlacedDef.color }}
-              />
-              <strong>{selectedPlacedDef.name}</strong>
-            </div>
-            <button
-              className="close-inspector-btn"
-              onClick={() => onSelectPlacedId(null)}
-              title="Đóng"
-              aria-label="Đóng bảng chi tiết"
-            >
-              <X />
-            </button>
-          </div>
-
-          <div className="inspector-body">
-            <div className="inspector-stat-row">
-              <span>Tọa độ:</span>
-              <b>
-                ({selectedPlacedBuilding.x}, {selectedPlacedBuilding.y})
-              </b>
-            </div>
-            <div className="inspector-stat-row">
-              <span>Kích thước:</span>
-              <b>
-                {selectedPlacedDef.width}x{selectedPlacedDef.height} ô
-              </b>
-            </div>
-            {selectedPlacedDef.range && (
-              <div className="inspector-stat-row">
-                <span>Tầm bắn:</span>
-                <b>
-                  {selectedPlacedDef.minRange ? `${selectedPlacedDef.minRange} - ` : ""}
-                  {selectedPlacedDef.range} ô
-                </b>
-              </div>
-            )}
-            <div
-              className="inspector-stat-row"
-              title={
-                HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
-                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
-                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
-              }
-            >
-              <span>Vùng cấm triển khai:</span>
-              <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category) ? "text-slate-400" : "text-sky-400"}>
-                {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedPlacedDef.category)
-                  ? "Không có (bẫy ẩn)"
-                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
-              </b>
-            </div>
-            <p className="inspector-desc">{selectedPlacedDef.description}</p>
-          </div>
-
-          <div className="inspector-actions">
-            <button
-              className="inspector-delete-btn"
-              onClick={handleRemoveSelected}
-              title="Xóa công trình này khỏi bản đồ"
-              aria-label="Xóa công trình"
-            >
-              <Trash2 />
-              <span>Xóa bỏ</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

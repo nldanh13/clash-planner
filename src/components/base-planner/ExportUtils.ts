@@ -4,6 +4,8 @@ import type { BaseLayoutData, PlacedBuilding } from "./types";
 import { BUILDING_METADATA_MAP, getAllBuildingLimits, getTownHallCatalog } from "./catalog";
 import { PlacementEngine } from "./generator/placementEngine";
 import { PRNG } from "./generator/prng";
+import { getCachedImage } from "./imageCache";
+import { getMaxBuildingLevel } from "./buildingLevels";
 
 /**
  * Generates and downloads high-resolution PNG of the 44x44 base layout
@@ -96,20 +98,27 @@ export async function exportLayoutAsImage(
   ctx.strokeRect(startX + centerStart, startY + centerStart, centerSize, centerSize);
 
   // Draw Walls first (so buildings render cleanly over walls if near)
+  const defaultWallLvl = getMaxBuildingLevel(townHallLevel, "wall");
   const walls = buildings.filter((b) => b.buildingId === "wall");
   for (const wall of walls) {
     const px = startX + wall.x * tileSize;
     const py = startY + wall.y * tileSize;
+    const wallLvl = wall.level ?? defaultWallLvl;
+    const wallImg = getCachedImage(`wall::L${wallLvl}`) || getCachedImage("wall");
 
-    ctx.fillStyle = "#a4b0be";
-    ctx.fillRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
-    ctx.strokeStyle = "#57606f";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
+    if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
+      ctx.drawImage(wallImg, px, py, tileSize, tileSize);
+    } else {
+      ctx.fillStyle = "#a4b0be";
+      ctx.fillRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
+      ctx.strokeStyle = "#57606f";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
 
-    // Wall 3D top shine
-    ctx.fillStyle = "#dfe4ea";
-    ctx.fillRect(px + 4, py + 4, tileSize - 8, 3);
+      // Wall 3D top shine
+      ctx.fillStyle = "#dfe4ea";
+      ctx.fillRect(px + 4, py + 4, tileSize - 8, 3);
+    }
   }
 
   // Draw Non-Wall Buildings

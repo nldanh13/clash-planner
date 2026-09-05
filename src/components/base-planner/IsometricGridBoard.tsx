@@ -1,6 +1,6 @@
 import { preloadAllBaseImages, getLeveledBuildingImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Maximize, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Lock, Maximize, Trash2, Unlock, X, ZoomIn, ZoomOut } from "lucide-react";
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
@@ -28,6 +28,7 @@ interface IsometricGridBoardProps {
   onSelectPlacedId: (instanceId: string | null) => void;
   buildingLimits: Record<string, number>;
   settings: TacticalSettings;
+  townHallLevel?: number;
 }
 
 /**
@@ -51,6 +52,7 @@ export function IsometricGridBoard({
   onSelectPlacedId,
   buildingLimits,
   settings,
+  townHallLevel = 11,
 }: IsometricGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,25 +106,54 @@ export function IsometricGridBoard({
   }, [activePlacement, hoverCell, occupancyMatrix]);
 
   // Center the whole 44x44 board in the viewport on mount / container resize,
-  // unless the user has already panned/zoomed manually.
+  // with safe margins for the bottom tray and right toolbar.
+  const [isMapFixed, setIsMapFixed] = useState(false);
   const hasUserAdjustedView = useRef(false);
+
+  const clampPan = useCallback((nextPanX: number, nextPanY: number, currentZoom: number) => {
+    const el = containerRef.current;
+    if (!el) return { panX: nextPanX, panY: nextPanY };
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    const th = DEFAULT_ISO_CONFIG.tileHeight;
+    const centerWorldY = (GRID_SIZE * th) / 2;
+    const defaultPanX = (w - 30) / 2;
+    const defaultPanY = (h - 70) / 2 - centerWorldY * currentZoom;
+    
+    // Prevent map from drifting wildly beyond viewport bounds
+    const maxDriftX = Math.max(120, w * 0.35);
+    const maxDriftY = Math.max(120, h * 0.35);
+    return {
+      panX: Math.max(defaultPanX - maxDriftX, Math.min(defaultPanX + maxDriftX, nextPanX)),
+      panY: Math.max(defaultPanY - maxDriftY, Math.min(defaultPanY + maxDriftY, nextPanY)),
+    };
+  }, []);
+
   const fitToFrame = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     const w = el.clientWidth;
     const h = el.clientHeight;
+    if (w <= 0 || h <= 0) return;
     const tw = DEFAULT_ISO_CONFIG.tileWidth;
     const th = DEFAULT_ISO_CONFIG.tileHeight;
-    const boardWorldWidth = GRID_SIZE * tw; // full diamond width (N to S is narrower; W-E corner to corner is GRID_SIZE*tw)
+    const boardWorldWidth = GRID_SIZE * tw;
     const boardWorldHeight = GRID_SIZE * th;
-    const zoom = clampIsoZoom(Math.min((w - 60) / boardWorldWidth, (h - 60) / boardWorldHeight) || 1);
-    // Grid (0,0) projects to world (0,0); the board's leftmost point is grid (0,44) at worldX = -GRID_SIZE*tw/2.
-    const centerWorldX = 0; // (0,0)-(44,0)-(44,44)-(0,44) diamond is horizontally centered on worldX=0
+
+    // Provide safe padding for bottom tray and right toolbar
+    const availW = Math.max(100, w - 80);
+    const availH = Math.max(100, h - 140);
+    const zoom = clampIsoZoom(Math.min(availW / boardWorldWidth, availH / boardWorldHeight) || 0.95);
+    
+    const centerWorldX = 0;
     const centerWorldY = (GRID_SIZE * th) / 2;
+    const targetCenterX = (w - 30) / 2;
+    const targetCenterY = (h - 70) / 2;
+
     setViewport({
       zoom,
-      panX: w / 2 - centerWorldX * zoom,
-      panY: h / 2 - centerWorldY * zoom,
+      panX: targetCenterX - centerWorldX * zoom,
+      panY: targetCenterY - centerWorldY * zoom,
     });
   }, []);
 
@@ -283,9 +314,14 @@ export function IsometricGridBoard({
       // Roof (top face)
       drawDiamond([lift(top), lift(right), lift(bottom), lift(left)], roofColor, strokeColor, strokeWidth);
 
-        // Draw image on roof
-        const img = getLeveledBuildingImage(b.buildingId, b.level, () => setRedrawCounter((c) => c + 1));
-        if (img && def.category !== "wall" && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+        // Draw image on roof (including walls)
+        const img = getLeveledBuildingImage(
+          b.buildingId,
+          b.level,
+          townHallLevel,
+          () => setRedrawCounter((c) => c + 1)
+        );
+        if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
           try {
             const minX = lift(left).x;
             const maxX = lift(right).x;
@@ -398,11 +434,17 @@ export function IsometricGridBoard({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isPanning && panStartRef.current) {
+      if (isMapFixed) {
+        // When map is locked, panning is prevented so user can place/inspect stably
+        setHoverCell(getCanvasGridCell(e));
+        return;
+      }
       const dx = e.clientX - panStartRef.current.clientX;
       const dy = e.clientY - panStartRef.current.clientY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDragRef.current = true;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDragRef.current = true;
       hasUserAdjustedView.current = true;
-      setViewport((prev) => ({ ...prev, panX: panStartRef.current!.panX + dx, panY: panStartRef.current!.panY + dy }));
+      const clamped = clampPan(panStartRef.current.panX + dx, panStartRef.current.panY + dy, viewport.zoom);
+      setViewport((prev) => ({ ...prev, panX: clamped.panX, panY: clamped.panY }));
       return;
     }
     setHoverCell(getCanvasGridCell(e));
@@ -552,14 +594,15 @@ export function IsometricGridBoard({
       const cy = el ? el.clientHeight / 2 : 0;
       const safeZoom = Number.isFinite(prev.zoom) && prev.zoom > 0 ? prev.zoom : 1;
       const nextZoom = clampIsoZoom(safeZoom / 1.18);
-      const worldBefore = {
-        x: (cx - prev.panX) / safeZoom,
-        y: (cy - prev.panY) / safeZoom,
-      };
+      const th = DEFAULT_ISO_CONFIG.tileHeight;
+      const worldCenterY = (GRID_SIZE * th) / 2;
+      const centeredPanX = cx;
+      const centeredPanY = (cy > 30 ? cy - 15 : cy) - worldCenterY * nextZoom;
+      const pullFactor = nextZoom <= 1.05 ? 1 : 0.5;
       return {
         zoom: nextZoom,
-        panX: cx - worldBefore.x * nextZoom,
-        panY: cy - worldBefore.y * nextZoom,
+        panX: prev.panX + (centeredPanX - prev.panX) * pullFactor,
+        panY: prev.panY + (centeredPanY - prev.panY) * pullFactor,
       };
     });
   };
@@ -576,17 +619,34 @@ export function IsometricGridBoard({
       const pointerCanvas = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       setViewport((prev) => {
         const safeZoom = Number.isFinite(prev.zoom) && prev.zoom > 0 ? prev.zoom : 1;
-        const worldBefore = {
-          x: (pointerCanvas.x - prev.panX) / safeZoom,
-          y: (pointerCanvas.y - prev.panY) / safeZoom,
-        };
-        const delta = e.deltaY < 0 ? 1.08 : 1 / 1.08;
-        const nextZoom = clampIsoZoom(safeZoom * delta);
-        return {
-          zoom: nextZoom,
-          panX: pointerCanvas.x - worldBefore.x * nextZoom,
-          panY: pointerCanvas.y - worldBefore.y * nextZoom,
-        };
+        if (e.deltaY < 0) {
+          // ZOOM IN: Zoom at mouse cursor position (user preferred)
+          const nextZoom = clampIsoZoom(safeZoom * 1.08);
+          const worldBefore = {
+            x: (pointerCanvas.x - prev.panX) / safeZoom,
+            y: (pointerCanvas.y - prev.panY) / safeZoom,
+          };
+          return {
+            zoom: nextZoom,
+            panX: pointerCanvas.x - worldBefore.x * nextZoom,
+            panY: pointerCanvas.y - worldBefore.y * nextZoom,
+          };
+        } else {
+          // ZOOM OUT: Automatically pull view back to screen center
+          const nextZoom = clampIsoZoom(safeZoom / 1.08);
+          const screenCenterX = rect.width / 2;
+          const screenCenterY = (rect.height - 30) / 2;
+          const th = DEFAULT_ISO_CONFIG.tileHeight;
+          const worldCenterY = (GRID_SIZE * th) / 2;
+          const centeredPanX = screenCenterX;
+          const centeredPanY = screenCenterY - worldCenterY * nextZoom;
+          const pullFactor = nextZoom <= 1.05 ? 1 : 0.45;
+          return {
+            zoom: nextZoom,
+            panX: prev.panX + (centeredPanX - prev.panX) * pullFactor,
+            panY: prev.panY + (centeredPanY - prev.panY) * pullFactor,
+          };
+        }
       });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -700,33 +760,29 @@ export function IsometricGridBoard({
         onKeyDown={handleKeyDown}
       />
 
-      <div className="absolute top-4 right-4 z-30 flex flex-col gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-xl p-1 shadow-2xl">
+      {/* 3D Map Stabilization & Lock Controls */}
+      <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-md border border-slate-700/60 rounded-xl p-1 shadow-2xl">
         <button
           type="button"
-          onClick={handleZoomIn}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Phóng to"
-          aria-label="Phóng to"
+          onClick={() => setIsMapFixed((prev) => !prev)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            isMapFixed
+              ? "bg-amber-500/25 text-amber-300 border border-amber-500/40"
+              : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+          title={isMapFixed ? "Bản đồ đang cố định (không chạy lung tung)" : "Nhấn để cố định bản đồ"}
         >
-          <ZoomIn className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleZoomOut}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Thu nhỏ"
-          aria-label="Thu nhỏ"
-        >
-          <ZoomOut className="w-4 h-4" />
+          {isMapFixed ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5 text-slate-400" />}
+          <span>{isMapFixed ? "Đã cố định map" : "Cố định map"}</span>
         </button>
         <button
           type="button"
           onClick={handleResetView}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-          title="Vừa khung hình"
-          aria-label="Vừa khung hình"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+          title="Căn giữa & Vừa khung hình"
         >
-          <Maximize className="w-4 h-4" />
+          <Maximize className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Căn giữa</span>
         </button>
       </div>
 
@@ -735,78 +791,6 @@ export function IsometricGridBoard({
           ? "Bấm vào ô hợp lệ để đặt công trình — kéo nền để xoay góc nhìn."
           : "Kéo để xoay góc nhìn, cuộn để zoom. Bấm để chọn, bấm ô trống để di chuyển công trình đã chọn."}
       </div>
-
-      {/* Floating Inspector Panel — same info/actions as the 2D board's, from an isometric angle. */}
-      {selectedBuilding && selectedBuildingDef && (
-        <div className="building-inspector-card">
-          <div className="inspector-head">
-            <div className="inspector-title">
-              <span className="color-dot" style={{ backgroundColor: selectedBuildingDef.color }} />
-              <strong>{selectedBuildingDef.name}</strong>
-            </div>
-            <button
-              className="close-inspector-btn"
-              onClick={() => onSelectPlacedId(null)}
-              title="Đóng"
-              aria-label="Đóng bảng chi tiết"
-            >
-              <X />
-            </button>
-          </div>
-
-          <div className="inspector-body">
-            <div className="inspector-stat-row">
-              <span>Tọa độ:</span>
-              <b>
-                ({selectedBuilding.x}, {selectedBuilding.y})
-              </b>
-            </div>
-            <div className="inspector-stat-row">
-              <span>Kích thước:</span>
-              <b>
-                {selectedBuildingDef.width}x{selectedBuildingDef.height} ô
-              </b>
-            </div>
-            {selectedBuildingDef.range && (
-              <div className="inspector-stat-row">
-                <span>Tầm bắn:</span>
-                <b>
-                  {selectedBuildingDef.minRange ? `${selectedBuildingDef.minRange} - ` : ""}
-                  {selectedBuildingDef.range} ô
-                </b>
-              </div>
-            )}
-            <div
-              className="inspector-stat-row"
-              title={
-                HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
-                  ? "Công trình này bị ẩn/không cản trở việc thả quân của đối phương."
-                  : `Vùng cấm triển khai mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô quanh công trình (viền chấm xanh trên bản đồ).`
-              }
-            >
-              <span>Vùng cấm triển khai:</span>
-              <b className={HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category) ? "text-slate-400" : "text-sky-400"}>
-                {HOME_VILLAGE_DEPLOYMENT_RULES.nonBlockingCategories.includes(selectedBuildingDef.category)
-                  ? "Không có (bẫy ẩn)"
-                  : `Mở rộng ${HOME_VILLAGE_DEPLOYMENT_RULES.blockRadius} ô`}
-              </b>
-            </div>
-            <p className="inspector-desc">{selectedBuildingDef.description}</p>
-          </div>
-
-          <div className="inspector-actions">
-            <button
-              className="inspector-delete-btn"
-              onClick={handleRemoveSelected}
-              title="Xóa công trình này khỏi bản đồ"
-              aria-label="Xóa công trình"
-            >
-              <Trash2 />
-              <span>Xóa bỏ</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

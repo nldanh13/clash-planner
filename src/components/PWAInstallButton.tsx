@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, Smartphone } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useTranslation } from '../i18n';
@@ -40,8 +41,8 @@ export const PWAInstallButton: React.FC = () => {
           <span className="hidden sm:inline">{t("pwa.installIOS")}</span>
         </button>
 
-        {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        {showIOSGuide && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-fadeIn">
             <div className="w-full max-w-sm rounded-xl bg-[#0c1620] border border-[#ffffff12] p-6 shadow-2xl text-slate-200">
               <h3 className="text-lg font-bold text-amber-400 mb-3 flex items-center gap-2">
                 <Smartphone className="w-5 h-5" />
@@ -67,7 +68,8 @@ export const PWAInstallButton: React.FC = () => {
                 {t("pwa.gotIt")}
               </button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </>
     );

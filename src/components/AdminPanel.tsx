@@ -194,7 +194,7 @@ export function AdminPanel() {
   });
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "20px auto", padding: "24px", background: "#101b25", borderRadius: "14px", border: "1px solid #2a3a4a", color: "#e6edf2" }}>
+    <div style={{ width: "100%", margin: "18px 0", padding: "24px", background: "#101b25", borderRadius: "14px", border: "1px solid #2a3a4a", color: "#e6edf2", boxSizing: "border-box" }}>
       {/* Header */}
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "14px", marginBottom: "20px", borderBottom: "1px solid #243545", paddingBottom: "16px" }}>
         <div>

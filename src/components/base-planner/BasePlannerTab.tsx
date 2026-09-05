@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Castle,
   CheckCircle2,
+  Eye,
   FolderOpen,
   LayoutGrid,
   LoaderCircle,
@@ -29,11 +30,11 @@ import {
 } from "./layoutStorage";
 import { useBasePlannerHistory } from "./useBasePlannerHistory";
 import type { LayoutProject, PlacedBuilding, PlacedDecoration, PlannerViewMode, TacticalSettings } from "./types";
-import TacticalToolbar from "./TacticalToolbar";
+import { VerticalTacticalToolbar } from "./VerticalTacticalToolbar";
+import { CoCBuildingTray } from "./CoCBuildingTray";
 import { EditorBlueprintHeader } from "./EditorBlueprintHeader";
 import { BlueprintManagerModal } from "./BlueprintManagerModal";
 import { NewBlueprintWizardModal } from "./NewBlueprintWizardModal";
-import { InventorySidebar } from "./InventorySidebar";
 import { CanvasGridBoard } from "./CanvasGridBoard";
 import { IsometricGridBoard } from "./IsometricGridBoard";
 import { DefenseScorePanel } from "./DefenseScorePanel";
@@ -101,6 +102,10 @@ export function BasePlannerTab({
   // Mobile Segmented View: 'map' (default) vs 'inventory'
   const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<"map" | "inventory">("map");
 
+  // Floating panels for Analysis (defense score) and Decorate mode
+  const [isDefenseModalOpen, setIsDefenseModalOpen] = useState(false);
+  const [isDecorateModalOpen, setIsDecorateModalOpen] = useState(false);
+
   const [settings, setSettings] = useState<TacticalSettings>({
     plannerMode: "design",
     showBuildingNames: true,
@@ -116,6 +121,19 @@ export function BasePlannerTab({
     deploymentDisplayMode: "off",
     viewMode: "2d",
   });
+
+  useEffect(() => {
+    if (settings.plannerMode === "analysis") {
+      setIsDefenseModalOpen(true);
+      setIsDecorateModalOpen(false);
+    } else if (settings.plannerMode === "decorate") {
+      setIsDecorateModalOpen(true);
+      setIsDefenseModalOpen(false);
+    } else {
+      setIsDefenseModalOpen(false);
+      setIsDecorateModalOpen(false);
+    }
+  }, [settings.plannerMode]);
 
   // Undo/Redo History
   const {
@@ -165,6 +183,30 @@ export function BasePlannerTab({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isFullscreen]);
 
+  // Zen Mode (Full map viewing mode: hides top bar, tactical toolbar and building tray)
+  const [isZenMode, setIsZenMode] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger when user is typing inside an input or textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "h" || e.key === "H") {
+        setIsZenMode((prev) => !prev);
+      } else if (e.key === "Escape" && isZenMode) {
+        setIsZenMode(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isZenMode]);
+
   // Close manager logic adhering to specs:
   // - If active layout exists: close modal and return to its editor
   // - If no active layout exists: return user to the previous tab
@@ -197,6 +239,9 @@ export function BasePlannerTab({
   // Deployment Zone auto-fix preview/apply state
   const [autoFixPreview, setAutoFixPreview] = useState<AutoFixResult | null>(null);
   const [isApplyingFix, setIsApplyingFix] = useState(false);
+
+  // Check whether the user is actively arranging an existing or new building
+  const isArranging = Boolean(selectedPlacedId || selectedDefId || selectedDecorationDefId);
 
   // Notify user with auto-dismiss
   const showToast = (msg: string) => {
@@ -240,6 +285,50 @@ export function BasePlannerTab({
     },
     [activeLayout, pushState, replaceState]
   );
+
+  // Delete currently selected placed building
+  const handleDeleteSelectedPlaced = useCallback(() => {
+    if (!selectedPlacedId) return;
+    const updated = buildings.filter((b) => b.instanceId !== selectedPlacedId);
+    handleUpdateBuildings(updated);
+    setSelectedPlacedId(null);
+  }, [buildings, handleUpdateBuildings, selectedPlacedId]);
+
+  // Global keydown handler: Escape to deselect or exit fullscreen; Delete/Backspace to remove selected building
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in form inputs
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (isFullscreen) {
+          setIsFullscreen(false);
+        } else if (selectedPlacedId) {
+          setSelectedPlacedId(null);
+        } else if (selectedDefId) {
+          setSelectedDefId(null);
+        } else if (selectedDecorationDefId) {
+          setSelectedDecorationDefId(null);
+        }
+      } else if ((e.key === "Delete" || e.key === "Backspace") && selectedPlacedId) {
+        e.preventDefault();
+        handleDeleteSelectedPlaced();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    handleDeleteSelectedPlaced,
+    isFullscreen,
+    selectedDecorationDefId,
+    selectedDefId,
+    selectedPlacedId,
+  ]);
 
   // Decorations are cosmetic-only and saved immediately (no undo/redo history,
   // no debounce — the interaction volume is far lower than building placement).
@@ -518,7 +607,7 @@ export function BasePlannerTab({
   }
 
   return (
-    <section className="base-planner-module">
+    <section className={`base-planner-module ${isFullscreen ? "planner-fullscreen" : ""}`}>
       {/* Toast Notification */}
       {notification && (
         <div className="planner-toast">
@@ -531,179 +620,41 @@ export function BasePlannerTab({
       {!activeLayout ? null : (
         <>
           {/* Top Header Information & Lifecycle Controls */}
-          <EditorBlueprintHeader
-            layout={activeLayout}
-            saveStatus={saveStatus}
-            lastSavedTime={lastSavedTime}
-            onSaveManual={handleSaveManual}
-            onOpenManager={handleOpenManager}
-            onRename={handleRename}
-            onDuplicate={handleDuplicate}
-            onOpenNewWizard={(th) => {
-              setWizardInitialTH(th || activeLayout.townHallLevel);
-              setIsNewWizardOpen(true);
-            }}
-            onDuplicateToTownHall={handleDuplicateToTownHall}
-          />
+          {!isZenMode && (
+            <EditorBlueprintHeader
+              layout={activeLayout}
+              saveStatus={saveStatus}
+              lastSavedTime={lastSavedTime}
+              onSaveManual={handleSaveManual}
+              onOpenManager={handleOpenManager}
+              onRename={handleRename}
+              onDuplicate={handleDuplicate}
+              onOpenNewWizard={(th) => {
+                setWizardInitialTH(th || activeLayout.townHallLevel);
+                setIsNewWizardOpen(true);
+              }}
+              onDuplicateToTownHall={handleDuplicateToTownHall}
+              onExportPNG={handleExportPNG}
+              onExportJSON={handleExportJSON}
+              onImportJSON={handleImportJSON}
+              onOpenDefenseScore={() => {
+                setIsDefenseModalOpen(true);
+                setSettings((s) => ({ ...s, plannerMode: "analysis" }));
+              }}
+              defenseScore={defenseScoreResult}
+              isZenMode={isZenMode}
+              onToggleZenMode={() => setIsZenMode((prev) => !prev)}
+            />
+          )}
 
-          {/* Tactical Toolbar for In-Canvas Design & Analysis operations */}
-          <TacticalToolbar
-            settings={settings}
-            onUpdateSettings={setSettings}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={undo}
-            onRedo={redo}
-            onClear={handleClearMap}
-            onExportPNG={handleExportPNG}
-            onExportJSON={handleExportJSON}
-            onImportJSON={handleImportJSON}
-            chainIssuesCount={chainAnalysis.dangerPairs.length}
-            zoomLevel={zoomLevel}
-            zoomMode={zoomMode}
-            onZoomChange={(newZoom, mode) => {
-              setZoomLevel(newZoom);
-              setZoomMode(mode || "manual");
-            }}
-            placedCount={buildings.length}
-            defenseScore={defenseScoreResult}
-            onFitMap={handleFitMap}
-            isSidebarCollapsed={isSidebarCollapsed}
-            onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
-            viewMode={settings.viewMode}
-            onViewModeChange={(mode: PlannerViewMode) => setSettings((s) => ({ ...s, viewMode: mode }))}
-          />
-
-          {/* Mobile Segmented Workspace Tabs — hides at the same 768px breakpoint
-              the .planner-main-layout CSS grid switches to a side-by-side layout at
-              (md:hidden, not lg:hidden — using lg here left a 768-1024px dead zone
-              where this switcher was visible but did nothing). */}
-          <div className="md:hidden flex items-center gap-1.5 p-1 bg-[#0a151f] border border-slate-800 rounded-xl shadow-sm w-full max-w-full min-w-0">
-            <button
-              onClick={() => setMobileWorkspaceTab("map")}
-              className={`flex-1 min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                mobileWorkspaceTab === "map"
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              aria-label={t("basePlanner.mobileTabs.mapAria")}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              <span>{t("basePlanner.mobileTabs.mapLabel")}</span>
-            </button>
-            <button
-              onClick={() => setMobileWorkspaceTab("inventory")}
-              className={`flex-1 min-h-[42px] flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                mobileWorkspaceTab === "inventory"
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              aria-label={
-                settings.plannerMode === "design"
-                  ? t("basePlanner.mobileTabs.inventoryAria")
-                  : settings.plannerMode === "decorate"
-                  ? t("basePlanner.mobileTabs.decorateAria")
-                  : t("basePlanner.mobileTabs.analysisAria")
-              }
-            >
-              {settings.plannerMode === "design" ? (
-                <>
-                  <Shield className="w-4 h-4" />
-                  <span>{t("basePlanner.mobileTabs.inventoryLabel")}</span>
-                  {selectedDefId && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  )}
-                </>
-              ) : settings.plannerMode === "decorate" ? (
-                <>
-                  <Shield className="w-4 h-4" />
-                  <span>{t("basePlanner.mobileTabs.decorateLabel")}</span>
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4" />
-                  <span>{t("basePlanner.mobileTabs.analysisLabel", { tier: defenseScoreResult?.tier || "C" })}</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Main Planner Grid Body */}
-          <div
-            className={`planner-main-layout w-full max-w-full min-w-0 overflow-hidden ${
-              isSidebarCollapsed ? "sidebar-collapsed" : ""
-            }`}
-          >
-            {/* Left: Building Inventory / Sidebar */}
-            <aside
-              className={`planner-sidebar-panel flex-col w-full h-full min-h-0 overflow-hidden ${
-                isSidebarCollapsed
-                  ? "hidden"
-                  : mobileWorkspaceTab === "map"
-                  ? "hidden md:flex"
-                  : "flex"
-              }`}
-            >
-              {settings.plannerMode === "design" ? (
-                <InventorySidebar
-                  townHallLevel={townHallLevel}
-                  buildingLimits={buildingLimits}
-                  placedBuildings={buildings}
-                  selectedBuildingDefId={selectedDefId}
-                  onSelectBuildingDef={setSelectedDefId}
-                  onStartDragNew={handleStartDragNew}
-                  wallBrushActive={settings.wallBrushActive}
-                  onToggleWallBrush={() =>
-                    setSettings((s) => ({
-                      ...s,
-                      wallBrushActive: !s.wallBrushActive,
-                      eraserActive: false,
-                    }))
-                  }
-                />
-              ) : settings.plannerMode === "decorate" ? (
-                <DecorativeDesignPanel
-                  buildings={buildings}
-                  decorations={decorations}
-                  townHallLevel={townHallLevel}
-                  buildingLimits={buildingLimits}
-                  onUpdateBuildings={handleUpdateBuildings}
-                  onUpdateDecorations={handleUpdateDecorations}
-                  selectedDecorationDefId={selectedDecorationDefId}
-                  onSelectDecorationDefId={setSelectedDecorationDefId}
-                  onStampPreviewChange={setStampPreviewCoords}
-                  showToast={showToast}
-                />
-              ) : (
-                <DefenseScorePanel
-                  defenseScore={defenseScoreResult}
-                  onClose={() => setSettings((s) => ({ ...s, plannerMode: "design" }))}
-                  deploymentContext={{
-                    purpose,
-                    buildings,
-                    autoFixPreview,
-                    isApplyingFix,
-                    onViewOnMap: handleViewDeploymentOnMap,
-                    onSuggestFix: handleSuggestDeploymentFix,
-                    onApplyAutoFix: handleApplyDeploymentAutoFix,
-                    onDismissPreview: () => setAutoFixPreview(null),
-                  }}
-                />
-              )}
-            </aside>
-
-            {/* Center: Grid Canvas (2D editable board, or read-only Isometric view) */}
-            <main
-              className={`planner-canvas-panel flex-col w-full h-full min-h-0 min-w-0 relative overflow-hidden ${
-                isFullscreen ? "canvas-fullscreen" : ""
-              } ${mobileWorkspaceTab === "inventory" ? "hidden md:flex" : "flex"}`}
-            >
+          {/* Main Planner Workspace */}
+          <div className="planner-main-layout relative w-full h-full flex-1 min-h-0 overflow-hidden">
+            {/* Full-bleed Map Canvas (2D editable board or 3D Isometric view) */}
+            <main className="w-full h-full min-h-0 min-w-0 relative flex-1 overflow-hidden">
               {isFullscreen && (
                 <button
                   onClick={() => setIsFullscreen(false)}
-                  className="absolute top-3 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold shadow-2xl transition-colors cursor-pointer"
+                  className="absolute top-3 right-16 z-[10000] flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold shadow-2xl transition-colors cursor-pointer"
                   title={t("basePlanner.tab.exitFullscreenTitle")}
                   aria-label={t("basePlanner.toolbar.exitFullscreenAria")}
                 >
@@ -726,6 +677,7 @@ export function BasePlannerTab({
                     onSelectPlacedId={setSelectedPlacedId}
                     buildingLimits={buildingLimits}
                     settings={settings}
+                    townHallLevel={townHallLevel}
                   />
                 </ErrorBoundary>
               ) : (
@@ -744,11 +696,132 @@ export function BasePlannerTab({
                     setZoomLevel(newZoom);
                     if (mode) setZoomMode(mode);
                   }}
+                  townHallLevel={townHallLevel}
                   decorations={decorations}
                   onUpdateDecorations={handleUpdateDecorations}
-                  selectedDecorationDefId={settings.plannerMode === "decorate" ? selectedDecorationDefId : null}
-                  stampPreviewCoords={settings.plannerMode === "decorate" ? stampPreviewCoords : null}
+                  selectedDecorationDefId={selectedDecorationDefId}
+                  stampPreviewCoords={stampPreviewCoords}
                 />
+              )}
+
+              {/* Right Vertical Tactical Toolbar */}
+              {!isZenMode && (
+                <VerticalTacticalToolbar
+                  settings={settings}
+                  onUpdateSettings={setSettings}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={undo}
+                  onRedo={redo}
+                  onClear={handleClearMap}
+                  zoomLevel={zoomLevel}
+                  zoomMode={zoomMode}
+                  onZoomChange={(newZoom, mode) => {
+                    setZoomLevel(newZoom);
+                    setZoomMode(mode || "manual");
+                  }}
+                  placedCount={buildings.length}
+                  onFitMap={handleFitMap}
+                  isFullscreen={isFullscreen}
+                  onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+                  viewMode={settings.viewMode}
+                  onViewModeChange={(mode: PlannerViewMode) => setSettings((s) => ({ ...s, viewMode: mode }))}
+                  isZenMode={isZenMode}
+                  onToggleZenMode={() => setIsZenMode((prev) => !prev)}
+                  isArranging={isArranging}
+                />
+              )}
+
+              {/* Bottom In-Map Building Tray (Clash of Clans Village Edit Mode Style) */}
+              {!isZenMode && (
+                <CoCBuildingTray
+                  townHallLevel={townHallLevel}
+                  buildingLimits={buildingLimits}
+                  placedBuildings={buildings}
+                  selectedBuildingDefId={selectedDefId}
+                  onSelectBuildingDef={(id) => {
+                    setSelectedDefId(id);
+                    if (id) setSelectedDecorationDefId(null);
+                  }}
+                  selectedDecorationDefId={selectedDecorationDefId}
+                  onSelectDecorationDefId={(id) => {
+                    setSelectedDecorationDefId(id);
+                    if (id) setSelectedDefId(null);
+                  }}
+                  placedDecorations={decorations}
+                  onStartDragNew={handleStartDragNew}
+                  wallBrushActive={settings.wallBrushActive}
+                  onToggleWallBrush={() =>
+                    setSettings((s) => ({
+                      ...s,
+                      wallBrushActive: !s.wallBrushActive,
+                      eraserActive: false,
+                    }))
+                  }
+                  isZenMode={isZenMode}
+                  onToggleZenMode={() => setIsZenMode((prev) => !prev)}
+                  selectedPlacedId={selectedPlacedId}
+                  onDeselectPlaced={() => setSelectedPlacedId(null)}
+                  onDeletePlaced={handleDeleteSelectedPlaced}
+                />
+              )}
+
+              {/* Zen Mode Restore Floating Button */}
+              {isZenMode && (
+                <button
+                  type="button"
+                  onClick={() => setIsZenMode(false)}
+                  className="absolute bottom-4 right-4 z-50 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-amber-500/50 text-amber-300 font-bold text-xs sm:text-sm shadow-2xl backdrop-blur-md cursor-pointer transition-all hover:scale-105 animate-in fade-in"
+                  title="Nhấn phím H hoặc nhấp vào đây để hiện lại thanh công cụ và khay công trình"
+                >
+                  <Eye className="w-4 h-4 text-amber-400" />
+                  <span>Hiện giao diện (Phím H)</span>
+                </button>
+              )}
+
+              {/* Modal / Slide-in Drawer: Defense Score Panel (Analysis mode) */}
+              {isDefenseModalOpen && (
+                <div className="absolute top-3 left-3 z-40 w-80 sm:w-96 max-h-[calc(100%-140px)] flex flex-col rounded-2xl bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-4 duration-200">
+                  <DefenseScorePanel
+                    defenseScore={defenseScoreResult}
+                    onClose={() => {
+                      setIsDefenseModalOpen(false);
+                      setSettings((s) => ({ ...s, plannerMode: "design" }));
+                    }}
+                    deploymentContext={{
+                      purpose,
+                      buildings,
+                      autoFixPreview,
+                      isApplyingFix,
+                      onViewOnMap: handleViewDeploymentOnMap,
+                      onSuggestFix: handleSuggestDeploymentFix,
+                      onApplyAutoFix: handleApplyDeploymentAutoFix,
+                      onDismissPreview: () => setAutoFixPreview(null),
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Modal / Slide-in Drawer: Decorative Design Panel (Decorate mode) */}
+              {isDecorateModalOpen && (
+                <div className="absolute top-3 left-3 z-40 w-80 sm:w-96 max-h-[calc(100%-140px)] flex flex-col rounded-2xl bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-4 duration-200">
+                  <DecorativeDesignPanel
+                    buildings={buildings}
+                    decorations={decorations}
+                    townHallLevel={townHallLevel}
+                    buildingLimits={buildingLimits}
+                    onUpdateBuildings={handleUpdateBuildings}
+                    onUpdateDecorations={handleUpdateDecorations}
+                    selectedDecorationDefId={selectedDecorationDefId}
+                    onSelectDecorationDefId={setSelectedDecorationDefId}
+                    onStampPreviewChange={setStampPreviewCoords}
+                    showToast={showToast}
+                    onClose={() => {
+                      setIsDecorateModalOpen(false);
+                      setSettings((s) => ({ ...s, plannerMode: "design" }));
+                    }}
+                  />
+                </div>
               )}
             </main>
           </div>

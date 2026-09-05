@@ -1,9 +1,9 @@
 {
-  "updatedAt": "2026-09-05T05:21:05.251Z",
+  "updatedAt": "2026-09-05T10:04:00.228Z",
   "version": "1.0.0",
   "summary": {
-    "totalItems": 177,
-    "totalLocal": 177,
+    "totalItems": 179,
+    "totalLocal": 179,
     "coveragePercent": 100,
     "categories": {
       "town-halls": {
@@ -14,8 +14,8 @@
       },
       "buildings": {
         "name": "Công trình & Phòng thủ",
-        "total": 42,
-        "local": 42,
+        "total": 44,
+        "local": 44,
         "folder": "buildings"
       },
       "heroes": {
@@ -320,6 +320,17 @@
       "sizeBytes": 21176
     },
     {
+      "id": "bomb-tower",
+      "name": "Bomb Tower",
+      "kind": "defense",
+      "category": "buildings",
+      "owner": null,
+      "localPath": "/buildings/bomb-tower.png",
+      "format": "png",
+      "available": true,
+      "sizeBytes": 17631
+    },
+    {
       "id": "xbow",
       "name": "X-Bow",
       "kind": "defense",
@@ -604,6 +615,17 @@
       "format": "png",
       "available": true,
       "sizeBytes": 26802
+    },
+    {
+      "id": "hero-hall",
+      "name": "Hero Hall",
+      "kind": "building",
+      "category": "buildings",
+      "owner": null,
+      "localPath": "/buildings/hero-hall.png",
+      "format": "png",
+      "available": true,
+      "sizeBytes": 56942
     },
     {
       "id": "bomb",

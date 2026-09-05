@@ -1,12 +1,20 @@
 import { imageCache, preloadImage, getCachedImage, hasFailed } from "./imageCache";
 import { BUILDINGS_CATALOG } from "./constants";
-import { PlacedBuilding } from "./types";
+import { getEffectiveBuildingLevel, getMaxBuildingLevel } from "./buildingLevels";
 
 export { getCachedImage, preloadImage };
 
-export function getBuildingImagePath(buildingId: string, level?: number): string | null {
+export function getBuildingImagePath(
+  buildingId: string,
+  level?: number,
+  townHallLevel?: number
+): string | null {
+  const effLevel = townHallLevel
+    ? getEffectiveBuildingLevel(townHallLevel, buildingId, level)
+    : level;
+
   if (buildingId === "town-hall") {
-    const thLevel = level ?? 1;
+    const thLevel = effLevel ?? townHallLevel ?? 1;
     return `/town-halls/th-${Math.max(1, Math.min(18, thLevel))}.png`;
   }
   
@@ -16,49 +24,53 @@ export function getBuildingImagePath(buildingId: string, level?: number): string
     return `/heroes/${buildingId}.webp`;
   }
   
-  // Special fallback or empty?
-  if (buildingId === "hero-hall" || buildingId === "hero-banner" || buildingId === "helper-hut") {
-    return null;
-  }
-  
-  if (level) {
-    return `/buildings/${buildingId}-${level}.png`;
+  if (effLevel && effLevel > 0) {
+    return `/buildings/${buildingId}-${effLevel}.png`;
   }
   return `/buildings/${buildingId}.png`;
 }
 
 /**
  * Resolves the image to draw for a placed building at its actual level, preferring
- * per-level art (`cannon-9.png`) but falling back to the flat catalog art
- * (`cannon.png`) whenever the specific level hasn't been drawn/downloaded yet —
- * many higher levels and newer defenses (monolith, spell-tower, ...) don't have
- * dedicated art in `public/buildings` yet.
- *
- * The leveled image is fetched lazily and cached under its own key; `onLoaded`
- * fires once it arrives so the caller can trigger a redraw to swap the fallback
- * art for the real one.
+ * per-level art (`cannon-14.png`, `wall-12.png`) and falling back to base art
+ * (`cannon.png`, `wall.png`) if the specific level isn't available.
  */
 export function getLeveledBuildingImage(
   buildingId: string,
-  level: number | undefined,
+  level?: number,
+  townHallLevel?: number,
   onLoaded?: () => void
 ): HTMLImageElement | undefined {
+  const effLevel = townHallLevel
+    ? getEffectiveBuildingLevel(townHallLevel, buildingId, level)
+    : (level ?? 1);
+
   if (buildingId === "town-hall") {
-    const thLevel = Math.max(1, Math.min(18, level ?? 1));
-    return getCachedImage(`town-hall-${thLevel}`);
+    const thLevel = Math.max(1, Math.min(18, effLevel));
+    const thImg = getCachedImage(`town-hall-${thLevel}`);
+    if (thImg) return thImg;
+    preloadImage(`town-hall-${thLevel}`, `/town-halls/th-${thLevel}.png`)
+      .then(() => onLoaded?.())
+      .catch(() => {});
+    return undefined;
   }
 
   const base = getCachedImage(buildingId);
-  if (!level) return base;
-
-  const leveledKey = `${buildingId}::L${level}`;
+  const leveledKey = `${buildingId}::L${effLevel}`;
   const leveled = getCachedImage(leveledKey);
   if (leveled) return leveled;
 
   if (!hasFailed(leveledKey)) {
-    preloadImage(leveledKey, `/buildings/${buildingId}-${level}.png`)
+    preloadImage(leveledKey, `/buildings/${buildingId}-${effLevel}.png`)
       .then(() => onLoaded?.())
-      .catch(() => {});
+      .catch(() => {
+        // Leveled image not found, fallback to base catalog image
+        if (!getCachedImage(buildingId)) {
+          preloadImage(buildingId, `/buildings/${buildingId}.png`)
+            .then(() => onLoaded?.())
+            .catch(() => {});
+        }
+      });
   }
 
   return base;
@@ -87,3 +99,28 @@ export function preloadAllBaseImages(triggerRedraw?: () => void) {
     }
   }
 }
+
+/**
+ * Preload all leveled images for a specific Town Hall level.
+ */
+export function preloadTownHallBuildingImages(townHallLevel: number, onDone?: () => void) {
+  const safeTH = Math.max(1, Math.min(18, townHallLevel));
+  preloadImage(`town-hall-${safeTH}`, `/town-halls/th-${safeTH}.png`).catch(() => {});
+
+  const promises: Promise<HTMLImageElement>[] = [];
+  for (const def of BUILDINGS_CATALOG) {
+    const lvl = getMaxBuildingLevel(safeTH, def.id);
+    const key = `${def.id}::L${lvl}`;
+    if (!getCachedImage(key) && !hasFailed(key)) {
+      promises.push(preloadImage(key, `/buildings/${def.id}-${lvl}.png`).catch(() => {
+        // Fallback to base
+        return preloadImage(def.id, `/buildings/${def.id}.png`);
+      }));
+    }
+  }
+
+  Promise.allSettled(promises).then(() => {
+    onDone?.();
+  });
+}
+

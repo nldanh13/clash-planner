@@ -19,6 +19,7 @@ import { RosterGroup } from "./components/app/Roster";
 import { manualKey } from "./utils/upgradeLogic";
 import { PWAInstallButton } from "./components/PWAInstallButton";
 import { UserMenu } from "./components/UserMenu";
+import { PlayerSearchModal, saveRecentSearch } from "./components/PlayerSearchModal";
 import { useCloudSync } from "./hooks/useCloudSync";
 import { HomeTab } from "./components/app/HomeTab";
 import { useTranslation } from "./i18n";
@@ -59,6 +60,7 @@ export default function App() {
   const [, bumpDbVersion] = useState(0);
 
   const [input, setInput] = useState("");
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const { player, loading, error, syncedAt, load } = usePlayer();
   const { warnings } = useGameDatabase(() => bumpDbVersion(v => v + 1));
   const isStale = Boolean(player && syncedAt && (Date.now() - syncedAt.getTime() > 1000 * 60 * 60 * 2));
@@ -72,11 +74,48 @@ export default function App() {
     }
   }, [load]);
 
+  // Save to recent search history when player is loaded
+  useEffect(() => {
+    if (player?.tag) {
+      saveRecentSearch(player.tag, player.name, player.townHallLevel);
+    }
+  }, [player?.tag, player?.name, player?.townHallLevel]);
+
+  // Keyboard shortcut to open search modal: "/" or Cmd/Ctrl+K
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName;
+      if (
+        (e.key === "/" && targetTag !== "INPUT" && targetTag !== "TEXTAREA") ||
+        ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k")
+      ) {
+        e.preventDefault();
+        setIsSearchModalOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKey);
+    return () => window.removeEventListener("keydown", handleGlobalKey);
+  }, []);
+
   const loadPlayer = () => {
-    const tag = normalizeTag(input);
+    const tag = normalizeTag(input || (player ? `#${player.tag}` : ""));
     if (tag) {
       load(tag);
       window.history.replaceState({}, "", `?tag=${encodeURIComponent(tag)}`);
+    } else {
+      setIsSearchModalOpen(true);
+    }
+  };
+
+  const handleSearchTag = (tag: string) => {
+    const clean = normalizeTag(tag);
+    if (clean) {
+      setInput(clean);
+      load(clean);
+      window.history.replaceState({}, "", `?tag=${encodeURIComponent(clean)}`);
+      if (tab === "home") {
+        setTab("overview");
+      }
     }
   };
 
@@ -143,19 +182,51 @@ export default function App() {
   const cacheWarning = !player && input && !loading && !error;
 
   return (
-    <main className={`app ${tab === "base-planner" ? "base-planner-full" : ""}`}>
-      <header className="topbar">
-        <div className="brand"><span className="crest"><ShieldCheck /></span><div><strong>{t("app.brandName")}</strong><small>{t("app.brandTagline")}</small></div></div>
-        <form className="searchbox" onSubmit={e => { e.preventDefault(); loadPlayer() }}>
-          <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder={t("app.searchPlaceholder")} aria-label={t("common.playerTag")} /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : t("common.syncProfile")}</button>
-        </form>
-        <div className="flex items-center gap-2">
-          <PWAInstallButton />
-          <button className="icon-button" onClick={() => loadPlayer()} disabled={loading} title={t("app.syncTooltip")}><RefreshCw className={loading ? "spin" : ""} /></button>
-          <div className="w-px h-5 bg-[#ffffff1a] mx-1"></div>
-          <UserMenu />
-        </div>
-      </header>
+    <main className="app">
+      <div className="app-header-area">
+        <header className="topbar">
+          <div className="brand" onClick={() => handleTabChange("home")} style={{ cursor: "pointer" }}>
+            <span className="crest"><ShieldCheck /></span>
+            <div>
+              <strong>{t("app.brandName")}</strong>
+              <small>{t("app.brandTagline")}</small>
+            </div>
+          </div>
+
+          <nav className="topbar-nav" aria-label="Main Navigation">
+            <button className={tab === "home" ? "active" : ""} onClick={() => handleTabChange("home")}>
+              {t("app.nav.home")}
+            </button>
+            <button className={tab === "overview" ? "active" : ""} onClick={() => handleTabChange("overview")}>
+              {t("app.nav.overview")}
+            </button>
+            <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>
+              {t("app.nav.planner")}
+            </button>
+            <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>
+              {t("app.nav.roadmap")}
+            </button>
+            <button className={tab === "base-planner" ? "active" : ""} onClick={() => handleTabChange("base-planner")}>
+              {t("app.nav.basePlanner")}
+            </button>
+          </nav>
+
+          <div className="topbar-actions">
+            <PWAInstallButton />
+            <div className="topbar-sep" />
+            <UserMenu />
+          </div>
+        </header>
+      </div>
+
+      {/* Player Search Modal */}
+      <PlayerSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSearch={handleSearchTag}
+        currentTag={input || (player ? `#${player.tag}` : "")}
+        loading={loading}
+      />
 
       {error && <div className="error-banner"><AlertTriangle /><span>{error}</span></div>}
       {cacheWarning && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678" }}>
@@ -174,87 +245,89 @@ export default function App() {
         </div>
       </div>}
 
-      {player && tab !== "base-planner" && tab !== "home" && (
-        <PlayerProfile player={player} syncedAt={syncedAt} homeHeroes={homeHeroes} homeTroops={homeTroops} homeSpells={homeSpells} equipment={equipment} progress={progress} />
-      )}
+      <div className="tab-viewport">
+        {tab === "home" && <HomeTab onNavigate={handleTabChange} onOpenSearch={() => setIsSearchModalOpen(true)} />}
 
-      <nav className="tabs">
-        <button className={tab === "home" ? "active" : ""} onClick={() => handleTabChange("home")}>{t("app.nav.home")}</button>
-        <button className={tab === "overview" ? "active" : ""} onClick={() => handleTabChange("overview")}>{t("app.nav.overview")}</button>
-        <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>{t("app.nav.planner")}</button>
-        <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>{t("app.nav.roadmap")}</button>
-        <button className={tab === "base-planner" ? "active" : ""} onClick={() => handleTabChange("base-planner")}>
-          {t("app.nav.basePlanner")}
-        </button>
-      </nav>
-
-      {tab === "home" && <HomeTab onNavigate={handleTabChange} />}
-
-      {tab === "overview" && (!player ? <EmptyPlayerState loading={loading} /> : <>
-        <section className="panel army-panel">
-          <p className="roster-hint"><Info />{t("app.overviewTab.rosterHint")}</p>
-          <RosterGroup title={t("common.hero")} subtitle={t("app.overviewTab.groupHeroSubtitle")} items={rosterHeroes} player={player} manualLevels={manualLevels} />
-          <RosterGroup title={t("common.troopsFull")} subtitle={t("app.overviewTab.groupTroopSubtitle")} items={rosterTroops} player={player} manualLevels={manualLevels} />
-          <RosterGroup title={t("app.overviewTab.spellTitle")} subtitle={t("app.overviewTab.groupSpellSubtitle")} items={rosterSpells} player={player} manualLevels={manualLevels} />
-          <RosterGroup title={t("common.siege")} subtitle={t("app.overviewTab.groupSiegeSubtitle")} items={rosterSiege} player={player} manualLevels={manualLevels} />
-          <RosterGroup title={t("common.pet")} subtitle={t("app.overviewTab.groupPetSubtitle")} items={rosterPets} player={player} manualLevels={manualLevels} />
-          <RosterGroup title={t("common.equipment")} subtitle={t("app.overviewTab.groupEquipmentSubtitle")} items={rosterEquipment} player={player} manualLevels={manualLevels} />
-        </section>
-        <section className="panel village-panel">
-          <div className="section-head">
-            <div><p>{t("app.overviewTab.manualEyebrow")}</p><h2>{t("app.overviewTab.manualTitle")}</h2></div>
-            <span className="road-current">{t("app.overviewTab.manualCountLabel", { filled: manualFilled, total: manualUpgradeItems.length, percent: manualPercent })}</span>
-          </div>
-          <div className="paste-panel">
-            <p><Info />{t("app.overviewTab.pasteDescription")}</p>
-            <div className="paste-controls">
-              <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder={t("app.overviewTab.pastePlaceholder")} />
-              <button onClick={applyVillagePaste} disabled={!pasteText.trim()}><ClipboardPaste /> {t("app.overviewTab.pasteApply")}</button>
-            </div>
-            {pasteReport && (
-              <div className={`paste-report ${pasteReport.error ? "error" : "success"}`}>
-                {pasteReport.error ? pasteReport.error
-                  : (pasteReport.changes || []).length === 0 ? t("app.overviewTab.pasteNoChange")
-                    : t("app.overviewTab.pasteSuccess", {
-                        count: (pasteReport.changes || []).length,
-                        list: (pasteReport.changes || []).map(c => `${c.name} lên Lv ${c.after}`).join(", "),
-                      })}
+        {tab === "overview" && (!player ? <EmptyPlayerState loading={loading} onOpenSearch={() => setIsSearchModalOpen(true)} /> : (
+          <div className="overview-tab-content">
+            <PlayerProfile 
+              player={player} 
+              syncedAt={syncedAt} 
+              loading={loading}
+              onOpenSearch={() => setIsSearchModalOpen(true)}
+              onSync={loadPlayer}
+              homeHeroes={homeHeroes} 
+              homeTroops={homeTroops} 
+              homeSpells={homeSpells} 
+              equipment={equipment} 
+              progress={progress} 
+            />
+            <section className="panel army-panel">
+              <p className="roster-hint"><Info />{t("app.overviewTab.rosterHint")}</p>
+              <RosterGroup title={t("common.hero")} subtitle={t("app.overviewTab.groupHeroSubtitle")} items={rosterHeroes} player={player} manualLevels={manualLevels} />
+              <RosterGroup title={t("common.troopsFull")} subtitle={t("app.overviewTab.groupTroopSubtitle")} items={rosterTroops} player={player} manualLevels={manualLevels} />
+              <RosterGroup title={t("app.overviewTab.spellTitle")} subtitle={t("app.overviewTab.groupSpellSubtitle")} items={rosterSpells} player={player} manualLevels={manualLevels} />
+              <RosterGroup title={t("common.siege")} subtitle={t("app.overviewTab.groupSiegeSubtitle")} items={rosterSiege} player={player} manualLevels={manualLevels} />
+              <RosterGroup title={t("common.pet")} subtitle={t("app.overviewTab.groupPetSubtitle")} items={rosterPets} player={player} manualLevels={manualLevels} />
+              <RosterGroup title={t("common.equipment")} subtitle={t("app.overviewTab.groupEquipmentSubtitle")} items={rosterEquipment} player={player} manualLevels={manualLevels} />
+            </section>
+            <section className="panel village-panel">
+              <div className="section-head">
+                <div><p>{t("app.overviewTab.manualEyebrow")}</p><h2>{t("app.overviewTab.manualTitle")}</h2></div>
+                <span className="road-current">{t("app.overviewTab.manualCountLabel", { filled: manualFilled, total: manualUpgradeItems.length, percent: manualPercent })}</span>
               </div>
-            )}
-          </div>
-          <div className="manual-grid">
-            {Object.entries(manualByKind).map(([kind, items]) => (
-              <div className="manual-group" key={kind}>
-                <h3>{kind === "building" ? t("app.overviewTab.manualGroupResource") : kind === "defense" ? t("common.defense") : t("common.trap")}</h3>
-                <div className="manual-items">
-                  {items.map(item => {
-                    const k = manualKey(player, item);
-                    const val = manualLevels[k] || 0;
-                    const max = item.levels[item.levels.length - 1]?.level || 1;
-                    return (
-                      <label key={item.id}>
-                        <span>{item.name} <em>{t("app.overviewTab.manualMax", { max })}</em></span>
-                        <input type="number" min="0" max={max} value={val || ""} placeholder="0" onChange={e => handleManualChange(item, e.target.value)} />
-                      </label>
-                    );
-                  })}
+              <div className="paste-panel">
+                <p><Info />{t("app.overviewTab.pasteDescription")}</p>
+                <div className="paste-controls">
+                  <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder={t("app.overviewTab.pastePlaceholder")} />
+                  <button onClick={applyVillagePaste} disabled={!pasteText.trim()}><ClipboardPaste /> {t("app.overviewTab.pasteApply")}</button>
                 </div>
+                {pasteReport && (
+                  <div className={`paste-report ${pasteReport.error ? "error" : "success"}`}>
+                    {pasteReport.error ? pasteReport.error
+                      : (pasteReport.changes || []).length === 0 ? t("app.overviewTab.pasteNoChange")
+                        : t("app.overviewTab.pasteSuccess", {
+                            count: (pasteReport.changes || []).length,
+                            list: (pasteReport.changes || []).map(c => `${c.name} lên Lv ${c.after}`).join(", "),
+                          })}
+                  </div>
+                )}
               </div>
-            ))}
-            {manualUpgradeItems.length === 0 && <p className="no-data">{t("app.overviewTab.manualEmpty")}</p>}
+              <div className="manual-grid">
+                {Object.entries(manualByKind).map(([kind, items]) => (
+                  <div className="manual-group" key={kind}>
+                    <h3>{kind === "building" ? t("app.overviewTab.manualGroupResource") : kind === "defense" ? t("common.defense") : t("common.trap")}</h3>
+                    <div className="manual-items">
+                      {items.map(item => {
+                        const k = manualKey(player, item);
+                        const val = manualLevels[k] || 0;
+                        const max = item.levels[item.levels.length - 1]?.level || 1;
+                        return (
+                          <label key={item.id}>
+                            <span>{item.name} <em>{t("app.overviewTab.manualMax", { max })}</em></span>
+                            <input type="number" min="0" max={max} value={val || ""} placeholder="0" onChange={e => handleManualChange(item, e.target.value)} />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {manualUpgradeItems.length === 0 && <p className="no-data">{t("app.overviewTab.manualEmpty")}</p>}
+              </div>
+            </section>
           </div>
-        </section>
-      </>)}
+        ))}
 
-      {tab === "planner" && <UpgradeTracker player={player} manualLevels={manualLevels} guestTownHall={guestTownHall} setGuestTownHall={setGuestTownHall} setManualLevels={setManualLevels} />}
-      {tab === "roadmap" && <Roadmap player={player} loading={loading} />}
-      {tab === "admin" && <AdminPanel />}
-      {tab === "base-planner" && (
-        <BasePlannerTab
-          initialTownHall={player?.townHallLevel || guestTownHall || 11}
-          onBackToPreviousTab={() => handleTabChange(prevTab || "overview")}
-        />
-      )}
+        {tab === "planner" && <UpgradeTracker player={player} manualLevels={manualLevels} guestTownHall={guestTownHall} setGuestTownHall={setGuestTownHall} setManualLevels={setManualLevels} />}
+        {tab === "roadmap" && <Roadmap player={player} loading={loading} />}
+        {tab === "admin" && <AdminPanel />}
+        {tab === "base-planner" && (
+          <BasePlannerTab
+            initialTownHall={player?.townHallLevel || guestTownHall || 11}
+            onBackToPreviousTab={() => handleTabChange(prevTab || "overview")}
+          />
+        )}
+      </div>
 
       {tab !== "base-planner" && (
         <footer>

@@ -24,16 +24,21 @@ const cocGuideBuildingArt: Record<string, string> = {
   "archer-tower":"/static/imgs/defense/archer-tower-21.png","mortar":"/static/imgs/defense/mortar-16.png",
   "air-defense":"/static/imgs/defense/air-defense-15.png","wizard-tower":"/static/imgs/defense/wizard-tower-17.png",
   "air-sweeper":"/static/imgs/defense/air-blaster-7.png","hidden-tesla":"/static/imgs/defense/tesla-tower-15.png",
+  "bomb-tower":"/static/imgs/defense/bomb-tower-12.png",
   "xbow":"/static/imgs/defense/bow-11.png","inferno-tower":"/static/imgs/defense/dark-tower-10.png",
   "eagle-artillery":"/static/imgs/defense/ancient-artillery-7.png","scattershot":"/static/imgs/defense/scattershot-5.png",
-  "monolith":"/static/imgs/defense/monolith-3.png","spell-tower":"/static/imgs/defense/spell-tower-3.png",
+  "monolith":"/static/imgs/defense/monolith-4.png","spell-tower":"/static/imgs/defense/spell-tower-3.png",
   "multi-archer-tower":"/static/imgs/defense/merged-archer-tower-3.png","ricochet-cannon":"/static/imgs/defense/merged-cannon-3.png",
   "firespitter":"/static/imgs/defense/firespitter-2.png","wall":"/static/imgs/defense/wall-18.png",
+  "hero-hall":"/static/imgs/army/hero-hall-11.png",
   "bomb":"/static/imgs/trap/mine-13.png","spring-trap":"/static/imgs/trap/ejector-5.png",
   "air-bomb":"/static/imgs/trap/airtrap-11.png","giant-bomb":"/static/imgs/trap/superbomb-11.png",
   "seeking-air-mine":"/static/imgs/trap/megaairtrap-7.png","skeleton-trap":"/static/imgs/trap/halloweenskels-3.png",
   "tornado-trap":"/static/imgs/trap/tornadotrap-1.png","giga-bomb":"/static/imgs/trap/gigabomb-3.png"
 };
+
+const isBuildingKind = (kind: UpgradeItem["kind"]) =>
+  kind === "building" || kind === "defense" || kind === "trap" || kind === "wall";
 
 const localFolder = (kind: UpgradeItem["kind"]): string => {
   if (kind === "hero") return "heroes";
@@ -45,17 +50,22 @@ const localFolder = (kind: UpgradeItem["kind"]): string => {
 };
 
 const localExt = (kind: UpgradeItem["kind"]) =>
-  kind === "building" || kind === "defense" || kind === "trap" || kind === "wall" ? "png" : "webp";
+  isBuildingKind(kind) ? "png" : "webp";
 
-const localArt = (item: UpgradeItem, townHallLevel?: number) =>
-  item.id === "town-hall"
-    ? thImage(townHallLevel ?? item.levels.at(-1)?.level ?? 1)
-    : `/${localFolder(item.kind)}/${item.id}.${localExt(item.kind)}`;
+const localArt = (item: UpgradeItem, level?: number) => {
+  if (item.id === "town-hall") {
+    return thImage(level ?? item.levels.at(-1)?.level ?? 1);
+  }
+  if (isBuildingKind(item.kind) && level && level > 0) {
+    return `/buildings/${item.id}-${level}.png`;
+  }
+  return `/${localFolder(item.kind)}/${item.id}.${localExt(item.kind)}`;
+};
 
 const remoteArt = (item: UpgradeItem, townHallLevel?: number): string | null => {
   if (item.id === "town-hall") return thImage(townHallLevel ?? item.levels.at(-1)?.level ?? 1);
   if (imageDb[item.id]) return imageDb[item.id];
-  if (item.kind === "building" || item.kind === "defense" || item.kind === "trap" || item.kind === "wall") {
+  if (isBuildingKind(item.kind)) {
     const path = cocGuideBuildingArt[item.id];
     return path ? `https://coc.guide${path}` : null;
   }
@@ -68,11 +78,12 @@ const buildingIconById: Record<string, LucideIcon> = {
   "army-camp": Tent, "elixir-collector": Droplet, "elixir-storage": Droplet, "gold-mine": Coins, "gold-storage": Coins,
   "dark-elixir-drill": Moon, "dark-elixir-storage": Moon, "barracks": Swords, "dark-barracks": Swords,
   "spell-factory": Sparkles, "dark-spell-factory": Sparkles, "laboratory": FlaskConical, "clan-castle": Castle,
-  "blacksmith": Hammer, "workshop": Wrench, "pet-house": PawPrint,
+  "blacksmith": Hammer, "workshop": Wrench, "pet-house": PawPrint, "hero-hall": Castle, "helper-hut": Hammer, "hero-banner": Crown,
   "builder-hut": Hammer, "cannon": Target, "archer-tower": Crosshair, "mortar": Target, "air-defense": Wind,
-  "wizard-tower": Sparkles, "air-sweeper": Wind, "hidden-tesla": Zap, "xbow": Crosshair, "inferno-tower": Flame,
+  "wizard-tower": Sparkles, "air-sweeper": Wind, "hidden-tesla": Zap, "bomb-tower": Bomb, "xbow": Crosshair, "inferno-tower": Flame,
   "eagle-artillery": Crosshair, "scattershot": Target, "monolith": Gem, "spell-tower": Sparkles,
-  "multi-archer-tower": Crosshair, "ricochet-cannon": Target, "firespitter": Flame,
+  "multi-archer-tower": Crosshair, "ricochet-cannon": Target, "firespitter": Flame, "super-wizard-tower": Sparkles,
+  "logger": Target, "longshot": Crosshair, "smasher": Target, "revenge-tower": Flame,
   "bomb": Bomb, "spring-trap": Zap, "air-bomb": Wind, "giant-bomb": Bomb, "seeking-air-mine": Crosshair,
   "skeleton-trap": Skull, "tornado-trap": Wind, "giga-bomb": Bomb
 };
@@ -81,14 +92,60 @@ const kindIcon: Record<UpgradeItem["kind"], LucideIcon> = {
   building: Hammer, defense: ShieldCheck, trap: Target, wall: ShieldCheck, hero: Crown, troop: Swords, spell: Sparkles, siege: Truck, equipment: ShieldCheck, pet: PawPrint
 };
 
-export function SmartArt({ item, size, townHallLevel }: { item: UpgradeItem; size?: "sm"; townHallLevel?: number }) {
-  const [stage, setStage] = useState<"local" | "remote" | "icon">("local");
-  const remote = remoteArt(item, townHallLevel);
+export function SmartArt({
+  item,
+  size,
+  townHallLevel,
+  level
+}: {
+  item: UpgradeItem;
+  size?: "sm";
+  townHallLevel?: number;
+  level?: number;
+}) {
+  const targetLevel = level ?? townHallLevel;
+  // If a specific level is requested for a building, try leveled art first
+  const initialStage: "leveled" | "base" | "remote" | "icon" =
+    isBuildingKind(item.kind) && targetLevel && targetLevel > 0 && item.id !== "town-hall"
+      ? "leveled"
+      : "base";
+
+  const [stage, setStage] = useState<"leveled" | "base" | "remote" | "icon">(initialStage);
+  const remote = remoteArt(item, targetLevel);
   const Icon = buildingIconById[item.id] || kindIcon[item.kind] || Hammer;
   const cls = `upgrade-icon ${item.kind}${size === "sm" ? " sm" : ""}`;
-  if (stage === "icon" || (stage === "remote" && !remote)) return <span className={cls}><Icon /></span>;
-  const src = stage === "local" ? localArt(item, townHallLevel) : (remote as string);
-  return <img className={`upgrade-art${size === "sm" ? " sm" : ""}`} src={src} alt={item.name} onError={() => setStage(stage === "local" ? (remote ? "remote" : "icon") : "icon")} />;
+
+  if (stage === "icon" || (stage === "remote" && !remote)) {
+    return <span className={cls}><Icon /></span>;
+  }
+
+  let src: string;
+  if (stage === "leveled") {
+    src = `/buildings/${item.id}-${targetLevel}.png`;
+  } else if (stage === "base") {
+    src = localArt(item, targetLevel);
+  } else {
+    src = remote as string;
+  }
+
+  const handleError = () => {
+    if (stage === "leveled") {
+      setStage("base");
+    } else if (stage === "base") {
+      setStage(remote ? "remote" : "icon");
+    } else {
+      setStage("icon");
+    }
+  };
+
+  return (
+    <img
+      className={`upgrade-art${size === "sm" ? " sm" : ""}`}
+      src={src}
+      alt={item.name}
+      onError={handleError}
+    />
+  );
 }
 
 export const resourceIcon: Record<Resource, string> = {

@@ -5,6 +5,7 @@ type NavigableTab = "overview" | "planner" | "roadmap" | "base-planner";
 
 interface HomeTabProps {
   onNavigate: (tab: NavigableTab) => void;
+  onOpenSearch?: () => void;
 }
 
 const FEATURES: {
@@ -19,11 +20,11 @@ const FEATURES: {
   { tab: "base-planner", icon: Compass, titleKey: "home.features.basePlannerTitle", hintKey: "home.features.basePlannerHint" },
 ];
 
-export function HomeTab({ onNavigate }: HomeTabProps) {
+export function HomeTab({ onNavigate, onOpenSearch }: HomeTabProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="pt-16 pb-10 flex flex-col gap-16 max-w-4xl mx-auto">
+    <div className="pt-6 pb-10 flex flex-col gap-10 w-full max-w-5xl mx-auto">
       {/* Hero */}
       <section className="text-center flex flex-col items-center">
         <h1 className="text-4xl sm:text-5xl font-extrabold text-[#F5F5F5] tracking-tight leading-[1.1] mb-5">
@@ -34,7 +35,13 @@ export function HomeTab({ onNavigate }: HomeTabProps) {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
-            onClick={() => onNavigate("overview")}
+            onClick={() => {
+              if (onOpenSearch) {
+                onOpenSearch();
+              } else {
+                onNavigate("overview");
+              }
+            }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#1e1406] text-sm font-bold transition-colors"
           >
             <Search className="w-4 h-4" />
