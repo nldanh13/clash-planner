@@ -6,6 +6,7 @@ import {
   getAllBuildingLimits,
   getTownHallRequirements,
 } from "./catalog";
+import { vi } from "../../i18n/locales/vi";
 
 /**
  * Normalizes layout name by trimming whitespace and collapsing multiple inner spaces.
@@ -41,35 +42,35 @@ export function areLayoutNamesEqual(a: string, b: string): boolean {
  * Friendly display labels for base purpose (primary Vietnamese labels per project standards)
  */
 export const PURPOSE_LABELS: Record<BasePurpose, string> = {
-  war: "Chiến tranh",
-  trophy: "Đẩy cúp",
-  farming: "Giữ tài nguyên",
-  hybrid: "Cân bằng",
-  progress: "Tiến độ",
-  showcase: "Trang trí",
+  war: vi.basePlanner.labels.purpose.war,
+  trophy: vi.basePlanner.labels.purpose.trophy,
+  farming: vi.basePlanner.labels.purpose.farming,
+  hybrid: vi.basePlanner.labels.purpose.hybrid,
+  progress: vi.basePlanner.labels.purpose.progress,
+  showcase: vi.basePlanner.labels.purpose.showcase,
 };
 
 /**
  * Secondary English labels for purpose metadata or subtext
  */
 export const PURPOSE_LABELS_EN: Record<BasePurpose, string> = {
-  war: "War",
-  trophy: "Trophy",
-  farming: "Farming",
-  hybrid: "Hybrid",
-  progress: "Progress",
-  showcase: "Showcase",
+  war: vi.basePlanner.labels.purposeEn.war,
+  trophy: vi.basePlanner.labels.purposeEn.trophy,
+  farming: vi.basePlanner.labels.purposeEn.farming,
+  hybrid: vi.basePlanner.labels.purposeEn.hybrid,
+  progress: vi.basePlanner.labels.purposeEn.progress,
+  showcase: vi.basePlanner.labels.purposeEn.showcase,
 };
 
 /**
  * Friendly display labels for layout statuses
  */
 export const STATUS_LABELS: Record<LayoutStatus, string> = {
-  valid: "Hợp lệ",
-  draft: "Bản nháp",
-  warning: "Cảnh báo",
-  "needs-update": "Cần cập nhật",
-  "data-error": "Lỗi dữ liệu",
+  valid: vi.basePlanner.labels.status.valid,
+  draft: vi.basePlanner.labels.status.draft,
+  warning: vi.basePlanner.labels.status.warning,
+  "needs-update": vi.basePlanner.labels.status.needsUpdate,
+  "data-error": vi.basePlanner.labels.status.dataError,
 };
 
 /**
@@ -102,11 +103,11 @@ export function hasPresetForTownHall(townHallLevel: number): boolean {
  * Friendly display labels for creation methods
  */
 export const METHOD_LABELS: Record<CreationMethod, string> = {
-  auto: "Tự động",
-  template: "Bố cục mẫu",
-  blank: "Bản đồ trống",
-  copy: "Bản sao",
-  import: "Nhập",
+  auto: vi.basePlanner.labels.method.auto,
+  template: vi.basePlanner.labels.method.template,
+  blank: vi.basePlanner.labels.method.blank,
+  copy: vi.basePlanner.labels.method.copy,
+  import: vi.basePlanner.labels.method.import,
 };
 
 /**
@@ -114,11 +115,11 @@ export const METHOD_LABELS: Record<CreationMethod, string> = {
  * e.g. "Tự động", "Mẫu", "Trống"
  */
 export const METHOD_NAME_TAGS: Record<CreationMethod, string> = {
-  auto: "Tự động",
-  template: "Mẫu",
-  blank: "Trống",
-  copy: "Bản sao",
-  import: "Nhập",
+  auto: vi.basePlanner.labels.methodNameTag.auto,
+  template: vi.basePlanner.labels.methodNameTag.template,
+  blank: vi.basePlanner.labels.methodNameTag.blank,
+  copy: vi.basePlanner.labels.methodNameTag.copy,
+  import: vi.basePlanner.labels.methodNameTag.import,
 };
 
 export interface LayoutPlacementStats {
@@ -417,14 +418,14 @@ export function computeLayoutStatus(layout: LayoutProject): LayoutStatus {
  * Friendly Vietnamese labels for aesthetic patterns
  */
 export const PATTERN_LABELS: Record<string, string> = {
-  "symmetric-axial": "Đối xứng",
-  diamond: "Kim cương",
-  shield: "Khiên",
-  heart: "Trái tim",
-  spiral: "Xoắn ốc",
-  crest: "Vương miện",
-  radial: "Tỏa tròn",
-  letter: "Chữ cái",
+  "symmetric-axial": vi.basePlanner.labels.patternShort.symmetricAxial,
+  diamond: vi.basePlanner.labels.patternShort.diamond,
+  shield: vi.basePlanner.labels.patternShort.shield,
+  heart: vi.basePlanner.labels.patternShort.heart,
+  spiral: vi.basePlanner.labels.patternShort.spiral,
+  crest: vi.basePlanner.labels.patternShort.crest,
+  radial: vi.basePlanner.labels.patternShort.radial,
+  letter: vi.basePlanner.labels.patternShort.letter,
 };
 
 /**
@@ -471,9 +472,9 @@ export function generateUniqueBlueprintName(
   }
 
   const th = Math.max(1, Math.min(18, townHallLevel));
-  const purposeLabel = PURPOSE_LABELS[purpose] || "Hybrid";
+  const purposeLabel = PURPOSE_LABELS[purpose] || vi.basePlanner.labels.purpose.hybrid;
 
-  let modifierLabel = METHOD_NAME_TAGS[method] || "Tự động";
+  let modifierLabel = METHOD_NAME_TAGS[method] || vi.basePlanner.labels.methodNameTag.auto;
   if (pattern && PATTERN_LABELS[pattern]) {
     modifierLabel = PATTERN_LABELS[pattern];
   } else if (pattern) {

@@ -52,28 +52,29 @@ export const addCosts = (
 };
 
 import type { DataStatus, UpgradeItem } from "../upgradeData";
+import { vi } from "../i18n/locales/vi";
 
 export const itemKindLabel: Record<UpgradeItem["kind"], string> = {
-  building: "Công trình",
-  defense: "Phòng thủ",
-  trap: "Bẫy",
-  wall: "Tường",
-  hero: "Hero",
-  troop: "Quân",
-  spell: "Phép",
-  siege: "Máy công thành",
-  equipment: "Trang bị",
-  pet: "Pet",
+  building: vi.common.building,
+  defense: vi.common.defense,
+  trap: vi.common.trap,
+  wall: vi.common.wall,
+  hero: vi.common.hero,
+  troop: vi.common.troop,
+  spell: vi.common.spell,
+  siege: vi.common.siege,
+  equipment: vi.common.equipment,
+  pet: vi.common.pet,
 };
 
 export const dataStatusLabel: Record<DataStatus, string> = {
-  exact: "Chính xác",
-  estimated: "Ước tính",
-  unchecked: "Chưa kiểm",
+  exact: vi.dataStatus.label.exact,
+  estimated: vi.dataStatus.label.estimated,
+  unchecked: vi.dataStatus.label.unchecked,
 };
 
 export const dataStatusDetail: Record<DataStatus, string> = {
-  exact: "Có thể dùng để tính kế hoạch.",
-  estimated: "Dùng để lập khung, cần thay bằng số liệu thật.",
-  unchecked: "Không đưa vào tính tổng mặc định.",
+  exact: vi.dataStatus.detail.exact,
+  estimated: vi.dataStatus.detail.estimated,
+  unchecked: vi.dataStatus.detail.unchecked,
 };
