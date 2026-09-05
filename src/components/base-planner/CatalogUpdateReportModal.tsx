@@ -3,6 +3,7 @@ import { CheckCircle2, AlertTriangle, Sparkles, X, ShieldAlert } from "lucide-re
 import type { LayoutProject } from "./types";
 import type { ValidationIssue } from "./LayoutValidator";
 import { BUILDING_METADATA_MAP } from "./catalog";
+import { useTranslation } from "../../i18n";
 
 interface CatalogUpdateReportModalProps {
   layout: LayoutProject;
@@ -23,6 +24,7 @@ export function CatalogUpdateReportModal({
   onClose,
   onOpenInEditor,
 }: CatalogUpdateReportModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -41,17 +43,17 @@ export function CatalogUpdateReportModal({
             </div>
             <div>
               <h3 id="report-modal-title" className="text-sm font-bold text-white">
-                Báo Cáo Cập Nhật Catalog
+                {t("basePlanner.catalogReport.title")}
               </h3>
               <p className="text-[11px] text-slate-400 truncate max-w-xs">
-                {layout.name} (v{layout.catalogVersion})
+                {t("basePlanner.catalogReport.subtitle", { name: layout.name, version: layout.catalogVersion })}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            aria-label="Đóng báo cáo"
+            aria-label={t("basePlanner.catalogReport.closeAria")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -62,18 +64,18 @@ export function CatalogUpdateReportModal({
           <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-emerald-300">Cập nhật thành công theo chuẩn Town Hall hiện hành</p>
+              <p className="font-bold text-emerald-300">{t("basePlanner.catalogReport.successTitle")}</p>
               <p className="text-[11px] text-emerald-400/80 mt-0.5">
-                Đã giữ nguyên {report.keptBuildings} công trình hợp lệ và tự động bố trí các công trình còn thiếu.
+                {t("basePlanner.catalogReport.successDescription", { count: report.keptBuildings })}
               </p>
             </div>
           </div>
 
           {/* Added Buildings Breakdown */}
           <div>
-            <h4 className="font-bold text-slate-200 mb-2">Công trình mới được bổ sung ({report.addedBuildings.length})</h4>
+            <h4 className="font-bold text-slate-200 mb-2">{t("basePlanner.catalogReport.addedBuildingsTitle", { count: report.addedBuildings.length })}</h4>
             {report.addedBuildings.length === 0 ? (
-              <p className="text-[11px] text-slate-400 italic">Không có công trình nào thiếu.</p>
+              <p className="text-[11px] text-slate-400 italic">{t("basePlanner.catalogReport.noneAdded")}</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {report.addedBuildings.map((id, idx) => {
@@ -96,7 +98,7 @@ export function CatalogUpdateReportModal({
             <div>
               <h4 className="font-bold text-amber-400 mb-2 flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4" />
-                <span>Ghi chú sau cập nhật ({report.issues.length})</span>
+                <span>{t("basePlanner.catalogReport.notesTitle", { count: report.issues.length })}</span>
               </h4>
               <div className="bg-black/40 rounded-xl p-2.5 max-h-32 overflow-y-auto space-y-1.5 border border-[#1f374e]">
                 {report.issues.map((iss, idx) => (
@@ -110,7 +112,7 @@ export function CatalogUpdateReportModal({
           )}
 
           <div className="p-2.5 rounded-xl bg-slate-800/40 border border-slate-700/50 text-[11px] text-slate-400">
-            💡 Một checkpoint an toàn đã được tự động lưu. Bạn có thể khôi phục lại trạng thái cũ bất cứ lúc nào qua menu Checkpoint.
+            {t("basePlanner.catalogReport.checkpointHint")}
           </div>
         </div>
 
@@ -120,7 +122,7 @@ export function CatalogUpdateReportModal({
             onClick={onClose}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
           >
-            Đóng
+            {t("common.close")}
           </button>
           {onOpenInEditor && (
             <button
@@ -130,7 +132,7 @@ export function CatalogUpdateReportModal({
               }}
               className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black transition-colors cursor-pointer"
             >
-              Mở trong Editor
+              {t("basePlanner.catalogReport.openInEditor")}
             </button>
           )}
         </div>

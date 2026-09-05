@@ -2,6 +2,7 @@ import React from "react";
 import { History, RotateCcw, X, Clock, AlertCircle } from "lucide-react";
 import type { LayoutCheckpoint, LayoutProject } from "./types";
 import { getCheckpoints, restoreCheckpoint } from "./layoutStorage";
+import { useTranslation } from "../../i18n";
 
 interface CheckpointModalProps {
   layout: LayoutProject;
@@ -16,6 +17,7 @@ export function CheckpointModal({
   onClose,
   onRestored,
 }: CheckpointModalProps) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const checkpoints = getCheckpoints(layout.id);
@@ -44,17 +46,17 @@ export function CheckpointModal({
             </div>
             <div>
               <h3 id="checkpoint-modal-title" className="text-sm font-bold text-white">
-                Lịch Sử Checkpoint
+                {t("basePlanner.checkpoint.title")}
               </h3>
               <p className="text-[11px] text-slate-400 truncate max-w-xs">
-                {layout.name} (Tối đa 10 checkpoint gần nhất)
+                {t("basePlanner.checkpoint.subtitle", { name: layout.name })}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            aria-label="Đóng lịch sử checkpoint"
+            aria-label={t("basePlanner.checkpoint.closeAria")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -65,9 +67,9 @@ export function CheckpointModal({
           {checkpoints.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               <AlertCircle className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-300">Chưa có checkpoint nào</p>
+              <p className="text-xs font-bold text-slate-300">{t("basePlanner.checkpoint.emptyTitle")}</p>
               <p className="text-[11px] text-slate-500 mt-1">
-                Checkpoint sẽ tự động được tạo trước các thao tác lớn như cập nhật catalog, ghi đè hoặc tự động sắp xếp.
+                {t("basePlanner.checkpoint.emptyHint")}
               </p>
             </div>
           ) : (
@@ -92,7 +94,7 @@ export function CheckpointModal({
                       })}
                     </span>
                     <span>•</span>
-                    <span>{cp.buildings.length} vật thể</span>
+                    <span>{t("basePlanner.checkpoint.objectsCount", { count: cp.buildings.length })}</span>
                     <span>•</span>
                     <span className="text-amber-300/80">v{cp.catalogVersion}</span>
                   </div>
@@ -103,7 +105,7 @@ export function CheckpointModal({
                   className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Khôi phục</span>
+                  <span>{t("basePlanner.checkpoint.restore")}</span>
                 </button>
               </div>
             ))
@@ -116,7 +118,7 @@ export function CheckpointModal({
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
           >
-            Đóng
+            {t("common.close")}
           </button>
         </div>
       </div>

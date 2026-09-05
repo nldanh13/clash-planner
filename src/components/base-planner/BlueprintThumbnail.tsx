@@ -2,6 +2,7 @@ import React from "react";
 import type { PlacedBuilding } from "./types";
 import { BUILDING_METADATA_MAP } from "./catalog";
 import { GRID_SIZE } from "./constants";
+import { useTranslation } from "../../i18n";
 
 interface BlueprintThumbnailProps {
   buildings: PlacedBuilding[];
@@ -14,11 +15,12 @@ export function BlueprintThumbnail({
   townHallLevel,
   className = "w-full h-full",
 }: BlueprintThumbnailProps) {
+  const { t } = useTranslation();
   return (
     <svg
       viewBox={`0 0 ${GRID_SIZE} ${GRID_SIZE}`}
       className={`rounded-lg bg-[#06101a] border border-[#162738] shadow-inner select-none ${className}`}
-      aria-label={`Bản đồ thu nhỏ TH${townHallLevel}`}
+      aria-label={t("basePlanner.thumbnailAria", { th: townHallLevel })}
     >
       {/* Background Subtle Grid Boundary */}
       <rect

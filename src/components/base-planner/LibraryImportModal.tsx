@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { FileUp, X, CheckCircle2, AlertTriangle, Layers, ArrowRight } from "lucide-react";
 import { importLibraryJSON } from "./layoutStorage";
+import { useTranslation } from "../../i18n";
 
 interface LibraryImportModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ export function LibraryImportModal({
   onClose,
   onImportComplete,
 }: LibraryImportModalProps) {
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [collisionStrategy, setCollisionStrategy] = useState<"rename" | "overwrite" | "skip">("rename");
@@ -40,7 +42,7 @@ export function LibraryImportModal({
       const text = await file.text();
       setFileContent(text);
     } catch {
-      setError("Không thể đọc nội dung tệp JSON.");
+      setError(t("basePlanner.libraryImport.readFileError"));
     }
   };
 
@@ -54,7 +56,7 @@ export function LibraryImportModal({
       setResult(res);
       onImportComplete();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Nhập thư viện thất bại.";
+      const msg = err instanceof Error ? err.message : t("basePlanner.libraryImport.genericImportError");
       setError(msg);
     } finally {
       setIsProcessing(false);
@@ -85,17 +87,17 @@ export function LibraryImportModal({
             </div>
             <div>
               <h3 id="library-import-title" className="text-sm font-bold text-white">
-                Nhập Thư Viện Bản Thiết Kế
+                {t("basePlanner.libraryImport.title")}
               </h3>
               <p className="text-[11px] text-slate-400">
-                Nhập file JSON chứa một hoặc nhiều bản thiết kế.
+                {t("basePlanner.libraryImport.subtitle")}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            aria-label="Đóng modal nhập thư viện"
+            aria-label={t("basePlanner.libraryImport.closeAria")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -123,14 +125,14 @@ export function LibraryImportModal({
                   <div>
                     <p className="font-bold text-slate-200">{selectedFile.name}</p>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      {(selectedFile.size / 1024).toFixed(1)} KB — Nhấp để chọn file khác
+                      {t("basePlanner.libraryImport.dropSelectedInfo", { size: (selectedFile.size / 1024).toFixed(1) })}
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <p className="font-bold text-slate-200">Chọn tệp JSON thư viện</p>
+                    <p className="font-bold text-slate-200">{t("basePlanner.libraryImport.dropPromptTitle")}</p>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Hỗ trợ file xuất đơn hoặc gói xuất toàn bộ thư viện
+                      {t("basePlanner.libraryImport.dropPromptHint")}
                     </p>
                   </div>
                 )}
@@ -140,7 +142,7 @@ export function LibraryImportModal({
               {fileContent && (
                 <div className="space-y-2">
                   <label className="font-bold text-slate-200 block">
-                    Xử lý khi trùng tên bản thiết kế:
+                    {t("basePlanner.libraryImport.collisionLabel")}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -152,8 +154,8 @@ export function LibraryImportModal({
                           : "bg-[#07131e] border-[#1b2f42] text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <span className="font-bold block text-xs">Tự đổi tên</span>
-                      <span className="text-[10px] text-slate-400">Tạo bản sao mới</span>
+                      <span className="font-bold block text-xs">{t("basePlanner.libraryImport.collision.renameTitle")}</span>
+                      <span className="text-[10px] text-slate-400">{t("basePlanner.libraryImport.collision.renameHint")}</span>
                     </button>
 
                     <button
@@ -165,8 +167,8 @@ export function LibraryImportModal({
                           : "bg-[#07131e] border-[#1b2f42] text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <span className="font-bold block text-xs">Ghi đè</span>
-                      <span className="text-[10px] text-slate-400">Lưu checkpoint</span>
+                      <span className="font-bold block text-xs">{t("basePlanner.libraryImport.collision.overwriteTitle")}</span>
+                      <span className="text-[10px] text-slate-400">{t("basePlanner.libraryImport.collision.overwriteHint")}</span>
                     </button>
 
                     <button
@@ -178,8 +180,8 @@ export function LibraryImportModal({
                           : "bg-[#07131e] border-[#1b2f42] text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <span className="font-bold block text-xs">Bỏ qua</span>
-                      <span className="text-[10px] text-slate-400">Không nạp trùng</span>
+                      <span className="font-bold block text-xs">{t("basePlanner.libraryImport.collision.skipTitle")}</span>
+                      <span className="text-[10px] text-slate-400">{t("basePlanner.libraryImport.collision.skipHint")}</span>
                     </button>
                   </div>
                 </div>
@@ -198,18 +200,18 @@ export function LibraryImportModal({
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
                 <div>
-                  <h4 className="font-bold text-xs">Xử lý tệp hoàn tất</h4>
+                  <h4 className="font-bold text-xs">{t("basePlanner.libraryImport.resultTitle")}</h4>
                   <ul className="text-[11px] text-emerald-400/90 mt-1 space-y-0.5">
-                    <li>• Đã thêm mới: {result.importedCount} bản thiết kế</li>
-                    <li>• Đã ghi đè: {result.overwrittenCount} bản thiết kế</li>
-                    <li>• Đã bỏ qua: {result.skippedCount} bản thiết kế</li>
+                    <li>• {t("basePlanner.libraryImport.resultImported", { count: result.importedCount })}</li>
+                    <li>• {t("basePlanner.libraryImport.resultOverwritten", { count: result.overwrittenCount })}</li>
+                    <li>• {t("basePlanner.libraryImport.resultSkipped", { count: result.skippedCount })}</li>
                   </ul>
                 </div>
               </div>
 
               {result.errors.length > 0 && (
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
-                  <p className="font-bold text-[11px] mb-1">Cảnh báo:</p>
+                  <p className="font-bold text-[11px] mb-1">{t("basePlanner.libraryImport.warningsTitle")}</p>
                   <ul className="text-[10px] text-amber-400/80 space-y-0.5">
                     {result.errors.map((e, idx) => (
                       <li key={idx}>• {e}</li>
@@ -230,7 +232,7 @@ export function LibraryImportModal({
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-colors cursor-pointer"
               >
-                Hủy
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -238,7 +240,7 @@ export function LibraryImportModal({
                 onClick={handleExecuteImport}
                 className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold transition-colors cursor-pointer flex items-center gap-1.5"
               >
-                <span>{isProcessing ? "Đang xử lý..." : "Tiến hành nạp"}</span>
+                <span>{isProcessing ? t("basePlanner.libraryImport.processing") : t("basePlanner.libraryImport.executeImport")}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </>
@@ -248,7 +250,7 @@ export function LibraryImportModal({
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition-colors cursor-pointer"
             >
-              Hoàn tất
+              {t("basePlanner.libraryImport.done")}
             </button>
           )}
         </div>
