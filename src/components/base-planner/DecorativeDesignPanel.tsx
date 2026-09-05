@@ -25,16 +25,17 @@ import {
 } from "./generator/glyphShapes";
 import type { AestheticPattern } from "./generator/types";
 import type { PlacedBuilding, PlacedDecoration } from "./types";
+import { useTranslation } from "../../i18n";
 
-const SHAPE_LABELS: Record<AestheticPattern, string> = {
-  "symmetric-axial": "Đối xứng trục",
-  diamond: "Kim cương",
-  shield: "Khiên chiến binh",
-  heart: "Trái tim",
-  spiral: "Xoắn ốc",
-  crest: "Vương miện",
-  letter: "Chữ cái",
-  radial: "Bát giác tỏa tròn",
+const SHAPE_LABEL_KEYS: Record<AestheticPattern, "symmetricAxial" | "diamond" | "shield" | "heart" | "spiral" | "crest" | "letter" | "radial"> = {
+  "symmetric-axial": "symmetricAxial",
+  diamond: "diamond",
+  shield: "shield",
+  heart: "heart",
+  spiral: "spiral",
+  crest: "crest",
+  letter: "letter",
+  radial: "radial",
 };
 
 interface DecorativeDesignPanelProps {
@@ -65,6 +66,7 @@ export function DecorativeDesignPanel({
   onStampPreviewChange,
   showToast,
 }: DecorativeDesignPanelProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"shape" | "arrange" | "decorate">("shape");
 
   // --- Tab 1: Shape Stamp -----------------------------------------------
@@ -133,7 +135,7 @@ export function DecorativeDesignPanel({
     }
 
     if (newWalls.length === 0) {
-      showToast("Không có ô nào trống để đặt hình dạng này — hãy di chuyển hoặc chọn hình khác.");
+      showToast(t("basePlanner.decorate.shapeTab.noSpaceToast"));
       return;
     }
 
@@ -141,11 +143,11 @@ export function DecorativeDesignPanel({
     onStampPreviewChange(null);
     setShapeChoice(null);
 
-    const parts = [`Đã đặt ${newWalls.length} ô tường theo hình dạng đã chọn.`];
-    if (skippedCollision > 0) parts.push(`Bỏ qua ${skippedCollision} ô bị chồng lấn.`);
-    if (skippedOutOfBounds > 0) parts.push(`Bỏ qua ${skippedOutOfBounds} ô ngoài bản đồ.`);
+    const parts = [t("basePlanner.decorate.shapeTab.placedToast", { count: newWalls.length })];
+    if (skippedCollision > 0) parts.push(t("basePlanner.decorate.shapeTab.skippedCollisionToast", { count: skippedCollision }));
+    if (skippedOutOfBounds > 0) parts.push(t("basePlanner.decorate.shapeTab.skippedOutOfBoundsToast", { count: skippedOutOfBounds }));
     if (Number.isFinite(availableSlots) && newWalls.length >= availableSlots) {
-      parts.push(`Đã đạt giới hạn tường tối đa cho TH${townHallLevel}.`);
+      parts.push(t("basePlanner.decorate.shapeTab.limitReachedToast", { th: townHallLevel }));
     }
     showToast(parts.join(" "));
   };
@@ -163,11 +165,11 @@ export function DecorativeDesignPanel({
   const handleAutoArrange = () => {
     const result = autoArrangeRemainingBuildings(buildings, townHallLevel);
     if (result.placedCount === 0 && result.skippedCount === 0) {
-      showToast("Không còn công trình bắt buộc nào bị thiếu.");
+      showToast(t("basePlanner.decorate.arrangeTab.nothingMissingToast"));
       return;
     }
     onUpdateBuildings(result.buildings);
-    const parts = [`Đã tự động sắp xếp ${result.placedCount} công trình còn thiếu.`];
+    const parts = [t("basePlanner.decorate.arrangeTab.placedToast", { count: result.placedCount })];
     parts.push(...result.warnings);
     showToast(parts.join(" "));
   };
@@ -190,13 +192,13 @@ export function DecorativeDesignPanel({
 
   const handleSuggestDecorations = () => {
     if (buildings.length === 0) {
-      showToast("Hãy đặt ít nhất một công trình trước khi gợi ý trang trí.");
+      showToast(t("basePlanner.decorate.decorateTab.noBuildingsToast"));
       return;
     }
     const { occupancyMask } = computeDeploymentMasks(buildings);
     const suggestions = suggestDecorationPlacements(buildings, decorations, occupancyMask);
     if (suggestions.length === 0) {
-      showToast("Không tìm được khoảng trống an toàn nào để gợi ý trang trí.");
+      showToast(t("basePlanner.decorate.decorateTab.noSpaceToast"));
       setSuggestionPreview(null);
       return;
     }
@@ -206,16 +208,16 @@ export function DecorativeDesignPanel({
   const handleApplySuggestions = () => {
     if (!suggestionPreview) return;
     onUpdateDecorations([...decorations, ...suggestionPreview]);
-    showToast(`Đã thêm ${suggestionPreview.length} vật trang trí quanh base.`);
+    showToast(t("basePlanner.decorate.decorateTab.appliedToast", { count: suggestionPreview.length }));
     setSuggestionPreview(null);
     onStampPreviewChange(null);
   };
 
   const handleClearAllDecorations = () => {
     if (decorations.length === 0) return;
-    if (window.confirm(`Xoá toàn bộ ${decorations.length} vật trang trí hiện tại?`)) {
+    if (window.confirm(t("basePlanner.decorate.decorateTab.clearAllConfirm", { count: decorations.length }))) {
       onUpdateDecorations([]);
-      showToast("Đã xoá toàn bộ vật trang trí.");
+      showToast(t("basePlanner.decorate.decorateTab.clearedToast"));
     }
   };
 
@@ -231,15 +233,15 @@ export function DecorativeDesignPanel({
       <div className="flex items-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-xl shrink-0">
         <button className={tabButtonClass("shape")} onClick={() => setActiveTab("shape")}>
           <Stamp className="w-3.5 h-3.5" />
-          <span>Hình dạng</span>
+          <span>{t("basePlanner.decorate.tabs.shape")}</span>
         </button>
         <button className={tabButtonClass("arrange")} onClick={() => setActiveTab("arrange")}>
           <Wand2 className="w-3.5 h-3.5" />
-          <span>Tự sắp xếp</span>
+          <span>{t("basePlanner.decorate.tabs.arrange")}</span>
         </button>
         <button className={tabButtonClass("decorate")} onClick={() => setActiveTab("decorate")}>
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Trang trí</span>
+          <span>{t("basePlanner.decorate.tabs.decorate")}</span>
         </button>
       </div>
 
@@ -247,12 +249,11 @@ export function DecorativeDesignPanel({
         {activeTab === "shape" && (
           <>
             <p className="text-[10.5px] text-slate-400 leading-relaxed">
-              Chọn chữ cái, số hoặc một hình mẫu để tạo hình tường thành nghệ thuật. Dùng nút mũi tên để căn giữa hình, rồi
-              nhấn &quot;Đặt tường&quot; để áp vào bản đồ (các ô đã có vật thể sẽ được bỏ qua).
+              {t("basePlanner.decorate.shapeTab.intro")}
             </p>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Chữ &amp; số</span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">{t("basePlanner.decorate.shapeTab.lettersLabel")}</span>
               <div className="grid grid-cols-6 gap-1">
                 {GLYPH_CHARS.map((c) => (
                   <button
@@ -271,7 +272,7 @@ export function DecorativeDesignPanel({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Hình mẫu</span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">{t("basePlanner.decorate.shapeTab.presetsLabel")}</span>
               <div className="grid grid-cols-2 gap-1.5">
                 {SHAPE_PRESETS.map((p) => (
                   <button
@@ -283,7 +284,7 @@ export function DecorativeDesignPanel({
                         : "bg-slate-800/70 text-slate-300 border-slate-700 hover:bg-slate-700"
                     }`}
                   >
-                    {SHAPE_LABELS[p]}
+                    {t(`basePlanner.decorate.shapeLabels.${SHAPE_LABEL_KEYS[p]}` as const)}
                   </button>
                 ))}
               </div>
@@ -292,7 +293,7 @@ export function DecorativeDesignPanel({
             {shapeChoice && (
               <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] text-slate-400 font-semibold">Vị trí trên bản đồ</span>
+                  <span className="text-[10.5px] text-slate-400 font-semibold">{t("basePlanner.decorate.shapeTab.positionLabel")}</span>
                   <span className="text-[10px] font-mono text-slate-500">
                     ({origin.x}, {origin.y})
                   </span>
@@ -321,7 +322,7 @@ export function DecorativeDesignPanel({
 
                 {shapeChoice.kind === "letter" && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[10.5px] text-slate-400 font-semibold shrink-0">Kích cỡ</span>
+                    <span className="text-[10.5px] text-slate-400 font-semibold shrink-0">{t("basePlanner.decorate.shapeTab.sizeLabel")}</span>
                     <input
                       type="range"
                       min={1}
@@ -340,7 +341,7 @@ export function DecorativeDesignPanel({
                   className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold cursor-pointer transition-colors"
                 >
                   <Stamp className="w-3.5 h-3.5" />
-                  Đặt tường theo hình này
+                  {t("basePlanner.decorate.shapeTab.commitButton")}
                 </button>
               </div>
             )}
@@ -350,11 +351,10 @@ export function DecorativeDesignPanel({
         {activeTab === "arrange" && (
           <>
             <p className="text-[10.5px] text-slate-400 leading-relaxed">
-              Sau khi vẽ hình tường, dùng công cụ này để tự động xếp các công trình phòng thủ/tài nguyên/quân đội còn thiếu
-              vào khoảng trống còn lại — ưu tiên gần Town Hall và giữ khoảng cách chống sét lan.
+              {t("basePlanner.decorate.arrangeTab.intro")}
             </p>
             <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-semibold">Công trình còn thiếu</span>
+              <span className="text-[11px] text-slate-400 font-semibold">{t("basePlanner.decorate.arrangeTab.missingLabel")}</span>
               <span className={`text-lg font-black font-mono ${missingCount > 0 ? "text-amber-300" : "text-emerald-400"}`}>
                 {missingCount}
               </span>
@@ -365,7 +365,7 @@ export function DecorativeDesignPanel({
               className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Wand2 className="w-3.5 h-3.5" />
-              Tự động sắp xếp công trình còn thiếu
+              {t("basePlanner.decorate.arrangeTab.actionButton")}
             </button>
           </>
         )}
@@ -373,8 +373,7 @@ export function DecorativeDesignPanel({
         {activeTab === "decorate" && (
           <>
             <p className="text-[10.5px] text-slate-400 leading-relaxed">
-              Chọn một vật trang trí rồi bấm/kéo trên bản đồ để đặt (không ảnh hưởng phòng thủ). Hoặc để hệ thống tự gợi ý
-              lấp đầy viền base ngoài tường một cách an toàn.
+              {t("basePlanner.decorate.decorateTab.intro")}
             </p>
 
             <div className="grid grid-cols-4 gap-1.5">
@@ -398,7 +397,7 @@ export function DecorativeDesignPanel({
             {selectedDecorationDefId && (
               <div className="flex items-center gap-2 p-2 rounded-lg bg-sky-950/30 border border-sky-500/30 text-[10.5px] text-sky-300">
                 <Stamp className="w-3.5 h-3.5 shrink-0" />
-                <span>Đang chọn — bấm/kéo trên bản đồ để đặt. Dùng công cụ Tẩy để xoá.</span>
+                <span>{t("basePlanner.decorate.decorateTab.selectedHint")}</span>
               </div>
             )}
 
@@ -410,21 +409,20 @@ export function DecorativeDesignPanel({
                 className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-[11px] font-bold cursor-pointer transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Gợi ý trang trí tự động
+                {t("basePlanner.decorate.decorateTab.suggestButton")}
               </button>
 
               {suggestionPreview && (
                 <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
                   <span className="text-[10.5px] text-slate-300">
-                    Tìm thấy <b className="text-sky-300">{suggestionPreview.length}</b> vị trí an toàn (viền ngoài base, không
-                    đè lên lỗ thả quân nguy hiểm).
+                    {t("basePlanner.decorate.decorateTab.foundPrefix")} <b className="text-sky-300">{suggestionPreview.length}</b> {t("basePlanner.decorate.decorateTab.foundSuffix")}
                   </span>
                   <div className="flex gap-1.5">
                     <button
                       onClick={handleApplySuggestions}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold cursor-pointer transition-colors"
                     >
-                      Áp dụng tất cả
+                      {t("basePlanner.decorate.decorateTab.applyAll")}
                     </button>
                     <button
                       onClick={() => {
@@ -433,21 +431,21 @@ export function DecorativeDesignPanel({
                       }}
                       className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold cursor-pointer transition-colors"
                     >
-                      Huỷ
+                      {t("basePlanner.decorate.decorateTab.cancel")}
                     </button>
                   </div>
                 </div>
               )}
 
               <div className="flex items-center justify-between text-[10.5px] text-slate-400 px-1">
-                <span>Đã đặt: {decorations.length} vật trang trí</span>
+                <span>{t("basePlanner.decorate.decorateTab.placedCountLabel", { count: decorations.length })}</span>
                 {decorations.length > 0 && (
                   <button
                     onClick={handleClearAllDecorations}
                     className="flex items-center gap-1 text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
-                    Xoá hết
+                    {t("basePlanner.decorate.decorateTab.clearAll")}
                   </button>
                 )}
               </div>

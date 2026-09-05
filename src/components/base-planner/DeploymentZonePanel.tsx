@@ -4,6 +4,7 @@ import { classifyHoleSeverity } from "./deploymentRisk";
 import type { DeploymentAnalysis } from "./deploymentZones";
 import type { AutoFixResult } from "./deploymentAutoFix";
 import type { BasePurpose, PlacedBuilding } from "./types";
+import { useTranslation } from "../../i18n";
 
 interface DeploymentZonePanelProps {
   analysis: DeploymentAnalysis;
@@ -28,6 +29,7 @@ export function DeploymentZonePanel({
   onApplyAutoFix,
   onDismissPreview,
 }: DeploymentZonePanelProps) {
+  const { t } = useTranslation();
   const holeRegions = analysis.regions.filter((r) => r.type === "internal-hole");
   const classified = holeRegions.map((r) => ({ region: r, ...classifyHoleSeverity(r, buildings, purpose) }));
   const dangerousHoles = classified.filter((c) => c.displayType === "internal-hole" && c.severity !== "info");
@@ -38,14 +40,14 @@ export function DeploymentZonePanel({
     <div className="flex flex-col gap-3">
       {/* Metrics grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <MetricTile label="Ô bị cấm thả quân" value={analysis.blockedTileCount} accent="rose" />
-        <MetricTile label="Ô được phép thả quân" value={analysis.allowedTileCount} accent="emerald" />
-        <MetricTile label="Độ phủ (Coverage)" value={`${coveragePercent}%`} accent="sky" />
-        <MetricTile label="Lỗ thả quân bên trong" value={analysis.internalHoleCount} accent={analysis.internalHoleCount > 0 ? "rose" : "emerald"} />
-        <MetricTile label="Hành lang xuyên base" value={analysis.corridorCount} accent={analysis.corridorCount > 0 ? "amber" : "emerald"} />
+        <MetricTile label={t("basePlanner.deployment.metrics.blockedTiles")} value={analysis.blockedTileCount} accent="rose" />
+        <MetricTile label={t("basePlanner.deployment.metrics.allowedTiles")} value={analysis.allowedTileCount} accent="emerald" />
+        <MetricTile label={t("basePlanner.deployment.metrics.coverage")} value={`${coveragePercent}%`} accent="sky" />
+        <MetricTile label={t("basePlanner.deployment.metrics.internalHoles")} value={analysis.internalHoleCount} accent={analysis.internalHoleCount > 0 ? "rose" : "emerald"} />
+        <MetricTile label={t("basePlanner.deployment.metrics.corridors")} value={analysis.corridorCount} accent={analysis.corridorCount > 0 ? "amber" : "emerald"} />
         <MetricTile
-          label="Gần Town Hall nhất"
-          value={analysis.nearestHoleToTownHall !== null ? `${analysis.nearestHoleToTownHall} ô` : "—"}
+          label={t("basePlanner.deployment.metrics.nearestToTownHall")}
+          value={analysis.nearestHoleToTownHall !== null ? t("basePlanner.deployment.metrics.tileUnit", { count: analysis.nearestHoleToTownHall }) : "—"}
           accent={analysis.criticalHoleCount > 0 ? "rose" : "slate"}
         />
       </div>
@@ -59,12 +61,12 @@ export function DeploymentZonePanel({
             </div>
             <div className="flex flex-col gap-0.5">
               <strong className="text-[11.5px] font-extrabold text-white">
-                Phát hiện {dangerousHoles.length} lỗ thả quân bên trong base
+                {t("basePlanner.deployment.dangerousHolesTitlePrefix")} {dangerousHoles.length} {t("basePlanner.deployment.dangerousHolesTitleSuffix")}
               </strong>
               <p className="text-[10.5px] opacity-90 leading-relaxed">
                 {analysis.nearestHoleToTownHall !== null
-                  ? `Lỗ nguy hiểm nhất cách Town Hall ${analysis.nearestHoleToTownHall} ô.`
-                  : "Không xác định được khoảng cách tới Town Hall."}
+                  ? t("basePlanner.deployment.nearestHoleDistance", { count: analysis.nearestHoleToTownHall })
+                  : t("basePlanner.deployment.nearestHoleUnknown")}
               </p>
             </div>
           </div>
@@ -75,14 +77,14 @@ export function DeploymentZonePanel({
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
             >
               <MapPin className="w-3.5 h-3.5" />
-              Xem trên bản đồ
+              {t("basePlanner.deployment.viewOnMap")}
             </button>
             <button
               onClick={onSuggestFix}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Đề xuất khắc phục
+              {t("basePlanner.deployment.suggestFix")}
             </button>
             <button
               onClick={onApplyAutoFix}
@@ -90,7 +92,7 @@ export function DeploymentZonePanel({
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Wand2 className="w-3.5 h-3.5" />
-              {isApplyingFix ? "Đang khắc phục..." : "Tự động khắc phục"}
+              {isApplyingFix ? t("basePlanner.deployment.applyingFix") : t("basePlanner.deployment.applyAutoFix")}
             </button>
           </div>
         </div>
@@ -99,7 +101,7 @@ export function DeploymentZonePanel({
       {dangerousHoles.length === 0 && (
         <div className="p-3 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-emerald-300 flex items-center gap-2.5 text-[11px] font-semibold">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>Không có lỗ thả quân nguy hiểm nào trong base.</span>
+          <span>{t("basePlanner.deployment.noDangerousHoles")}</span>
         </div>
       )}
 
@@ -107,7 +109,7 @@ export function DeploymentZonePanel({
         <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-950/20 text-blue-200 flex items-start gap-2.5 text-[10.5px]">
           <Shield className="w-4 h-4 shrink-0 mt-0.5 text-blue-300" />
           <span>
-            {intentionalHoles.length} khoảng trống được coi là chủ đích thẩm mỹ cho base Showcase/Nghệ thuật — không tính là lỗi.
+            {t("basePlanner.deployment.intentionalHolesNote", { count: intentionalHoles.length })}
           </span>
         </div>
       )}
@@ -117,41 +119,40 @@ export function DeploymentZonePanel({
         <div className="p-3 rounded-xl border border-slate-700/80 bg-slate-950/60 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <strong className="text-[11px] font-extrabold text-slate-200">
-              {autoFixPreview.applied ? "Xem trước kết quả khắc phục" : "Không tìm được cách khắc phục an toàn"}
+              {autoFixPreview.applied ? t("basePlanner.deployment.previewTitleApplied") : t("basePlanner.deployment.previewTitleFailed")}
             </strong>
             <button
               onClick={onDismissPreview}
               className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
             >
-              Đóng
+              {t("basePlanner.deployment.previewClose")}
             </button>
           </div>
 
           {autoFixPreview.applied ? (
             <div className="flex flex-col gap-1 text-[10.5px] font-mono">
               <PreviewRow
-                label="Lỗ thả quân"
+                label={t("basePlanner.deployment.previewRows.holes")}
                 before={autoFixPreview.before.internalHoleCount}
                 after={autoFixPreview.after.internalHoleCount}
                 lowerIsBetter
               />
               <PreviewRow
-                label="Gần Town Hall nhất"
-                before={autoFixPreview.before.nearestHoleToTownHall ?? "Không có"}
-                after={autoFixPreview.after.nearestHoleToTownHall ?? "Không còn"}
+                label={t("basePlanner.deployment.previewRows.nearestToTownHall")}
+                before={autoFixPreview.before.nearestHoleToTownHall ?? t("basePlanner.deployment.noneValue")}
+                after={autoFixPreview.after.nearestHoleToTownHall ?? t("basePlanner.deployment.noMoreValue")}
               />
               <PreviewRow
-                label="Điểm rủi ro triển khai"
+                label={t("basePlanner.deployment.previewRows.riskScore")}
                 before={autoFixPreview.before.deploymentRiskScore}
                 after={autoFixPreview.after.deploymentRiskScore}
                 lowerIsBetter
               />
-              <PreviewRow label="Điểm tổng" before={autoFixPreview.before.totalScore} after={autoFixPreview.after.totalScore} />
+              <PreviewRow label={t("basePlanner.deployment.previewRows.totalScore")} before={autoFixPreview.before.totalScore} after={autoFixPreview.after.totalScore} />
             </div>
           ) : (
             <p className="text-[10.5px] text-slate-400 leading-relaxed">
-              Không di chuyển được công trình nào một cách an toàn (không tạo chồng lấn, không làm giảm nghiêm trọng điểm phòng
-              thủ) để đóng các lỗ thả quân hiện tại. Hãy thử điều chỉnh thủ công trên Sơ đồ 2D.
+              {t("basePlanner.deployment.previewFailedHint")}
             </p>
           )}
         </div>
