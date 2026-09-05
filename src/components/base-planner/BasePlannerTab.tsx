@@ -37,6 +37,7 @@ import { CanvasGridBoard } from "./CanvasGridBoard";
 import { IsometricGridBoard } from "./IsometricGridBoard";
 import { DefenseScorePanel } from "./DefenseScorePanel";
 import { DecorativeDesignPanel } from "./DecorativeDesignPanel";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 
 interface BasePlannerTabProps {
   initialTownHall?: number;
@@ -686,16 +687,21 @@ export function BasePlannerTab({
               )}
 
               {settings.viewMode === "isometric" ? (
-                <IsometricGridBoard
-                  buildings={buildings}
-                  onUpdateBuildings={handleUpdateBuildings}
-                  selectedDefId={selectedDefId}
-                  onClearSelectedDef={() => setSelectedDefId(null)}
-                  selectedPlacedId={selectedPlacedId}
-                  onSelectPlacedId={setSelectedPlacedId}
-                  buildingLimits={buildingLimits}
-                  settings={settings}
-                />
+                <ErrorBoundary
+                  fallbackTitle="Lỗi hiển thị sa bàn Isometric"
+                  fallbackMessage="Đã cách ly sự cố hiển thị sa bàn 3D. Bạn có thể khôi phục góc nhìn hoặc chuyển về chế độ 2D."
+                >
+                  <IsometricGridBoard
+                    buildings={buildings}
+                    onUpdateBuildings={handleUpdateBuildings}
+                    selectedDefId={selectedDefId}
+                    onClearSelectedDef={() => setSelectedDefId(null)}
+                    selectedPlacedId={selectedPlacedId}
+                    onSelectPlacedId={setSelectedPlacedId}
+                    buildingLimits={buildingLimits}
+                    settings={settings}
+                  />
+                </ErrorBoundary>
               ) : (
                 <CanvasGridBoard
                   buildings={buildings}
