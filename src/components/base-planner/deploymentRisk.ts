@@ -17,6 +17,8 @@ import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
   distancePointToRect,
   getBuildingRect,
+  isInsideMap,
+  readCell,
   type DeploymentAnalysis,
   type DeploymentRegion,
   type DeploymentRuleset,
@@ -163,11 +165,15 @@ function computeUncoveredPerimeterPenalty(buildings: PlacedBuilding[], masks: Ti
 
   let ringTiles = 0;
   let openRingTiles = 0;
-  const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && x < ruleset.mapWidth && y < ruleset.mapHeight;
+  // Uses the border-inclusive map bounds (isInsideMap), not just the 44x44
+  // buildable grid: a building hugging the edge has its outer ring fall
+  // partly on the grass border, which is real deployable ground in Clash of
+  // Clans, not "off the map" — excluding it would understate how exposed an
+  // edge-placed building actually is.
   const sample = (x: number, y: number) => {
-    if (!inBounds(x, y)) return;
+    if (!isInsideMap(x, y, ruleset)) return;
     ringTiles++;
-    if (masks.deploymentAllowedMask[y][x]) openRingTiles++;
+    if (readCell(masks.deploymentAllowedMask, x, y, ruleset.border)) openRingTiles++;
   };
 
   for (let x = left; x <= right; x++) {

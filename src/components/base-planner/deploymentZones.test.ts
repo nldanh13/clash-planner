@@ -5,19 +5,45 @@ import {
   computeDeploymentMasks,
   classifyDeploymentRegions,
   getFootprintGap,
+  isInsideMap,
+  readCell,
   CRITICAL_HOLE_TH_DISTANCE,
+  type DeploymentRuleset,
 } from "./deploymentZones";
 import type { PlacedBuilding } from "./types";
 
-function countTrue(mask: boolean[][]): number {
+// These grids are dense arrays offset by `ruleset.border` (index 0 = raw
+// coordinate -border) — never index them with a raw coordinate directly
+// (`mask[y][x]`) or iterate with `for...of`/`.forEach` (which only visits
+// 0..length-1 and would silently miss nothing here, but would misread every
+// cell as shifted). Always go through readCell, as production code does.
+function countTrue(mask: boolean[][], ruleset: DeploymentRuleset = HOME_VILLAGE_DEPLOYMENT_RULES): number {
   let n = 0;
-  for (const row of mask) for (const v of row) if (v) n++;
+  for (let y = -ruleset.border; y < ruleset.mapHeight + ruleset.border; y++) {
+    for (let x = -ruleset.border; x < ruleset.mapWidth + ruleset.border; x++) {
+      if (readCell(mask, x, y, ruleset.border)) n++;
+    }
+  }
   return n;
 }
 
 function b(instanceId: string, buildingId: string, x: number, y: number): PlacedBuilding {
   return { instanceId, buildingId, x, y };
 }
+
+describe("isInsideMap (real Clash of Clans has a 3-tile grass border beyond the 44x44 buildable grid)", () => {
+  it("treats the buildable grid and the border ring as one deployable map", () => {
+    expect(isInsideMap(0, 0, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(true);
+    expect(isInsideMap(43, 43, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(true);
+    // Border ring: troops can still be deployed here even though no building can.
+    expect(isInsideMap(-1, 0, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(true);
+    expect(isInsideMap(-3, -3, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(true);
+    expect(isInsideMap(46, 20, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(true);
+    // Beyond the true 50x50 map edge.
+    expect(isInsideMap(-4, 0, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(false);
+    expect(isInsideMap(47, 0, HOME_VILLAGE_DEPLOYMENT_RULES)).toBe(false);
+  });
+});
 
 describe("deploymentZones ruleset", () => {
   it("HOME_VILLAGE_DEPLOYMENT_RULES classifies every real catalog category exactly once", () => {
@@ -49,10 +75,18 @@ describe("deployment block mask sizing (radius=1, chebyshev)", () => {
     expect(countTrue(deploymentBlockMask)).toBe(6 * 6);
   });
 
-  it("a 3x3 building pinned at the map corner (0,0) is clipped to 4x4 instead of 5x5", () => {
+  it("a 3x3 building pinned at the buildable-grid corner (0,0) still gets its full 5x5 halo, not clipped to 4x4", () => {
+    // Real Clash of Clans has a 3-tile grass border beyond the 44x44 buildable
+    // grid where troops can still be deployed — so a building at the very
+    // edge of the buildable area is NOT protected by "the map ending" there.
+    // Since the border (3) is wider than the halo radius (1), the halo never
+    // actually gets clipped by the true map edge for any legally-placed
+    // building.
     const buildings = [b("1", "cannon", 0, 0)];
     const { deploymentBlockMask } = computeDeploymentMasks(buildings);
-    expect(countTrue(deploymentBlockMask)).toBe(4 * 4);
+    expect(countTrue(deploymentBlockMask)).toBe(5 * 5);
+    // The halo's border-side tiles land in the border ring (negative coords).
+    expect(readCell(deploymentBlockMask, -1, -1)).toBe(true);
   });
 
   it("a single 1x1 wall segment blocks exactly a 3x3 halo away from the border", () => {
@@ -83,14 +117,14 @@ describe("halo overlap and category rules", () => {
   it("a wall tile creates a deployment block (including its own tile)", () => {
     const buildings = [b("1", "wall", 25, 25)];
     const { deploymentBlockMask } = computeDeploymentMasks(buildings);
-    expect(deploymentBlockMask[25][25]).toBe(true);
+    expect(readCell(deploymentBlockMask, 25, 25)).toBe(true);
   });
 
   it("a trap does not create any deployment block, not even on its own tile", () => {
     const buildings = [b("1", "bomb", 25, 25)]; // trap category
     const { deploymentBlockMask } = computeDeploymentMasks(buildings);
     expect(countTrue(deploymentBlockMask)).toBe(0);
-    expect(deploymentBlockMask[25][25]).toBe(false);
+    expect(readCell(deploymentBlockMask, 25, 25)).toBe(false);
   });
 });
 
@@ -134,29 +168,29 @@ describe("gap-coverage rule (0/1/2/3 empty tiles between two 1x1 walls)", () => 
     const buildings = [b("1", "wall", 10, y), b("2", "wall", 11, y)];
     const { deploymentAllowedMask } = computeDeploymentMasks(buildings);
     // No tile strictly between them since gap is 0.
-    expect(deploymentAllowedMask[y][10]).toBe(false);
-    expect(deploymentAllowedMask[y][11]).toBe(false);
+    expect(readCell(deploymentAllowedMask, 10, y)).toBe(false);
+    expect(readCell(deploymentAllowedMask, 11, y)).toBe(false);
   });
 
   it("1 empty tile is fully covered by the two halos", () => {
     const buildings = [b("1", "wall", 10, y), b("2", "wall", 12, y)];
     const { deploymentAllowedMask } = computeDeploymentMasks(buildings);
-    expect(deploymentAllowedMask[y][11]).toBe(false);
+    expect(readCell(deploymentAllowedMask, 11, y)).toBe(false);
   });
 
   it("2 empty tiles are fully covered (each halo reaches one tile in)", () => {
     const buildings = [b("1", "wall", 10, y), b("2", "wall", 13, y)];
     const { deploymentAllowedMask } = computeDeploymentMasks(buildings);
-    expect(deploymentAllowedMask[y][11]).toBe(false);
-    expect(deploymentAllowedMask[y][12]).toBe(false);
+    expect(readCell(deploymentAllowedMask, 11, y)).toBe(false);
+    expect(readCell(deploymentAllowedMask, 12, y)).toBe(false);
   });
 
   it("3 empty tiles leave a deployable gap tile in the middle", () => {
     const buildings = [b("1", "wall", 10, y), b("2", "wall", 14, y)];
     const { deploymentAllowedMask } = computeDeploymentMasks(buildings);
-    expect(deploymentAllowedMask[y][11]).toBe(false); // covered by left wall
-    expect(deploymentAllowedMask[y][13]).toBe(false); // covered by right wall
-    expect(deploymentAllowedMask[y][12]).toBe(true); // NOT covered by either — a deploy tile
+    expect(readCell(deploymentAllowedMask, 11, y)).toBe(false); // covered by left wall
+    expect(readCell(deploymentAllowedMask, 13, y)).toBe(false); // covered by right wall
+    expect(readCell(deploymentAllowedMask, 12, y)).toBe(true); // NOT covered by either — a deploy tile
   });
 });
 
@@ -190,7 +224,7 @@ describe("region classification (flood fill on deploymentAllowedMask)", () => {
     expect(holes.length).toBe(1);
     expect(holes[0].size).toBe(1);
     expect(holes[0].cells[0]).toEqual({ x: 12, y: 12 });
-    expect(regionTypeGrid[12][12]).toBe("internal-hole");
+    expect(readCell(regionTypeGrid, 12, 12)).toBe("internal-hole");
     expect(holes[0].touchesBorder).toBe(false);
   });
 

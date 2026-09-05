@@ -1,7 +1,17 @@
 import type { BuildingCategory, BuildingDef } from "./types";
 
-export const GRID_SIZE = 44; // 44x44 tiles standard Clash of Clans home village grid
+export const GRID_SIZE = 44; // 44x44 tiles: the buildable home village grid (unchanged — saved layout coordinates stay valid)
 export const CELL_SIZE_PX = 18; // Default pixel size per tile
+
+// Real Clash of Clans home village is a 50x50 map: the 44x44 buildable grid
+// plus a 3-tile-wide grass border on every side. Buildings can't be placed
+// there, but decorations can, and — crucially — so can enemy troops, so a
+// defense at the very edge of the buildable grid is NOT protected by the
+// map edge the way a naive "is this the boundary of the array" check would
+// assume. Building coordinates stay 0..GRID_SIZE; decoration/deployment
+// coordinates additionally range over this border, i.e. -MAP_BORDER..GRID_SIZE+MAP_BORDER.
+export const MAP_BORDER = 3;
+export const MAP_TOTAL_SIZE = GRID_SIZE + MAP_BORDER * 2; // 50
 
 export const CATEGORY_LABELS: Record<BuildingCategory, { label: string; icon: string }> = {
   defense: { label: "Phòng thủ", icon: "Shield" },

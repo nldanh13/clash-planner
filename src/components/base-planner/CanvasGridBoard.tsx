@@ -12,7 +12,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { BUILDINGS_BY_ID, CELL_SIZE_PX, GRID_SIZE } from "./constants";
+import { BUILDINGS_BY_ID, CELL_SIZE_PX, GRID_SIZE, MAP_BORDER } from "./constants";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { buildOccupancyMatrix, canPlaceBuildingFast, getBuildingAtCell } from "./gridMatrix";
 import { calculateFirepowerHeatmap, getHeatmapColor } from "./heatmapUtils";
@@ -21,6 +21,7 @@ import {
   computeDeploymentAnalysis,
   computeDeploymentMasks,
   getBuildingRect,
+  readCell,
   type DeploymentAnalysis,
 } from "./deploymentZones";
 import { DECORATIONS_BY_ID } from "./decorationCatalog";
@@ -62,7 +63,10 @@ interface ActiveDrag {
   isValid: boolean;
 }
 
-const BASE_BOARD_PIXELS = GRID_SIZE * CELL_SIZE_PX; // 44 * 18 = 792px
+// Includes the 3-tile grass border beyond the 44x44 buildable grid (real
+// Clash of Clans map is 50x50) so zoom-to-fit accounts for the full visible
+// playfield, not just the buildable area.
+const BASE_BOARD_PIXELS = (GRID_SIZE + 2 * MAP_BORDER) * CELL_SIZE_PX;
 
 export function CanvasGridBoard({
   buildings,
@@ -112,6 +116,15 @@ export function CanvasGridBoard({
   // Scaled dimensions
   const cellSize = Math.round(CELL_SIZE_PX * zoomLevel);
   const boardPixelSize = GRID_SIZE * cellSize;
+  // Pixel width of the grass border ring, and the full canvas size including
+  // it on every side (real Clash of Clans map: 44x44 buildable + 3-tile
+  // border = 50x50). The render effect below draws everything through a
+  // single `ctx.translate(borderPx, borderPx)`, so grid-coordinate math
+  // elsewhere in this file (buildings, decorations, halos) stays exactly as
+  // it was — only the canvas's own pixel dimensions and the pointer↔tile
+  // conversion need to know about the border explicitly.
+  const borderPx = MAP_BORDER * cellSize;
+  const totalBoardPixelSize = boardPixelSize + 2 * borderPx;
 
   // Build O(1) Occupancy Matrix whenever buildings array changes
   const occupancyMatrix = useMemo(() => {
@@ -269,10 +282,14 @@ export function CanvasGridBoard({
         return null;
       }
 
-      const x = Math.floor(offsetX / cellSize);
-      const y = Math.floor(offsetY / cellSize);
+      // The canvas now spans the border ring too, so offsetX/Y=0 is the true
+      // map edge, MAP_BORDER cells before the buildable grid's (0,0) —
+      // subtract it to get back to the same building/decoration coordinate
+      // space used everywhere else in the app.
+      const x = Math.floor(offsetX / cellSize) - MAP_BORDER;
+      const y = Math.floor(offsetY / cellSize) - MAP_BORDER;
 
-      if (x < 0 || y < 0 || x >= GRID_SIZE || y >= GRID_SIZE) return null;
+      if (x < -MAP_BORDER || y < -MAP_BORDER || x >= GRID_SIZE + MAP_BORDER || y >= GRID_SIZE + MAP_BORDER) return null;
       return { x, y };
     },
     [cellSize]
@@ -388,11 +405,19 @@ export function CanvasGridBoard({
 
     // Retina / HiDPI crisp rendering
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = boardPixelSize * dpr;
-    canvas.height = boardPixelSize * dpr;
+    canvas.width = totalBoardPixelSize * dpr;
+    canvas.height = totalBoardPixelSize * dpr;
     ctx.scale(dpr, dpr);
 
-    // 1. Clear background
+    // 1. Clear background — the border ring gets a darker plain grass fill
+    // (matching the real game's look for the deploy strip surrounding the
+    // village), THEN every coordinate below is translated by the border
+    // width so grid-cell (0,0) still lands where it always has, leaving all
+    // the building/decoration/overlay drawing math below untouched.
+    ctx.fillStyle = "#142219";
+    ctx.fillRect(0, 0, totalBoardPixelSize, totalBoardPixelSize);
+    ctx.translate(borderPx, borderPx);
+
     ctx.fillStyle = "#1c3624"; // Lush Clash grass green
     ctx.fillRect(0, 0, boardPixelSize, boardPixelSize);
 
@@ -423,9 +448,11 @@ export function CanvasGridBoard({
 
       if (mode === "blocked" || mode === "all") {
         ctx.fillStyle = "rgba(248, 113, 113, 0.16)";
-        for (let y = 0; y < GRID_SIZE; y++) {
-          for (let x = 0; x < GRID_SIZE; x++) {
-            if (deploymentBlockMask[y][x]) {
+        // Spans the border ring too — a building hugging the buildable edge
+        // now correctly shows its halo bleeding onto the grass border.
+        for (let y = -MAP_BORDER; y < GRID_SIZE + MAP_BORDER; y++) {
+          for (let x = -MAP_BORDER; x < GRID_SIZE + MAP_BORDER; x++) {
+            if (readCell(deploymentBlockMask, x, y)) {
               ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
             }
           }
@@ -433,9 +460,9 @@ export function CanvasGridBoard({
       }
 
       if (mode === "holes" || mode === "all") {
-        for (let y = 0; y < GRID_SIZE; y++) {
-          for (let x = 0; x < GRID_SIZE; x++) {
-            const regionType = regionGrid[y][x];
+        for (let y = -MAP_BORDER; y < GRID_SIZE + MAP_BORDER; y++) {
+          for (let x = -MAP_BORDER; x < GRID_SIZE + MAP_BORDER; x++) {
+            const regionType = readCell(regionGrid, x, y);
             if (regionType === "internal-hole") {
               ctx.fillStyle = "rgba(244, 63, 94, 0.55)";
               ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
@@ -723,10 +750,13 @@ export function CanvasGridBoard({
       const selRect = getBuildingRect(selectedPlacedBuilding);
       if (selRect) {
         const { blockRadius } = HOME_VILLAGE_DEPLOYMENT_RULES;
-        const haloLeft = Math.max(0, selRect.x - blockRadius);
-        const haloTop = Math.max(0, selRect.y - blockRadius);
-        const haloRight = Math.min(GRID_SIZE, selRect.x + selRect.width + blockRadius);
-        const haloBottom = Math.min(GRID_SIZE, selRect.y + selRect.height + blockRadius);
+        // Clamped to the true 50x50 map (buildable grid + border), not just
+        // the 44x44 buildable grid — a building hugging the edge still has
+        // its halo land on the grass border, matching computeDeploymentAnalysis.
+        const haloLeft = Math.max(-MAP_BORDER, selRect.x - blockRadius);
+        const haloTop = Math.max(-MAP_BORDER, selRect.y - blockRadius);
+        const haloRight = Math.min(GRID_SIZE + MAP_BORDER, selRect.x + selRect.width + blockRadius);
+        const haloBottom = Math.min(GRID_SIZE + MAP_BORDER, selRect.y + selRect.height + blockRadius);
 
         ctx.strokeStyle = "#38bdf8";
         ctx.lineWidth = 2;
@@ -885,6 +915,8 @@ export function CanvasGridBoard({
   }, [
     activeDrag,
     boardPixelSize,
+    borderPx,
+    totalBoardPixelSize,
     buildings,
     cellSize,
     chainAnalysis,
@@ -1387,8 +1419,8 @@ export function CanvasGridBoard({
             : "cursor-crosshair"
         }`}
         style={{
-          width: `${boardPixelSize}px`,
-          height: `${boardPixelSize}px`,
+          width: `${totalBoardPixelSize}px`,
+          height: `${totalBoardPixelSize}px`,
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

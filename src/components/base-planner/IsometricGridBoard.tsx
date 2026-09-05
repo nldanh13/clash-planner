@@ -1,11 +1,12 @@
 import { preloadAllBaseImages, getLeveledBuildingImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Maximize, Trash2, Unlock, X, ZoomIn, ZoomOut } from "lucide-react";
-import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
+import { BUILDINGS_BY_ID, GRID_SIZE, MAP_BORDER } from "./constants";
 import {
   HOME_VILLAGE_DEPLOYMENT_RULES,
   computeDeploymentAnalysis,
   getBuildingRect,
+  readCell,
   type DeploymentAnalysis,
 } from "./deploymentZones";
 import { buildOccupancyMatrix, canPlaceBuildingFast, type GridOccupancyMatrix } from "./gridMatrix";
@@ -214,7 +215,20 @@ export function IsometricGridBoard({
       }
     };
 
-    // 1. Ground plane (whole 44x44 diamond)
+    // 1. Ground plane: the 3-tile grass border ring first (darker — real
+    // Clash of Clans shades the deploy strip around the village slightly
+    // darker than the base itself), then the buildable 44x44 diamond on top.
+    drawDiamond(
+      [
+        project(-MAP_BORDER, -MAP_BORDER),
+        project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
+        project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
+        project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
+      ],
+      "#0f2417",
+      "rgba(255,255,255,0.05)",
+      1
+    );
     drawDiamond(
       [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)],
       "#16311f",
@@ -229,15 +243,15 @@ export function IsometricGridBoard({
       const { deploymentBlockMask } = deploymentAnalysis.masks;
       const regionGrid = deploymentAnalysis.regionTypeGrid;
 
-      for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
+      for (let y = -MAP_BORDER; y < GRID_SIZE + MAP_BORDER; y++) {
+        for (let x = -MAP_BORDER; x < GRID_SIZE + MAP_BORDER; x++) {
           let fill: string | null = null;
-          const regionType = regionGrid[y][x];
+          const regionType = readCell(regionGrid, x, y);
           if ((mode === "holes" || mode === "all") && regionType === "internal-hole") {
             fill = "rgba(244, 63, 94, 0.6)";
           } else if ((mode === "holes" || mode === "all") && regionType === "corridor") {
             fill = "rgba(249, 115, 22, 0.42)";
-          } else if ((mode === "blocked" || mode === "all") && deploymentBlockMask[y][x]) {
+          } else if ((mode === "blocked" || mode === "all") && readCell(deploymentBlockMask, x, y)) {
             fill = "rgba(248, 113, 113, 0.18)";
           }
           if (!fill) continue;
@@ -357,10 +371,12 @@ export function IsometricGridBoard({
       const rect = getBuildingRect(selectedBuilding);
       if (rect) {
         const { blockRadius } = HOME_VILLAGE_DEPLOYMENT_RULES;
-        const haloLeft = Math.max(0, rect.x - blockRadius);
-        const haloTop = Math.max(0, rect.y - blockRadius);
-        const haloRight = Math.min(GRID_SIZE, rect.x + rect.width + blockRadius);
-        const haloBottom = Math.min(GRID_SIZE, rect.y + rect.height + blockRadius);
+        // Clamped to the true 50x50 map (buildable grid + border), matching
+        // CanvasGridBoard's 2D halo and computeDeploymentAnalysis.
+        const haloLeft = Math.max(-MAP_BORDER, rect.x - blockRadius);
+        const haloTop = Math.max(-MAP_BORDER, rect.y - blockRadius);
+        const haloRight = Math.min(GRID_SIZE + MAP_BORDER, rect.x + rect.width + blockRadius);
+        const haloBottom = Math.min(GRID_SIZE + MAP_BORDER, rect.y + rect.height + blockRadius);
         ctx.setLineDash([6, 3]);
         drawDiamond(
           [project(haloLeft, haloTop), project(haloRight, haloTop), project(haloRight, haloBottom), project(haloLeft, haloBottom)],

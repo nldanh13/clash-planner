@@ -11,7 +11,7 @@
  * auto-fix) reads from `computeDeploymentMasks` / `computeDeploymentAnalysis` here so
  * there is exactly one implementation of the rule.
  */
-import { BUILDINGS_BY_ID } from "./constants";
+import { BUILDINGS_BY_ID, MAP_BORDER } from "./constants";
 import type { BuildingCategory, PlacedBuilding } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -24,8 +24,19 @@ export type ObjectCategory = BuildingCategory;
 
 export interface DeploymentRuleset {
   version: string;
+  /** Buildable area only (44 in the real game) — building coordinates always stay within [0, mapWidth). */
   mapWidth: number;
   mapHeight: number;
+  /**
+   * Width (in tiles) of the grass border surrounding the buildable area (3 in
+   * the real game: total map is 50x50 = 44x44 buildable + a 3-tile border on
+   * every side). No building can stand there, but troops CAN be deployed
+   * there, so a building sitting at the edge of the buildable grid is NOT
+   * protected by "the map ending" the way border=0 would imply — its
+   * deployment halo, and any open-perimeter risk check, must be allowed to
+   * reach into this ring instead of being clipped at mapWidth/mapHeight.
+   */
+  border: number;
   blockRadius: number;
   distanceMetric: DistanceMetric;
   blockingCategories: ObjectCategory[];
@@ -42,9 +53,10 @@ const ALL_KNOWN_CATEGORIES: BuildingCategory[] = ["defense", "resource", "army",
  * Traps are hidden and never block deployment.
  */
 export const HOME_VILLAGE_DEPLOYMENT_RULES: DeploymentRuleset = {
-  version: "home-village-v1",
+  version: "home-village-v2",
   mapWidth: 44,
   mapHeight: 44,
+  border: MAP_BORDER,
   blockRadius: 1,
   distanceMetric: "chebyshev",
   blockingCategories: ["defense", "resource", "army", "hero", "wall"],
@@ -98,16 +110,52 @@ export type TileMasks = {
   deploymentAllowedMask: boolean[][];
 };
 
-function createBoolGrid(width: number, height: number, fill = false): boolean[][] {
-  const grid: boolean[][] = new Array(height);
-  for (let y = 0; y < height; y++) {
-    grid[y] = new Array(width).fill(fill);
-  }
+/**
+ * Every grid in this module (occupancy, deployment masks, region-type grid)
+ * covers the FULL map (buildable area + border ring) but is stored as a
+ * plain DENSE array offset by `border` — array index 0 is raw coordinate
+ * `-border`. Never index one of these grids directly with a raw coordinate
+ * (`mask[y][x]`): the moment a JS array is assigned a negative (or otherwise
+ * non-array-index) key, V8 permanently downgrades it to slow "dictionary
+ * mode" for the rest of its life, which measurably regressed the
+ * auto-generator's hot path (it recomputes deployment analysis on every
+ * candidate placement). Always go through readCell/writeCell below instead.
+ */
+function createDenseGrid<T>(ruleset: Pick<DeploymentRuleset, "mapWidth" | "mapHeight" | "border">, fill: T): T[][] {
+  const rows = ruleset.mapHeight + 2 * ruleset.border;
+  const cols = ruleset.mapWidth + 2 * ruleset.border;
+  const grid: T[][] = new Array(rows);
+  for (let y = 0; y < rows; y++) grid[y] = new Array(cols).fill(fill);
   return grid;
 }
 
+function createBoolGrid(ruleset: Pick<DeploymentRuleset, "mapWidth" | "mapHeight" | "border">, fill = false): boolean[][] {
+  return createDenseGrid<boolean>(ruleset, fill);
+}
+
+/**
+ * Reads/writes a cell of one of this module's dense grids by raw tile
+ * coordinate (which may be negative, or >= mapWidth/mapHeight, for the
+ * border ring). `border` defaults to the Home Village ruleset's border
+ * width so external callers (decorationUtils.ts, deploymentRisk.ts,
+ * CanvasGridBoard.tsx) reading these same grids don't need to import the
+ * ruleset just to get the offset right.
+ */
+export function readCell<T>(grid: T[][], x: number, y: number, border: number = MAP_BORDER): T {
+  return grid[y + border][x + border];
+}
+export function writeCell<T>(grid: T[][], x: number, y: number, value: T, border: number = MAP_BORDER): void {
+  grid[y + border][x + border] = value;
+}
+
+/** True anywhere on the full 50x50 map (buildable area + the 3-tile border ring), not just the 44x44 buildable grid. */
 export function isInsideMap(x: number, y: number, ruleset: DeploymentRuleset): boolean {
-  return x >= 0 && y >= 0 && x < ruleset.mapWidth && y < ruleset.mapHeight;
+  return (
+    x >= -ruleset.border &&
+    y >= -ruleset.border &&
+    x < ruleset.mapWidth + ruleset.border &&
+    y < ruleset.mapHeight + ruleset.border
+  );
 }
 
 export function getBuildingRect(b: PlacedBuilding): Rect | null {
@@ -151,13 +199,13 @@ export function distancePointToRect(x: number, y: number, rect: Rect, metric: Di
 // ---------------------------------------------------------------------------
 
 export function buildOccupancyMask(buildings: PlacedBuilding[], ruleset: DeploymentRuleset): boolean[][] {
-  const mask = createBoolGrid(ruleset.mapWidth, ruleset.mapHeight);
+  const mask = createBoolGrid(ruleset);
   for (const b of buildings) {
     const rect = getBuildingRect(b);
     if (!rect) continue;
     for (let y = rect.y; y < rect.y + rect.height; y++) {
       for (let x = rect.x; x < rect.x + rect.width; x++) {
-        if (isInsideMap(x, y, ruleset)) mask[y][x] = true;
+        if (isInsideMap(x, y, ruleset)) writeCell(mask, x, y, true, ruleset.border);
       }
     }
   }
@@ -197,7 +245,7 @@ export function expandRectByRadius(
  * thể được phép chồng lên nhau, không đếm hai lần" requirement.
  */
 export function buildDeploymentBlockMask(buildings: PlacedBuilding[], ruleset: DeploymentRuleset): boolean[][] {
-  const mask = createBoolGrid(ruleset.mapWidth, ruleset.mapHeight);
+  const mask = createBoolGrid(ruleset);
   for (const b of buildings) {
     const def = BUILDINGS_BY_ID.get(b.buildingId);
     if (!def) continue;
@@ -205,17 +253,17 @@ export function buildDeploymentBlockMask(buildings: PlacedBuilding[], ruleset: D
     const rect = getBuildingRect(b);
     if (!rect) continue;
     expandRectByRadius(rect, ruleset.blockRadius, ruleset.distanceMetric, ruleset, (x, y) => {
-      mask[y][x] = true;
+      writeCell(mask, x, y, true, ruleset.border);
     });
   }
   return mask;
 }
 
 export function buildDeploymentAllowedMask(blockMask: boolean[][], ruleset: DeploymentRuleset): boolean[][] {
-  const mask = createBoolGrid(ruleset.mapWidth, ruleset.mapHeight);
-  for (let y = 0; y < ruleset.mapHeight; y++) {
-    for (let x = 0; x < ruleset.mapWidth; x++) {
-      mask[y][x] = !blockMask[y][x];
+  const mask = createBoolGrid(ruleset);
+  for (let y = -ruleset.border; y < ruleset.mapHeight + ruleset.border; y++) {
+    for (let x = -ruleset.border; x < ruleset.mapWidth + ruleset.border; x++) {
+      writeCell(mask, x, y, !readCell(blockMask, x, y, ruleset.border), ruleset.border);
     }
   }
   return mask;
@@ -262,32 +310,37 @@ interface FloodFillResult {
 }
 
 function floodFillAllowedMask(allowedMask: boolean[][], ruleset: DeploymentRuleset): FloodFillResult {
-  const h = ruleset.mapHeight;
-  const w = ruleset.mapWidth;
-  const componentId: number[][] = createGridFilled(w, h, -1);
+  const minX = -ruleset.border;
+  const minY = -ruleset.border;
+  const maxX = ruleset.mapWidth + ruleset.border; // exclusive
+  const maxY = ruleset.mapHeight + ruleset.border; // exclusive
+  const componentId: number[][] = createDenseGrid<number>(ruleset, -1);
   const components: FloodFillResult["components"] = [];
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (!allowedMask[y][x] || componentId[y][x] !== -1) continue;
+  for (let y = minY; y < maxY; y++) {
+    for (let x = minX; x < maxX; x++) {
+      if (!readCell(allowedMask, x, y, ruleset.border) || readCell(componentId, x, y, ruleset.border) !== -1) continue;
 
       const id = components.length;
       const cells: Array<{ x: number; y: number }> = [];
+      // "Touches border" now means the TRUE outer edge of the 50x50 map, not
+      // the edge of the 44x44 buildable grid — a region only counts as
+      // reachable from outside once it hits the actual map boundary.
       let touchesBorder = false;
       const queue: Array<[number, number]> = [[x, y]];
-      componentId[y][x] = id;
+      writeCell(componentId, x, y, id, ruleset.border);
 
       while (queue.length > 0) {
         const [cx, cy] = queue.pop()!;
         cells.push({ x: cx, y: cy });
-        if (cx === 0 || cy === 0 || cx === w - 1 || cy === h - 1) touchesBorder = true;
+        if (cx === minX || cy === minY || cx === maxX - 1 || cy === maxY - 1) touchesBorder = true;
 
         for (const [dx, dy] of NEIGHBOR_OFFSETS_8) {
           const nx = cx + dx;
           const ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-          if (!allowedMask[ny][nx] || componentId[ny][nx] !== -1) continue;
-          componentId[ny][nx] = id;
+          if (nx < minX || ny < minY || nx >= maxX || ny >= maxY) continue;
+          if (!readCell(allowedMask, nx, ny, ruleset.border) || readCell(componentId, nx, ny, ruleset.border) !== -1) continue;
+          writeCell(componentId, nx, ny, id, ruleset.border);
           queue.push([nx, ny]);
         }
       }
@@ -299,22 +352,22 @@ function floodFillAllowedMask(allowedMask: boolean[][], ruleset: DeploymentRules
   return { componentId, components };
 }
 
-function createGridFilled(width: number, height: number, value: number): number[][] {
-  const grid: number[][] = new Array(height);
-  for (let y = 0; y < height; y++) grid[y] = new Array(width).fill(value);
-  return grid;
-}
-
 /** Multi-source BFS distance (in map steps) from every border-touching cell of one component. */
 function computeBorderDepth(cells: Array<{ x: number; y: number }>, ruleset: DeploymentRuleset): Map<string, number> {
-  const w = ruleset.mapWidth;
-  const h = ruleset.mapHeight;
+  const minX = -ruleset.border;
+  const minY = -ruleset.border;
+  const maxX = ruleset.mapWidth + ruleset.border - 1; // inclusive
+  const maxY = ruleset.mapHeight + ruleset.border - 1; // inclusive
   const cellSet = new Set(cells.map((c) => `${c.x},${c.y}`));
   const depth = new Map<string, number>();
   const queue: Array<[number, number]> = [];
 
+  // Depth-from-border is now measured from the true 50x50 map edge, so the
+  // whole 3-tile grass ring is "free" depth before a corridor even starts
+  // being counted — matching how far a real attacker can already stand
+  // before threading a gap between structures.
   for (const c of cells) {
-    if (c.x === 0 || c.y === 0 || c.x === w - 1 || c.y === h - 1) {
+    if (c.x === minX || c.y === minY || c.x === maxX || c.y === maxY) {
       depth.set(`${c.x},${c.y}`, 0);
       queue.push([c.x, c.y]);
     }
@@ -362,7 +415,7 @@ function localBlockedDensity(
       const ny = y + dy;
       if (!isInsideMap(nx, ny, ruleset)) continue;
       total++;
-      if (blockMask[ny][nx]) blocked++;
+      if (readCell(blockMask, nx, ny, ruleset.border)) blocked++;
     }
   }
   return total > 0 ? blocked / total : 0;
@@ -395,8 +448,7 @@ export function classifyDeploymentRegions(
 ): { regions: DeploymentRegion[]; regionTypeGrid: DeploymentRegionType[][] } {
   const { components } = floodFillAllowedMask(masks.deploymentAllowedMask, ruleset);
   const thRect = findTownHallRect(buildings);
-  const typeGrid: DeploymentRegionType[][] = new Array(ruleset.mapHeight);
-  for (let y = 0; y < ruleset.mapHeight; y++) typeGrid[y] = new Array(ruleset.mapWidth).fill("external");
+  const typeGrid: DeploymentRegionType[][] = createDenseGrid<DeploymentRegionType>(ruleset, "external");
 
   const regions: DeploymentRegion[] = [];
 
@@ -412,7 +464,7 @@ export function classifyDeploymentRegions(
     }
 
     if (!comp.touchesBorder) {
-      for (const c of comp.cells) typeGrid[c.y][c.x] = "internal-hole";
+      for (const c of comp.cells) writeCell(typeGrid, c.x, c.y, "internal-hole", ruleset.border);
       regions.push({
         id,
         type: "internal-hole",
@@ -435,10 +487,10 @@ export function classifyDeploymentRegions(
         isDeep &&
         localBlockedDensity(c.x, c.y, masks.deploymentBlockMask, ruleset) >= CORRIDOR_MIN_LOCAL_BLOCKED_DENSITY;
       if (isNearStructure) {
-        typeGrid[c.y][c.x] = "corridor";
+        writeCell(typeGrid, c.x, c.y, "corridor", ruleset.border);
         hasCorridor = true;
       } else {
-        typeGrid[c.y][c.x] = "external";
+        writeCell(typeGrid, c.x, c.y, "external", ruleset.border);
       }
     }
 
@@ -492,7 +544,7 @@ export function computeDeploymentAnalysis(
   let allowedTileCount = 0;
   for (let y = 0; y < ruleset.mapHeight; y++) {
     for (let x = 0; x < ruleset.mapWidth; x++) {
-      if (masks.deploymentBlockMask[y][x]) blockedTileCount++;
+      if (readCell(masks.deploymentBlockMask, x, y, ruleset.border)) blockedTileCount++;
       else allowedTileCount++;
     }
   }
