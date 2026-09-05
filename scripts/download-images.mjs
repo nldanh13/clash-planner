@@ -87,26 +87,67 @@ const localFolder = (kind) => {
 };
 const isBuildingKind = (kind) => kind === "building" || kind === "defense" || kind === "trap" || kind === "wall";
 
-const jobs = [];
+const NON_BUILDING_JOBS = [];
 for (const item of MANIFEST) {
-  if (item.id === "town-hall") continue; // đã có sẵn đủ 18 cấp local trong public/town-halls
-  if (isBuildingKind(item.kind)) {
+  if (item.id === "town-hall" || isBuildingKind(item.kind)) continue; // buildings are discovered dynamically, see discoverBuildingLevelJobs()
+  const remoteFolder = item.kind === "hero" ? "heroes" : item.kind === "spell" ? "spells" : item.kind === "equipment" ? "heroes/equipment" : "troops";
+  const url = `${ASSETS}/${remoteFolder}/${encodeURIComponent(item.name)}.webp`;
+  NON_BUILDING_JOBS.push({ url, out: path.join(PUBLIC, localFolder(item.kind), `${item.id}.webp`) });
+}
+
+/**
+ * coc.guide numbers each building's per-level art 1..N, but N grows every time
+ * Supercell adds a level — a max hardcoded here (as this file used to do, parsed
+ * out of COC_GUIDE_BUILDING_ART's single reference URL) silently goes stale.
+ * That's exactly why xbow, inferno-tower, eagle-artillery, scattershot and
+ * monolith fell behind their real max level over time.
+ *
+ * Probe upward from level 1 instead of trusting a fixed number: keep going
+ * while a level's art exists (already on disk, or a HEAD request to coc.guide
+ * succeeds), stop once two levels in a row are missing. This makes the script
+ * self-healing — it picks up new levels the next time it runs, no code change
+ * needed here.
+ */
+async function discoverBuildingLevelJobs(item, baseRemote) {
+  const jobs = [];
+  let misses = 0;
+  const MAX_LEVEL_CAP = 30; // sanity ceiling, well above any real in-game max
+  for (let level = 1; level <= MAX_LEVEL_CAP && misses < 2; level++) {
+    const url = `https://coc.guide${baseRemote}-${level}.png`;
+    const out = path.join(PUBLIC, "buildings", `${item.id}-${level}.png`);
+    if (!FORCE && (await exists(out))) {
+      jobs.push({ url, out });
+      misses = 0;
+      continue;
+    }
+    try {
+      const res = await fetch(url, { method: "HEAD", headers: { "User-Agent": "Mozilla/5.0 (clash-path-local image sync)" } });
+      if (res.ok) {
+        jobs.push({ url, out });
+        misses = 0;
+      } else {
+        misses++;
+      }
+    } catch {
+      misses++;
+    }
+  }
+  return jobs;
+}
+
+async function buildBuildingJobs() {
+  const jobs = [];
+  for (const item of MANIFEST) {
+    if (item.id === "town-hall" || !isBuildingKind(item.kind)) continue;
     const p = COC_GUIDE_BUILDING_ART[item.id];
     if (!p) { console.warn(`(bỏ qua) chưa có URL coc.guide cho: ${item.id}`); continue; }
     const match = p.match(/^(.*)-(\d+)\.png$/);
     if (match) {
-      const baseRemote = match[1];
-      const maxLvl = parseInt(match[2], 10);
-      for (let l = 1; l <= maxLvl; l++) {
-        jobs.push({ url: `https://coc.guide${baseRemote}-${l}.png`, out: path.join(PUBLIC, "buildings", `${item.id}-${l}.png`) });
-      }
+      jobs.push(...(await discoverBuildingLevelJobs(item, match[1])));
     }
     jobs.push({ url: `https://coc.guide${p}`, out: path.join(PUBLIC, "buildings", `${item.id}.png`) });
-  } else {
-    const remoteFolder = item.kind === "hero" ? "heroes" : item.kind === "spell" ? "spells" : item.kind === "equipment" ? "heroes/equipment" : "troops";
-    const url = `${ASSETS}/${remoteFolder}/${encodeURIComponent(item.name)}.webp`;
-    jobs.push({ url, out: path.join(PUBLIC, localFolder(item.kind), `${item.id}.webp`) });
   }
+  return jobs;
 }
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
@@ -131,6 +172,8 @@ async function run() {
   if (MANIFEST_ONLY) {
     console.log("Chế độ chỉ kiểm tra & cập nhật assets-manifest.json (không tải mới từ mạng)...");
   } else {
+    console.log("Đang dò cấp độ ảnh thật sự có trên coc.guide cho từng công trình (có thể mất một lúc)...");
+    const jobs = [...(await buildBuildingJobs()), ...NON_BUILDING_JOBS];
     console.log(`Tổng cộng ${jobs.length} ảnh cần kiểm tra/tải (FORCE=${FORCE}).\n`);
     const CONCURRENCY = 6;
     const results = [];
