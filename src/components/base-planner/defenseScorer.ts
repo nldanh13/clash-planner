@@ -11,6 +11,11 @@ import type {
   PlacedBuilding,
   ScoreCategoryBreakdown,
 } from "./types";
+import { vi } from "../../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 /**
  * Thuật toán tính Điểm bố trí tham khảo (Heuristic cơ bản, 0 - 100 Điểm)
@@ -25,8 +30,8 @@ export function evaluateBaseDefense(
   warnings.push({
     id: "model-limit",
     type: "tip",
-    title: "Giới hạn đánh giá",
-    message: "Đây là điểm tham khảo cơ bản. Thuật toán chưa xét cấp độ công trình, hướng thổi của Air Sweeper, chế độ Inferno/X-Bow, thiết kế khoang tường và thuật toán tìm đường (pathing) của lính.",
+    title: vi.defenseScorer.modelLimitTitle,
+    message: vi.defenseScorer.modelLimitMessage,
     category: "core",
   });
 
@@ -35,16 +40,16 @@ export function evaluateBaseDefense(
     return {
       totalScore: 0,
       tier: "D",
-      tierTitle: "Bản đồ trống",
+      tierTitle: vi.defenseScorer.emptyMap.tierTitle,
       tierColor: "#95a5a6",
       breakdown: {
-        core: { id: "core", name: "Hệ số Cốt lõi", score: 0, maxScore: 30, description: "Chưa đặt công trình cốt lõi" },
-        chain: { id: "chain", name: "Chống sét lan (E-Drag)", score: 0, maxScore: 20, description: "Chưa có công trình" },
-        splash: { id: "splash", name: "Phủ sóng Sát thương lan", score: 0, maxScore: 20, description: "Chưa có tháp sát thương lan" },
-        trap: { id: "trap", name: "Hiệu quả Bẫy", score: 0, maxScore: 15, description: "Chưa đặt bẫy" },
-        th: { id: "th", name: "Vị trí Town Hall", score: 0, maxScore: 15, description: "Chưa đặt Town Hall" },
+        core: { id: "core", name: vi.defenseScorer.emptyMap.core.name, score: 0, maxScore: 30, description: vi.defenseScorer.emptyMap.core.description },
+        chain: { id: "chain", name: vi.defenseScorer.emptyMap.chain.name, score: 0, maxScore: 20, description: vi.defenseScorer.emptyMap.chain.description },
+        splash: { id: "splash", name: vi.defenseScorer.emptyMap.splash.name, score: 0, maxScore: 20, description: vi.defenseScorer.emptyMap.splash.description },
+        trap: { id: "trap", name: vi.defenseScorer.emptyMap.trap.name, score: 0, maxScore: 15, description: vi.defenseScorer.emptyMap.trap.description },
+        th: { id: "th", name: vi.defenseScorer.emptyMap.th.name, score: 0, maxScore: 15, description: vi.defenseScorer.emptyMap.th.description },
       },
-      warnings: [{ id: "empty", type: "tip", title: "Bản đồ trống", message: "Hãy kéo thả công trình từ kho đồ bên trái hoặc tải mẫu bố cục chuẩn.", category: "core" }],
+      warnings: [{ id: "empty", type: "tip", title: vi.defenseScorer.emptyMap.tierTitle, message: vi.defenseScorer.emptyMap.warningMessage, category: "core" }],
       heatStats: { maxCoverage: 0, blindSpotsPercent: 100, quadrantBalance: { nw: 0, ne: 0, sw: 0, se: 0 } },
     };
   }
@@ -65,8 +70,8 @@ export function evaluateBaseDefense(
       warnings.push({
           id: "missing-core",
           type: "warning",
-          title: "Thiếu công trình phòng thủ lõi",
-          message: `Bạn chưa đặt đủ ${missingCoreCount} công trình phòng thủ chủ lực cho TH${townHallLevel}. Điểm số có thể không phản ánh đúng sức mạnh.`,
+          title: vi.defenseScorer.missingCoreTitle,
+          message: fmt(vi.defenseScorer.missingCoreMessage, { count: missingCoreCount, th: townHallLevel }),
           category: "core"
       });
   }
@@ -96,8 +101,8 @@ export function evaluateBaseDefense(
         warnings.push({
           id: `core-clump-${b1.instanceId}-${b2.instanceId}`,
           type: "critical",
-          title: "Trụ chủ lực quá sát nhau!",
-          message: `${def1.name} và ${def2.name} chỉ cách nhau ${gap} ô. Cần cách ≥ 3 ô để tránh bị 1 bình Freeze hoặc Zap/Quake tiêu diệt đồng thời.`,
+          title: vi.defenseScorer.coreClumpTitle,
+          message: fmt(vi.defenseScorer.coreClumpMessage, { name1: def1.name, name2: def2.name, gap }),
           category: "core",
         });
       }
@@ -138,8 +143,8 @@ export function evaluateBaseDefense(
     warnings.push({
       id: "storage-shield-warning",
       type: "warning",
-      title: "Thiếu khiên thịt kho chứa",
-      message: "Nên đặt các Kho Vàng / Elixir / Lâu đài Clan (máu dày) phía trước các trụ Inferno/Monolith/Eagle để hút sát thương khi địch tràn vào.",
+      title: vi.defenseScorer.storageShieldTitle,
+      message: vi.defenseScorer.storageShieldMessage,
       category: "core",
     });
   }
@@ -170,8 +175,8 @@ export function evaluateBaseDefense(
     warnings.push({
       id: "chain-crit-warning",
       type: "critical",
-      title: "Nguy cơ sét lan E-Dragon cao!",
-      message: `Phát hiện ${chainAnalysis.criticalCount} cặp công trình đặt cách ≤ 1 ô. Rồng Điện (Electro Dragon) sẽ giật sét chuỗi phá hủy toàn bộ khu vực này. Hãy dãn cách ≥ 2 ô.`,
+      title: vi.defenseScorer.chainCritTitle,
+      message: fmt(vi.defenseScorer.chainCritMessage, { count: chainAnalysis.criticalCount }),
       category: "chain",
     });
   }
@@ -203,16 +208,16 @@ export function evaluateBaseDefense(
   splashScore = Math.min(20, Math.round(splashScore));
 
   if (quadrants.nw === 0 && splashDefenses.length > 0) {
-    warnings.push({ id: "splash-nw", type: "warning", title: "Vùng mù hỏa lực góc Tây Bắc", message: "Góc Tây Bắc (NW) thiếu tháp sát thương lan (Wizard/Bomb Tower/Scattershot). Rất dễ bị bầy Dơi (Bat Wave) hoặc Lính Xương càn quét!", category: "splash" });
+    warnings.push({ id: "splash-nw", type: "warning", title: vi.defenseScorer.splashBlindSpots.nwTitle, message: vi.defenseScorer.splashBlindSpots.nwMessage, category: "splash" });
   }
   if (quadrants.ne === 0 && splashDefenses.length > 0) {
-    warnings.push({ id: "splash-ne", type: "warning", title: "Vùng mù hỏa lực góc Đông Bắc", message: "Góc Đông Bắc (NE) thiếu tháp sát thương diện rộng. Cần điều động thêm Wizard Tower sang góc này.", category: "splash" });
+    warnings.push({ id: "splash-ne", type: "warning", title: vi.defenseScorer.splashBlindSpots.neTitle, message: vi.defenseScorer.splashBlindSpots.neMessage, category: "splash" });
   }
   if (quadrants.sw === 0 && splashDefenses.length > 0) {
-    warnings.push({ id: "splash-sw", type: "warning", title: "Vùng mù hỏa lực góc Tây Nam", message: "Góc Tây Nam (SW) thiếu phòng thủ sát thương lan.", category: "splash" });
+    warnings.push({ id: "splash-sw", type: "warning", title: vi.defenseScorer.splashBlindSpots.swTitle, message: vi.defenseScorer.splashBlindSpots.swMessage, category: "splash" });
   }
   if (quadrants.se === 0 && splashDefenses.length > 0) {
-    warnings.push({ id: "splash-se", type: "warning", title: "Vùng mù hỏa lực góc Đông Nam", message: "Góc Đông Nam (SE) thiếu phòng thủ sát thương lan.", category: "splash" });
+    warnings.push({ id: "splash-se", type: "warning", title: vi.defenseScorer.splashBlindSpots.seTitle, message: vi.defenseScorer.splashBlindSpots.seMessage, category: "splash" });
   }
 
   // --- 4. HỆ SỐ VỊ TRÍ BẪY (Max 15 Điểm) ---
@@ -232,8 +237,8 @@ export function evaluateBaseDefense(
     warnings.push({
       id: "th-missing",
       type: "critical",
-      title: "Thiếu Town Hall",
-      message: "Bạn chưa đặt Town Hall. Hãy kéo thả Town Hall vào bản đồ.",
+      title: vi.defenseScorer.thMissingTitle,
+      message: vi.defenseScorer.thMissingMessage,
       category: "th",
     });
   }
@@ -249,8 +254,8 @@ export function evaluateBaseDefense(
       warnings.push({
         id: "tornado-far",
         type: "tip",
-        title: "Bẫy Lốc Xoáy (Tornado) đặt quá xa Town Hall",
-        message: "Nên đặt Tornado Trap trong phạm vi 5 ô quanh Town Hall hoặc Monolith để bẫy Blimp Super Archer / Blizzard.",
+        title: vi.defenseScorer.tornadoFarTitle,
+        message: vi.defenseScorer.tornadoFarMessage,
         category: "trap",
       });
     }
@@ -290,8 +295,8 @@ export function evaluateBaseDefense(
     warnings.push({
       id: "trap-isolated",
       type: "tip",
-      title: "Bẫy chưa tối ưu điểm nghẽn",
-      message: "Hãy kẹp Bom Khổng Lồ và Bẫy Lò Xo giữa 2 công trình phòng thủ để đảm bảo lính Hog Rider / Miner / Valkyrie bắt buộc phải dẫm vào.",
+      title: vi.defenseScorer.trapIsolatedTitle,
+      message: vi.defenseScorer.trapIsolatedMessage,
       category: "trap",
     });
   }
@@ -313,8 +318,8 @@ export function evaluateBaseDefense(
       warnings.push({
         id: "th-exposed",
         type: "warning",
-        title: "Town Hall đặt quá sát mép bản đồ",
-        message: "Town Hall đang ở viền ngoài cùng, rất dễ bị địch tỉa ăn 1 sao miễn phí bằng Archer Queen hoặc Flame Flinger.",
+        title: vi.defenseScorer.thExposedTitle,
+        message: vi.defenseScorer.thExposedMessage,
         category: "th",
       });
     }
@@ -323,8 +328,8 @@ export function evaluateBaseDefense(
     warnings.push({
       id: "no-th",
       type: "critical",
-      title: "Chưa đặt Town Hall!",
-      message: "Hãy đặt Town Hall để làm trung tâm bố cục của làng.",
+      title: vi.defenseScorer.noThTitle,
+      message: vi.defenseScorer.noThMessage,
       category: "th",
     });
   }
@@ -333,28 +338,28 @@ export function evaluateBaseDefense(
   const totalScore = Math.min(100, Math.max(0, coreScore + chainScore + splashScore + trapScore + thScore));
 
   let tier: "S" | "A" | "B" | "C" | "D" = "C";
-  let tierTitle = "Bố cục cơ bản";
+  let tierTitle: string = vi.defenseScorer.tiers.basic;
   let tierColor = "#e67e22";
 
   if (totalScore >= 90) {
     tier = "S";
-    tierTitle = "Tuyệt vời (Bố cục chuẩn)";
+    tierTitle = vi.defenseScorer.tiers.s;
     tierColor = "#2ecc71";
   } else if (totalScore >= 75) {
     tier = "A";
-    tierTitle = "Rất tốt (Phân bổ phòng thủ tốt)";
+    tierTitle = vi.defenseScorer.tiers.a;
     tierColor = "#3498db";
   } else if (totalScore >= 60) {
     tier = "B";
-    tierTitle = "Khá tốt (Cần tối ưu thêm bẫy/dãn cách)";
+    tierTitle = vi.defenseScorer.tiers.b;
     tierColor = "#f1c40f";
   } else if (totalScore >= 45) {
     tier = "C";
-    tierTitle = "Trung bình (Có nhiều lỗ hổng)";
+    tierTitle = vi.defenseScorer.tiers.c;
     tierColor = "#e67e22";
   } else {
     tier = "D";
-    tierTitle = "Cần cải thiện (Nhiều điểm nghẽn)";
+    tierTitle = vi.defenseScorer.tiers.d;
     tierColor = "#e74c3c";
   }
 
@@ -368,38 +373,38 @@ export function evaluateBaseDefense(
     breakdown: {
       core: {
         id: "core",
-        name: "Hệ số Cốt lõi & Khiên thịt",
+        name: vi.defenseScorer.breakdown.core.name,
         score: coreScore,
         maxScore: 30,
-        description: "Dãn cách trụ chủ lực (≥3 ô) & kho chứa HP dày che chắn",
+        description: vi.defenseScorer.breakdown.core.description,
       },
       chain: {
         id: "chain",
-        name: "Chống sét lan (Electro Dragon)",
+        name: vi.defenseScorer.breakdown.chain.name,
         score: chainScore,
         maxScore: 20,
-        description: "Triệt tiêu các cặp công trình sát nhau (khoảng cách ≥2 ô)",
+        description: vi.defenseScorer.breakdown.chain.description,
       },
       splash: {
         id: "splash",
-        name: "Phủ sóng Sát thương lan",
+        name: vi.defenseScorer.breakdown.splash.name,
         score: splashScore,
         maxScore: 20,
-        description: "Phân bổ tháp Wizard/Bomb/Scattershot đều 4 góc bản đồ",
+        description: vi.defenseScorer.breakdown.splash.description,
       },
       trap: {
         id: "trap",
-        name: "Hiệu quả Bẫy & Điểm nghẽn",
+        name: vi.defenseScorer.breakdown.trap.name,
         score: trapScore,
         maxScore: 15,
-        description: "Kẹp bẫy giữa trụ phòng thủ & Tornado bảo vệ Town Hall",
+        description: vi.defenseScorer.breakdown.trap.description,
       },
       th: {
         id: "th",
-        name: "Vị trí & Bảo vệ Town Hall",
+        name: vi.defenseScorer.breakdown.th.name,
         score: thScore,
         maxScore: 15,
-        description: "Vị trí chiến lược chống 2-3 sao",
+        description: vi.defenseScorer.breakdown.th.description,
       },
     },
     warnings,

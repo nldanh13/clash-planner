@@ -23,6 +23,11 @@ import {
   type Rect,
   type TileMasks,
 } from "./deploymentZones";
+import { vi } from "../../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 export type DeploymentSeverity = "critical" | "warning" | "info";
 
@@ -67,7 +72,7 @@ export function classifyHoleSeverity(
   if (purpose === "showcase") {
     return {
       severity: "info",
-      reason: "Khoảng trống có chủ đích trong base Showcase/Nghệ thuật — không tính là lỗi, chỉ hiển thị tham khảo.",
+      reason: vi.deploymentRisk.showcaseIntentional,
       displayType: "intentional-pocket",
     };
   }
@@ -75,7 +80,7 @@ export function classifyHoleSeverity(
   if (purpose === "progress") {
     return {
       severity: "info",
-      reason: "Base Quy hoạch nâng cấp không ưu tiên vùng triển khai — chỉ mang tính tham khảo.",
+      reason: vi.deploymentRisk.progressNote,
       displayType: "internal-hole",
     };
   }
@@ -89,13 +94,13 @@ export function classifyHoleSeverity(
     if (distToResource !== null && distToResource <= RESOURCE_PROXIMITY_TILES) {
       return {
         severity: "critical",
-        reason: `Lỗ thả quân cách kho tài nguyên chỉ ${distToResource} ô — địch có thể thả quân đột kích thẳng vào kho Vàng/Elixir/Dark Elixir.`,
+        reason: fmt(vi.deploymentRisk.farmingNearResource, { distance: distToResource }),
         displayType: "internal-hole",
       };
     }
     return {
       severity: "warning",
-      reason: "Lỗ thả quân nằm ngoài phạm vi bảo vệ kho tài nguyên — chấp nhận được cho base cày tài nguyên.",
+      reason: vi.deploymentRisk.farmingAwayFromResource,
       displayType: "internal-hole",
     };
   }
@@ -105,7 +110,7 @@ export function classifyHoleSeverity(
   if (dist !== null && dist <= CRITICAL_HOLE_TH_DISTANCE) {
     return {
       severity: "critical",
-      reason: `Lỗ thả quân cách Town Hall chỉ ${dist} ô — địch có thể đột kích thẳng vào lõi base, bỏ qua funnel và bẫy.`,
+      reason: fmt(vi.deploymentRisk.criticalNearTownHall, { distance: dist }),
       displayType: "internal-hole",
     };
   }
@@ -113,8 +118,8 @@ export function classifyHoleSeverity(
     severity: "warning",
     reason:
       dist !== null
-        ? `Lỗ thả quân cách Town Hall ${dist} ô — chưa chạm lõi nhưng vẫn là một điểm hở phòng thủ.`
-        : "Phát hiện lỗ thả quân bên trong bố cục (không xác định được khoảng cách tới Town Hall).",
+        ? fmt(vi.deploymentRisk.warningWithDistance, { distance: dist })
+        : vi.deploymentRisk.warningUnknownDistance,
     displayType: "internal-hole",
   };
 }
@@ -256,11 +261,11 @@ export function getDeploymentWarnings(
     warnings.push({
       id: "deployment-internal-hole",
       type: criticalCount > 0 ? "critical" : "warning",
-      title: `Phát hiện ${total} lỗ thả quân bên trong base`,
+      title: fmt(vi.deploymentRisk.holeWarningTitle, { count: total }),
       message:
         nearest !== null
-          ? `Lỗ nguy hiểm nhất cách Town Hall ${nearest} ô. Địch có thể thả quân thẳng vào giữa base qua khe hở này, bỏ qua toàn bộ tường và bẫy funnel.`
-          : `Có ${total} lỗ thả quân bên trong bố cục.`,
+          ? fmt(vi.deploymentRisk.holeWarningMessageWithDistance, { distance: nearest })
+          : fmt(vi.deploymentRisk.holeWarningMessageNoDistance, { count: total }),
       category: "core",
     });
   }
@@ -269,9 +274,8 @@ export function getDeploymentWarnings(
     warnings.push({
       id: "deployment-corridor",
       type: "warning",
-      title: `${corridorRegions.length} hành lang triển khai xuyên sâu vào base`,
-      message:
-        "Khoảng cách giữa các công trình/tường quá rộng (≥3 ô trống liên tiếp) tạo thành dải triển khai kéo dài từ ngoài bản đồ vào gần lõi base.",
+      title: fmt(vi.deploymentRisk.corridorWarningTitle, { count: corridorRegions.length }),
+      message: vi.deploymentRisk.corridorWarningMessage,
       category: "core",
     });
   }
@@ -280,8 +284,8 @@ export function getDeploymentWarnings(
     warnings.push({
       id: "deployment-intentional-pocket",
       type: "tip",
-      title: `${intentionalCount} khoảng trống có chủ đích trong base nghệ thuật`,
-      message: "Các khoảng trống này được coi là chủ đích thẩm mỹ cho base Showcase/Nghệ thuật, không bị tính là lỗi.",
+      title: fmt(vi.deploymentRisk.intentionalPocketTitle, { count: intentionalCount }),
+      message: vi.deploymentRisk.intentionalPocketMessage,
       category: "core",
     });
   }
@@ -302,7 +306,7 @@ export function isDeploymentReadyForPurpose(
   for (const region of holeRegions) {
     const { severity } = classifyHoleSeverity(region, buildings, purpose, ruleset);
     if (severity === "critical") {
-      return { ready: false, reason: "Còn lỗ thả quân nguy hiểm gần Town Hall/lõi base." };
+      return { ready: false, reason: vi.deploymentRisk.notReadyReason };
     }
   }
   return { ready: true };
