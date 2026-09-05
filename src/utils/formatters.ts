@@ -58,7 +58,7 @@ export const itemKindLabel: Record<UpgradeItem["kind"], string> = {
   defense: "Phòng thủ",
   trap: "Bẫy",
   wall: "Tường",
-  hero: "Tướng",
+  hero: "Hero",
   troop: "Quân",
   spell: "Phép",
   siege: "Máy công thành",

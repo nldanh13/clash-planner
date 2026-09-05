@@ -37,7 +37,7 @@ export function Roadmap({ player, loading }: RoadmapProps) {
           <>
             <Info />
             <h1>Chưa có dữ liệu người chơi</h1>
-            <p>Nhập Player Tag ở trên rồi bấm "Tải tài khoản" để xem roadmap Town Hall 1 → 18 theo tài khoản của bạn.</p>
+            <p>Nhập Player Tag ở trên rồi bấm "Đồng bộ hồ sơ" để xem roadmap Town Hall 1 → 18 theo tài khoản của bạn.</p>
           </>
         )}
       </section>

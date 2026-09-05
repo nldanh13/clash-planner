@@ -20,7 +20,7 @@ export const PWAInstallButton: React.FC = () => {
         title="Cài đặt ứng dụng vào máy"
       >
         <Download className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Cài đặt App</span>
+        <span className="hidden sm:inline">Cài đặt ứng dụng</span>
       </button>
     );
   }
@@ -35,7 +35,7 @@ export const PWAInstallButton: React.FC = () => {
           title="Hướng dẫn cài đặt trên iOS"
         >
           <Smartphone className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Cài iOS</span>
+          <span className="hidden sm:inline">Cài đặt iOS</span>
         </button>
 
         {showIOSGuide && (

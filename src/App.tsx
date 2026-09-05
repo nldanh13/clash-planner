@@ -145,7 +145,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand"><span className="crest"><ShieldCheck /></span><div><strong>Clash Path</strong><small>Đồng bộ từ War Report</small></div></div>
         <form className="searchbox" onSubmit={e => { e.preventDefault(); loadPlayer() }}>
-          <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập Player Tag, ví dụ #R0CV8RVU2" aria-label="Player Tag" /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : "Tải tài khoản"}</button>
+          <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập Player Tag, ví dụ #R0CV8RVU2" aria-label="Player Tag" /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : "Đồng bộ hồ sơ"}</button>
         </form>
         <div className="flex items-center gap-2">
           <PWAInstallButton />
@@ -157,10 +157,10 @@ export default function App() {
 
       {error && <div className="error-banner"><AlertTriangle /><span>{error}</span></div>}
       {cacheWarning && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678" }}>
-        <Info /><span>Hệ thống chỉ có thể tìm thấy Player Tag hợp lệ nếu tài khoản đó đã được tìm kiếm ít nhất một lần trên War Report. Thử mở hồ sơ của bạn trên trang war-report.com trước, sau đó quay lại đây.</span>
+        <Info /><span>Không tìm thấy Player Tag này trên War Report. Hệ thống chỉ đồng bộ được các tài khoản đã từng được tra cứu trên war-report.com — thử mở hồ sơ của bạn ở đó trước, rồi quay lại đây.</span>
       </div>}
       {isStale && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#3498db17", borderColor: "#3498db50", color: "#85c1e9" }}>
-        <Info /><span>Dữ liệu hiển thị là bản lưu trên máy từ lần đồng bộ trước (có thể đã cũ). Hãy bấm "Tải tài khoản" hoặc nút Làm mới góc trên bên phải để cập nhật số liệu mới nhất.</span>
+        <Info /><span>Dữ liệu đang hiển thị là bản lưu từ lần đồng bộ trước, có thể đã cũ. Bấm "Đồng bộ hồ sơ" hoặc biểu tượng đồng bộ ở góc trên bên phải để cập nhật số liệu mới nhất.</span>
       </div>}
       {warnings.length > 0 && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678" }}>
         <AlertTriangle />
@@ -182,7 +182,7 @@ export default function App() {
         <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>Upgrade Tracker</button>
         <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>Roadmap TH1–18</button>
         <button className={tab === "base-planner" ? "active" : ""} onClick={() => handleTabChange("base-planner")}>
-          Base Planner (Lưới 44x44)
+          Base Planner (Lưới 44×44)
         </button>
       </nav>
 
@@ -204,9 +204,9 @@ export default function App() {
             <span className="road-current">{manualFilled}/{manualUpgradeItems.length} đã nhập · {manualPercent}%</span>
           </div>
           <div className="paste-panel">
-            <p><Info />War Report không cung cấp cấp độ của công trình phòng thủ, bẫy và máy khai thác. Bạn có thể tự nhập tay ở dưới hoặc dùng tool <b>Clash Mini Scraper</b> để lấy dữ liệu json dán vào đây cập nhật hàng loạt.</p>
+            <p><Info />War Report không cung cấp cấp độ của công trình phòng thủ, bẫy và máy khai thác — những mục này bạn cần tự nhập tay ở dưới, hoặc dán dữ liệu JSON xuất ra từ công cụ bên ngoài vào ô dưới đây để cập nhật hàng loạt.</p>
             <div className="paste-controls">
-              <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="Dán mã dữ liệu (JSON) vào đây..." />
+              <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="Dán dữ liệu JSON vào đây..." />
               <button onClick={applyVillagePaste} disabled={!pasteText.trim()}><ClipboardPaste /> Áp dụng</button>
             </div>
             {pasteReport && (

@@ -566,7 +566,7 @@ const TacticalToolbar: React.FC<TacticalToolbarProps> = ({
           <button
             onClick={onExportPNG}
             className="h-[34px] min-h-[34px] flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
-            title="Xuất bản đồ thành file ảnh PNG"
+            title="Xuất bản đồ thành tệp ảnh PNG"
             aria-label="Xuất ảnh PNG"
           >
             <ImageIcon className="w-3.5 h-3.5" />

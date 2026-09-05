@@ -420,11 +420,11 @@ export function AdminPanel() {
                 { id: "all", label: "Tất cả" },
                 { id: "town-halls", label: "Town Hall" },
                 { id: "buildings", label: "Công trình" },
-                { id: "heroes", label: "Tướng" },
-                { id: "troops", label: "Quân & Xe" },
+                { id: "heroes", label: "Hero" },
+                { id: "troops", label: "Quân & Máy công thành" },
                 { id: "spells", label: "Phép" },
                 { id: "equipment", label: "Trang bị" },
-                { id: "pets", label: "Thú cưng" }
+                { id: "pets", label: "Pet" }
               ].map((c) => (
                 <button
                   key={c.id}

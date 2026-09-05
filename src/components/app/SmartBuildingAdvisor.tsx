@@ -122,14 +122,11 @@ export function SmartBuildingAdvisor({
             <select
               className="w-full appearance-none bg-[#070d14] border border-[#ffffff12] text-white text-xs font-semibold rounded-lg pl-3 pr-7 py-1.5 outline-none focus:border-amber-500/50 cursor-pointer"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as any)}
+              onChange={(e) => setCategoryFilter(e.target.value as BuildingCategoryFilter)}
             >
               <option value="all">Tất cả</option>
               <option value="defense">Phòng thủ</option>
-              <option value="hero">Anh hùng</option>
-              <option value="army">Quân đội</option>
-              <option value="resource">Tài nguyên</option>
-              <option value="building">Xây dựng</option>
+              <option value="building">Công trình</option>
               <option value="trap">Bẫy</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />

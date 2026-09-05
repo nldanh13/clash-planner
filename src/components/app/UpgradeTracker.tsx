@@ -580,7 +580,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               </p>
             )}
             <label>
-              <small>Mục tiêu level</small>
+              <small>Cấp mục tiêu</small>
               <input
                 type="number"
                 min={currentPlannerLevel}
@@ -666,7 +666,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 {plannerItem.levels.map(level => {
                   const state = level.level <= currentPlannerLevel ? "done" : level.level <= safeTargetLevel ? "target" : "future";
                   return (
-                    <span key={level.level} className={state} title={`${plannerItem.name} level ${level.level}`}>
+                    <span key={level.level} className={state} title={`${plannerItem.name} cấp ${level.level}`}>
                       {level.level}
                     </span>
                   );
@@ -685,7 +685,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               {plan.steps.length ? (
                 (showAllLevels ? plan.steps : plan.steps.slice(0, LEVEL_TABLE_PREVIEW)).map(step => (
                   <div className="upgrade-row" key={step.level}>
-                    <span><b>{currentPlannerLevel + 1 === step.level ? "Tiếp theo" : "Level"} {step.level}</b></span>
+                    <span><b>{currentPlannerLevel + 1 === step.level ? "Tiếp theo" : "Cấp"} {step.level}</b></span>
                     <span>TH{step.townHall}</span>
                     <span className="flex items-center gap-1.5">
                       {step.resource ? <img src={resourceIcon[step.resource]} alt={step.resource} className="w-3.5 h-3.5 object-contain inline-block" /> : null}

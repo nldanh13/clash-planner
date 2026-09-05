@@ -380,7 +380,7 @@ export function BasePlannerTab({
   const handleExportPNG = async () => {
     try {
       await exportLayoutAsImage(buildings, townHallLevel, activeLayout?.name);
-      showToast("Đã xuất file ảnh PNG bản đồ thành công!");
+      showToast("Đã xuất tệp ảnh PNG bản đồ thành công!");
     } catch {
       showToast("Lỗi khi xuất ảnh bản đồ.");
     }

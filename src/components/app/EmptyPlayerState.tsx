@@ -52,7 +52,7 @@ export function EmptyPlayerState({ loading, message }: { loading: boolean; messa
 
           <p className="text-sm text-[#B0BECA] leading-relaxed mb-6 max-w-md">
             {message ||
-              "Nhập Player Tag ở thanh tìm kiếm phía trên rồi bấm \"Tải tài khoản\" để đồng bộ tình trạng làng, cấp độ Hero, quân, phép và trang bị qua War Report API."}
+              "Nhập Player Tag ở thanh tìm kiếm phía trên rồi bấm \"Đồng bộ hồ sơ\" để lấy tình trạng làng, cấp độ Hero, quân, phép và trang bị qua War Report API."}
           </p>
 
           {/* Quick Guidance Badges */}
