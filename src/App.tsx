@@ -217,7 +217,7 @@ export default function App() {
                   : (pasteReport.changes || []).length === 0 ? t("app.overviewTab.pasteNoChange")
                     : t("app.overviewTab.pasteSuccess", {
                         count: (pasteReport.changes || []).length,
-                        list: (pasteReport.changes || []).map(c => `${c.name} lên Lv ${c.after}`).join(", "),
+                        list: (pasteReport.changes || []).map(c => t("app.overviewTab.pasteChangeItem", { name: c.name, level: c.after })).join(", "),
                       })}
               </div>
             )}

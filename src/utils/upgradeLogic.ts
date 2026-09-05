@@ -1,6 +1,11 @@
 import type { Player } from "../types";
 import { type UpgradeItem, upgradeSources, type UpgradeLane } from "../upgradeData";
 import { emptyCosts, addCosts } from "./formatters";
+import { vi } from "../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 export const trackerKindOrder: UpgradeItem["kind"][] = ["building", "defense", "trap", "hero", "troop", "spell", "siege", "equipment", "pet"];
 
@@ -42,14 +47,15 @@ export function styleScoreFor(item: UpgradeItem, baseScore: number, playstyle: P
 }
 
 export function styleReasonFor(item: UpgradeItem, playstyle: Playstyle, attackFocus: StyleFocus, defenseFocus: StyleFocus) {
-  if (playstyle === "rush" && (item.kind === "defense" || item.kind === "trap")) return "Bỏ qua phòng thủ vì bạn chọn lối chơi tấn công trước.";
-  if (playstyle === "defense" && (item.kind === "hero" || item.kind === "troop" || item.kind === "spell" || item.kind === "siege" || item.kind === "equipment" || item.kind === "pet")) return "Ưu tiên giảm đi vì bạn chọn lối chơi phòng thủ trước.";
-  if (playstyle === "rush-hall" && (item.kind === "defense" || item.kind === "trap" || item.kind === "building")) return "Chỉ tập trung tối đa quân và hero để đẩy Town Hall.";
+  const R = vi.upgradeLogic.styleReasons;
+  if (playstyle === "rush" && (item.kind === "defense" || item.kind === "trap")) return R.rushSkipDefense;
+  if (playstyle === "defense" && (item.kind === "hero" || item.kind === "troop" || item.kind === "spell" || item.kind === "siege" || item.kind === "equipment" || item.kind === "pet")) return R.defenseDeprioritizeArmy;
+  if (playstyle === "rush-hall" && (item.kind === "defense" || item.kind === "trap" || item.kind === "building")) return R.rushHallFocusArmy;
   const atk = attackStyleOfTroop(item);
-  if (atk && atk === attackFocus) return `Bạn chọn đội hình ${atk === "air" ? "trên không" : "mặt đất"} nên lính này được cộng điểm cao.`;
-  if (atk && atk !== attackFocus && attackFocus !== "both") return `Quân lính này không hợp đội hình ${attackFocus === "air" ? "trên không" : "mặt đất"} bạn đang dùng.`;
+  if (atk && atk === attackFocus) return fmt(R.attackFocusMatch, { focus: atk === "air" ? R.focusAir : R.focusGroundAlt });
+  if (atk && atk !== attackFocus && attackFocus !== "both") return fmt(R.attackFocusMismatch, { focus: attackFocus === "air" ? R.focusAir : R.focusGroundAlt });
   const def = defenseFocusOf(item);
-  if (def && def === defenseFocus) return `Bạn tập trung chống ${defenseFocus === "air" ? "trên không" : "mặt đất"} nên công trình này được ưu tiên.`;
+  if (def && def === defenseFocus) return fmt(R.defenseFocusMatch, { focus: defenseFocus === "air" ? R.focusAir : R.focusGroundAlt });
   return null;
 }
 
@@ -118,7 +124,7 @@ export function targetForTownHall(item: UpgradeItem, townHall: number) {
 
 export function lockNoteFor(item: UpgradeItem, playerTownHall: number) {
   if (playerTownHall >= item.unlockTownHall) return null;
-  return `Cần Town Hall ${item.unlockTownHall}`;
+  return fmt(vi.upgradeLogic.unlockNote, { th: item.unlockTownHall });
 }
 
 export type UpgradePhaseKey = "unlock" | "farm" | "hero" | "equipment" | "defense" | "other";
@@ -135,30 +141,31 @@ export function phaseFor(item: UpgradeItem): UpgradePhaseKey {
 }
 
 export function priorityFor(item: UpgradeItem): { score: number, reason: string } {
-  if (item.id === "laboratory") return { score: 1000, reason: "Bắt buộc mở sớm để nâng cấp quân/phép cho các trận đánh và clan war." };
-  if (item.id === "clan-castle") return { score: 990, reason: "Tăng sức chứa xin lính/phép/máy từ Clan, cực kỳ quan trọng." };
-  if (item.id === "army-camp") return { score: 980, reason: "Tăng trực tiếp số lượng lính mang đi đánh." };
-  if (item.id === "pet-house" || item.id === "blacksmith") return { score: 970, reason: "Mở khóa công cụ mạnh mẽ: Pet hỗ trợ Hero và kỹ năng Trang bị mới." };
-  if (item.id.includes("storage")) return { score: 950, reason: "Nâng max kho để đủ tài nguyên chứa nâng cấp các công trình lớn khác." };
-  if (item.kind === "hero") return { score: 900, reason: "Sức mạnh nòng cốt của làng. (Mẹo: Cố giữ cho ít nhất 1-2 hero ngủ liên tục)." };
+  const R = vi.upgradeLogic.priorityReasons;
+  if (item.id === "laboratory") return { score: 1000, reason: R.laboratory };
+  if (item.id === "clan-castle") return { score: 990, reason: R.clanCastle };
+  if (item.id === "army-camp") return { score: 980, reason: R.armyCamp };
+  if (item.id === "pet-house" || item.id === "blacksmith") return { score: 970, reason: R.petHouseOrBlacksmith };
+  if (item.id.includes("storage")) return { score: 950, reason: R.storage };
+  if (item.kind === "hero") return { score: 900, reason: R.hero };
   if (item.lane === "Laboratory") {
-    if (item.kind === "spell") return { score: 850, reason: "Phép là chìa khóa chiến thắng. Hưu tiên nâng những phép bạn hay dùng nhất." };
-    if (item.kind === "troop") return { score: 800, reason: "Quân mạnh giúp farm và war tốt. Tập trung nâng quân chính trong đội hình trước." };
-    return { score: 750, reason: "Nâng cấp khi rảnh." };
+    if (item.kind === "spell") return { score: 850, reason: R.spell };
+    if (item.kind === "troop") return { score: 800, reason: R.troop };
+    return { score: 750, reason: R.labOther };
   }
-  if (item.lane === "Blacksmith") return { score: 880, reason: "Trang bị Hero ảnh hưởng rất lớn đến sát thương và khả năng sống sót." };
-  if (item.lane === "Pet House") return { score: 820, reason: "Cộng dồn đáng kể sức mạnh cho Hero đi kèm." };
-  if (item.id === "eagle-artillery" || item.id === "scattershot" || item.id === "monolith") return { score: 700, reason: "Phòng thủ chủ lực hạng nặng. (Cẩn thận: war weight cao)." };
-  if (item.id === "inferno-tower" || item.id === "x-bow") return { score: 650, reason: "Phòng thủ tuyến giữa quan trọng, sát thương lớn." };
-  if (item.id === "air-defense") return { score: 600, reason: "Rất quan trọng để chặn chiến thuật xả Rồng bay diện rộng." };
-  if (item.kind === "defense") return { score: 500, reason: "Phòng thủ cơ bản (Archer Tower, Cannon, ...)." };
-  if (item.kind === "trap") return { score: 400, reason: "Bẫy nên nâng cuối khi đã max phòng thủ chính để tối ưu thời gian thợ." };
-  return { score: 300, reason: "Công trình kinh tế/phụ, nâng cấp khi thừa thợ hoặc chuẩn bị lên Town Hall." };
+  if (item.lane === "Blacksmith") return { score: 880, reason: R.blacksmith };
+  if (item.lane === "Pet House") return { score: 820, reason: R.petHouse };
+  if (item.id === "eagle-artillery" || item.id === "scattershot" || item.id === "monolith") return { score: 700, reason: R.heavyDefense };
+  if (item.id === "inferno-tower" || item.id === "x-bow") return { score: 650, reason: R.midDefense };
+  if (item.id === "air-defense") return { score: 600, reason: R.airDefense };
+  if (item.kind === "defense") return { score: 500, reason: R.basicDefense };
+  if (item.kind === "trap") return { score: 400, reason: R.trap };
+  return { score: 300, reason: R.other };
 }
 
 export const playstyleHint: Record<Playstyle, string> = {
-  "rush": "Gợi ý ưu tiên quân đội, phép thuật và hero để tấn công hiệu quả nhất, đẩy nhanh lên Town Hall.",
-  "balanced": "Gợi ý cân bằng giữa phòng thủ và tấn công. Ưu tiên các mục tiêu quan trọng trước.",
-  "defense": "Gợi ý tập trung tối đa vào phòng thủ, bẫy và tường. Phù hợp nếu bạn muốn phòng thủ chắc chắn.",
-  "rush-hall": "Gợi ý chỉ tập trung vào quân, hero để liên tục đẩy cấp Town Hall, gần như bỏ qua phòng thủ."
+  "rush": vi.upgradeLogic.playstyleHint.rush,
+  "balanced": vi.upgradeLogic.playstyleHint.balanced,
+  "defense": vi.upgradeLogic.playstyleHint.defense,
+  "rush-hall": vi.upgradeLogic.playstyleHint.rushHall,
 };

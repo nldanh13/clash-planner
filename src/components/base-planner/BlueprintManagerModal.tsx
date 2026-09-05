@@ -335,7 +335,7 @@ export function BlueprintManagerModal({
     const cloned = duplicateLayout(layoutId);
     if (cloned) {
       reloadData();
-      showToast(`Đã tạo bản sao: ${cloned.name}`);
+      showToast(t("basePlanner.manager.toasts.duplicatedNamed", { name: cloned.name }));
     }
   };
 
@@ -343,7 +343,7 @@ export function BlueprintManagerModal({
     const variant = createVariantLayout(layoutId);
     if (variant) {
       reloadData();
-      showToast(`Đã tạo biến thể mới: ${variant.name}`);
+      showToast(t("basePlanner.manager.toasts.variantCreatedNamed", { name: variant.name }));
     }
   };
 
