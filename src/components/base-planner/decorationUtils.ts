@@ -5,19 +5,34 @@
  * Deployment Zone engine already flags as a defensive problem, reusing that exact
  * classification rather than re-deriving anything).
  */
-import { GRID_SIZE } from "./constants";
-import { computeDeploymentAnalysis } from "./deploymentZones";
+import { GRID_SIZE, MAP_BORDER } from "./constants";
+import { computeDeploymentAnalysis, readCell, writeCell } from "./deploymentZones";
 import { DECORATIONS_BY_ID, DECORATIONS_CATALOG } from "./decorationCatalog";
 import type { DecorationDef, PlacedBuilding, PlacedDecoration } from "./types";
 
-function createBoolGrid(size: number): boolean[][] {
+// Decorations, unlike buildings, may sit in the 3-tile grass border beyond
+// the 44x44 buildable grid — that's real Clash of Clans map territory (the
+// area between the base and the true map edge) where the game lets you
+// place trees/statues/obstacles even though nothing can be built there.
+const MAP_MIN = -MAP_BORDER;
+const MAP_MAX = GRID_SIZE + MAP_BORDER; // exclusive upper bound
+
+/**
+ * Grid spanning the full map (buildable area + border). Stored as a plain
+ * DENSE array (never indexed with a raw/possibly-negative coordinate
+ * directly — always through readCell/writeCell from deploymentZones.ts),
+ * since assigning a negative array index permanently downgrades a JS array
+ * to V8's slow "dictionary mode".
+ */
+function createBoolGrid(): boolean[][] {
+  const size = GRID_SIZE + 2 * MAP_BORDER;
   const grid: boolean[][] = new Array(size);
   for (let y = 0; y < size; y++) grid[y] = new Array(size).fill(false);
   return grid;
 }
 
 export function buildDecorationOccupancyMask(decorations: PlacedDecoration[]): boolean[][] {
-  const mask = createBoolGrid(GRID_SIZE);
+  const mask = createBoolGrid();
   for (const d of decorations) {
     const def = DECORATIONS_BY_ID.get(d.decorationId);
     if (!def) continue;
@@ -25,7 +40,7 @@ export function buildDecorationOccupancyMask(decorations: PlacedDecoration[]): b
       for (let c = 0; c < def.width; c++) {
         const y = d.y + r;
         const x = d.x + c;
-        if (y >= 0 && y < GRID_SIZE && x >= 0 && x < GRID_SIZE) mask[y][x] = true;
+        if (y >= MAP_MIN && y < MAP_MAX && x >= MAP_MIN && x < MAP_MAX) writeCell(mask, x, y, true);
       }
     }
   }
@@ -47,10 +62,10 @@ export function isDecorationPlacementFree(
   width: number,
   height: number
 ): boolean {
-  if (x < 0 || y < 0 || x + width > GRID_SIZE || y + height > GRID_SIZE) return false;
+  if (x < MAP_MIN || y < MAP_MIN || x + width > MAP_MAX || y + height > MAP_MAX) return false;
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
-      if (buildingOccupancyMask[y + r][x + c] || decorationOccupancyMask[y + r][x + c]) return false;
+      if (readCell(buildingOccupancyMask, x + c, y + r) || readCell(decorationOccupancyMask, x + c, y + r)) return false;
     }
   }
   return true;
@@ -94,10 +109,13 @@ export function suggestDecorationPlacements(
     maxX = Math.max(maxX, b.x + 1);
     maxY = Math.max(maxY, b.y + 1);
   }
-  const boxMinX = Math.max(0, minX - ringDepth);
-  const boxMinY = Math.max(0, minY - ringDepth);
-  const boxMaxX = Math.min(GRID_SIZE - 1, maxX + ringDepth);
-  const boxMaxY = Math.min(GRID_SIZE - 1, maxY + ringDepth);
+  // Allowed to spill into the grass border ring (down to MAP_MIN/MAP_MAX-1),
+  // same as a real showcase base framing its walls with decorations right up
+  // to the map edge.
+  const boxMinX = Math.max(MAP_MIN, minX - ringDepth);
+  const boxMinY = Math.max(MAP_MIN, minY - ringDepth);
+  const boxMaxX = Math.min(MAP_MAX - 1, maxX + ringDepth);
+  const boxMaxY = Math.min(MAP_MAX - 1, maxY + ringDepth);
 
   // Small decorations (1x1) are far more likely to fit checkerboard gaps than
   // 2x2 ones — try small items first, then use the remaining/larger candidate
@@ -119,7 +137,7 @@ export function suggestDecorationPlacements(
     };
     suggestions.push(placed);
     for (let r = 0; r < def.height; r++) {
-      for (let c = 0; c < def.width; c++) decorationMask[y + r][x + c] = true;
+      for (let c = 0; c < def.width; c++) writeCell(decorationMask, x + c, y + r, true);
     }
     return true;
   };
@@ -129,9 +147,9 @@ export function suggestDecorationPlacements(
   for (let y = boxMinY; y <= boxMaxY && suggestions.length < maxCount; y++) {
     for (let x = boxMinX; x <= boxMaxX && suggestions.length < maxCount; x++) {
       if ((x + y) % 2 !== 0) continue;
-      const regionType = analysis.regionTypeGrid[y]?.[x];
+      const regionType = readCell(analysis.regionTypeGrid, x, y);
       if (regionType !== "external") continue;
-      if (buildingOccupancyMask[y][x] || decorationMask[y][x]) continue;
+      if (readCell(buildingOccupancyMask, x, y) || readCell(decorationMask, x, y)) continue;
 
       const useBig = bigDefs.length > 0 && cycle % 4 === 3;
       const pool = useBig ? bigDefs : smallDefs;

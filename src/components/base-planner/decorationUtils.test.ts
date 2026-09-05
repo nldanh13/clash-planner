@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeDeploymentMasks } from "./deploymentZones";
+import { computeDeploymentMasks, readCell, writeCell } from "./deploymentZones";
 import { DECORATIONS_BY_ID, DECORATIONS_CATALOG } from "./decorationCatalog";
 import {
   buildDecorationOccupancyMask,
@@ -29,11 +29,11 @@ describe("decoration catalog", () => {
 describe("buildDecorationOccupancyMask", () => {
   it("marks the full footprint of a 2x2 decoration", () => {
     const mask = buildDecorationOccupancyMask([d("1", "deco-statue", 10, 10)]);
-    expect(mask[10][10]).toBe(true);
-    expect(mask[10][11]).toBe(true);
-    expect(mask[11][10]).toBe(true);
-    expect(mask[11][11]).toBe(true);
-    expect(mask[9][10]).toBe(false);
+    expect(readCell(mask, 10, 10)).toBe(true);
+    expect(readCell(mask, 11, 10)).toBe(true);
+    expect(readCell(mask, 10, 11)).toBe(true);
+    expect(readCell(mask, 11, 11)).toBe(true);
+    expect(readCell(mask, 10, 9)).toBe(false);
   });
 });
 
@@ -51,11 +51,21 @@ describe("isDecorationPlacementFree", () => {
     expect(isDecorationPlacementFree(occupancyMask, decoMask, 5, 5, 1, 1)).toBe(false);
   });
 
-  it("rejects out-of-bounds placements", () => {
+  it("allows decorations into the 3-tile grass border beyond the buildable grid", () => {
+    // Unlike buildings, decorations may extend into the border ring (real
+    // Clash of Clans lets you place trees/statues right up to the map edge).
     const { occupancyMask } = computeDeploymentMasks([]);
     const decoMask = buildDecorationOccupancyMask([]);
-    expect(isDecorationPlacementFree(occupancyMask, decoMask, 43, 43, 2, 2)).toBe(false);
-    expect(isDecorationPlacementFree(occupancyMask, decoMask, -1, 0, 1, 1)).toBe(false);
+    expect(isDecorationPlacementFree(occupancyMask, decoMask, 43, 43, 2, 2)).toBe(true);
+    expect(isDecorationPlacementFree(occupancyMask, decoMask, -1, 0, 1, 1)).toBe(true);
+    expect(isDecorationPlacementFree(occupancyMask, decoMask, -3, -3, 1, 1)).toBe(true);
+  });
+
+  it("rejects placements beyond the true 50x50 map edge", () => {
+    const { occupancyMask } = computeDeploymentMasks([]);
+    const decoMask = buildDecorationOccupancyMask([]);
+    expect(isDecorationPlacementFree(occupancyMask, decoMask, -4, 0, 1, 1)).toBe(false);
+    expect(isDecorationPlacementFree(occupancyMask, decoMask, 46, 0, 2, 1)).toBe(false);
   });
 });
 
@@ -77,7 +87,7 @@ describe("suggestDecorationPlacements", () => {
       const def = DECORATIONS_BY_ID.get(s.decorationId)!;
       for (let r = 0; r < def.height; r++) {
         for (let c = 0; c < def.width; c++) {
-          expect(occupancyMask[s.y + r][s.x + c]).toBe(false);
+          expect(readCell(occupancyMask, s.x + c, s.y + r)).toBe(false);
         }
       }
     }
@@ -92,8 +102,8 @@ describe("suggestDecorationPlacements", () => {
       const def = DECORATIONS_BY_ID.get(s.decorationId)!;
       for (let r = 0; r < def.height; r++) {
         for (let c = 0; c < def.width; c++) {
-          expect(mask[s.y + r][s.x + c]).toBe(false);
-          mask[s.y + r][s.x + c] = true;
+          expect(readCell(mask, s.x + c, s.y + r)).toBe(false);
+          writeCell(mask, s.x + c, s.y + r, true);
         }
       }
     }

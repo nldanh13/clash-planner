@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { GRID_SIZE } from "./constants";
 import { getTownHallCatalog } from "./catalog";
-import { computeDeploymentMasks } from "./deploymentZones";
+import { computeDeploymentMasks, readCell } from "./deploymentZones";
 import { DECORATIONS_CATALOG } from "./decorationCatalog";
 import { suggestDecorationPlacements } from "./decorationUtils";
 import { autoArrangeRemainingBuildings } from "./generator/decorativeAutoArrange";
@@ -122,7 +122,7 @@ export function DecorativeDesignPanel({
       const key = `${c.x},${c.y}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (occupancyMask[c.y][c.x]) {
+      if (readCell(occupancyMask, c.x, c.y)) {
         skippedCollision++;
         continue;
       }
