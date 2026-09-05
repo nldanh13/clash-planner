@@ -20,6 +20,11 @@ import {
 import { CURRENT_CATALOG_VERSION, getTownHallCatalog, BUILDING_METADATA_MAP } from "./catalog";
 import { PlacementEngine } from "./generator/placementEngine";
 import { PRNG } from "./generator/prng";
+import { vi } from "../../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 export const STORAGE_KEY_LAYOUTS = "coc-base-layouts-v2";
 export const STORAGE_KEY_ACTIVE_ID = "coc-base-active-layout-id";
@@ -43,9 +48,7 @@ export function safeSetLocalStorage(key: string, value: string): void {
       e?.code === 22 ||
       e?.code === 1014
     ) {
-      throw new Error(
-        "Bộ nhớ trình duyệt (localStorage) đã đầy. Hãy dọn bớt bản thiết kế hoặc thùng rác."
-      );
+      throw new Error(vi.layoutStorage.storageFull);
     }
     throw err;
   }
@@ -171,7 +174,7 @@ export function saveLayout(layout: LayoutProject): LayoutProject {
 
   const updatedLayout: LayoutProject = {
     ...layout,
-    name: normalizeLayoutName(layout.name) || `Bố cục TH${layout.townHallLevel}`,
+    name: normalizeLayoutName(layout.name) || fmt(vi.layoutStorage.defaultNameWithTH, { th: layout.townHallLevel }),
     catalogVersion: layout.catalogVersion || CURRENT_CATALOG_VERSION,
     buildings: sanitizedBuildings,
     updatedAt: new Date().toISOString(),
@@ -213,7 +216,7 @@ export function createNewLayout(params: {
 
   const newLayout: LayoutProject = {
     id: generateId(),
-    name: normalizeLayoutName(params.name) || `Bố cục TH${th}`,
+    name: normalizeLayoutName(params.name) || fmt(vi.layoutStorage.defaultNameWithTH, { th }),
     townHallLevel: th,
     purpose: params.purpose || "hybrid",
     creationMethod,
@@ -333,17 +336,17 @@ export function renameLayout(
 ): { success: boolean; error?: string } {
   const clean = normalizeLayoutName(newName);
   if (!clean) {
-    return { success: false, error: "Tên bản thiết kế không được để trống." };
+    return { success: false, error: vi.layoutStorage.nameEmpty };
   }
 
   const all = getAllLayoutsRaw();
   const target = all.find((l) => l.id === layoutId);
   if (!target) {
-    return { success: false, error: "Không tìm thấy bản thiết kế." };
+    return { success: false, error: vi.layoutStorage.layoutNotFound };
   }
 
   if (isLayoutNameDuplicate(clean, all, layoutId)) {
-    return { success: false, error: "Tên bản thiết kế đã tồn tại trong danh sách." };
+    return { success: false, error: vi.layoutStorage.nameDuplicate };
   }
 
   target.name = clean;
@@ -526,7 +529,7 @@ export function restoreCheckpoint(checkpointId: string): LayoutProject | null {
     if (!layout) return null;
 
     // Save automatic checkpoint before rollback
-    createCheckpoint(layout.id, "Trước khi khôi phục checkpoint");
+    createCheckpoint(layout.id, vi.layoutStorage.checkpointBeforeRestore);
 
     layout.buildings = JSON.parse(JSON.stringify(targetCheckpoint.buildings));
     layout.catalogVersion = targetCheckpoint.catalogVersion;
@@ -560,11 +563,11 @@ export function updateLayoutToCurrentCatalog(layoutId: string): {
   const all = getAllLayoutsRaw();
   const layout = all.find((l) => l.id === layoutId);
   if (!layout) {
-    throw new Error("Không tìm thấy bản thiết kế.");
+    throw new Error(vi.layoutStorage.layoutNotFound);
   }
 
   // 1. Create checkpoint before catalog update
-  createCheckpoint(layout.id, "Trước khi cập nhật catalog mới");
+  createCheckpoint(layout.id, vi.layoutStorage.checkpointBeforeCatalogUpdate);
 
   const catalog = getTownHallCatalog(layout.townHallLevel);
   const currentBuildings = [...layout.buildings];
@@ -699,7 +702,7 @@ export function importLibraryJSON(
   } else if (parsed.layout) {
     layoutsToProcess = [parsed.layout];
   } else {
-    throw new Error("Định dạng file JSON thư viện không hợp lệ.");
+    throw new Error(vi.layoutStorage.invalidLibraryFormat);
   }
 
   const all = getAllLayoutsRaw();
@@ -716,11 +719,11 @@ export function importLibraryJSON(
     const { sanitizedBuildings, issues } = validateLayout(rawBuildings, th);
 
     if (issues.some((i) => i.type === "critical")) {
-      errors.push(`Bản "${item.name || "Không tên"}": chứa lỗi cấu trúc nghiêm trọng.`);
+      errors.push(fmt(vi.layoutStorage.criticalStructureError, { name: String(item.name || vi.layoutStorage.unnamedLayout) }));
       continue;
     }
 
-    const rawName = typeof item.name === "string" && item.name.trim() ? item.name.trim() : `TH${th} – Nhập`;
+    const rawName = typeof item.name === "string" && item.name.trim() ? item.name.trim() : `TH${th} – ${vi.basePlanner.labels.methodNameTag.import}`;
     const purpose = (typeof item.purpose === "string" ? item.purpose : "hybrid") as BasePurpose;
     const isDuplicate = isLayoutNameDuplicate(rawName, all);
 
@@ -733,7 +736,7 @@ export function importLibraryJSON(
       if (collisionStrategy === "overwrite") {
         const existingIdx = all.findIndex((l) => normalizeLayoutName(l.name) === normalizeLayoutName(rawName));
         if (existingIdx >= 0) {
-          createCheckpoint(all[existingIdx].id, "Trước khi ghi đè qua Nhập thư viện");
+          createCheckpoint(all[existingIdx].id, vi.layoutStorage.checkpointBeforeLibraryOverwrite);
           all[existingIdx] = {
             ...all[existingIdx],
             townHallLevel: th,
@@ -782,30 +785,30 @@ export function parseImportedLayoutJSON(jsonContent: string): LayoutProject {
   const all = getAllLayoutsRaw();
 
   let targetBuildings: PlacedBuilding[] = [];
-  let name = "Bố cục đã nhập";
+  let name = vi.layoutStorage.importedLayoutName;
   let townHallLevel = 11;
   let purpose: BasePurpose = "hybrid";
 
   if (data.layout && Array.isArray(data.layout.buildings)) {
     const l = data.layout;
-    name = typeof l.name === "string" && l.name.trim() ? l.name.trim() : "Bố cục đã nhập";
+    name = typeof l.name === "string" && l.name.trim() ? l.name.trim() : vi.layoutStorage.importedLayoutName;
     townHallLevel = Math.max(1, Math.min(18, Number(l.townHallLevel) || 11));
     targetBuildings = l.buildings;
     if (l.purpose) purpose = l.purpose;
   } else if (Array.isArray(data.buildings)) {
-    name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : "Bố cục đã nhập";
+    name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : vi.layoutStorage.importedLayoutName;
     townHallLevel = Math.max(1, Math.min(18, Number(data.townHallLevel) || 11));
     targetBuildings = data.buildings;
   } else if (Array.isArray(data)) {
     targetBuildings = data;
   } else {
-    throw new Error("Định dạng file JSON không hợp lệ cho Base Planner.");
+    throw new Error(vi.layoutStorage.invalidBasePlannerJson);
   }
 
   const { sanitizedBuildings, issues } = validateLayout(targetBuildings, townHallLevel);
   if (issues.some((i) => i.type === "critical")) {
     throw new Error(
-      `File JSON có lỗi nghiêm trọng:\n${issues
+      `${vi.layoutStorage.criticalIssuesPrefix}\n${issues
         .filter((i) => i.type === "critical")
         .map((i) => i.message)
         .join("\n")}`
@@ -815,7 +818,7 @@ export function parseImportedLayoutJSON(jsonContent: string): LayoutProject {
   // Ensure unique name: "<Tên> — Bản sao" or next
   const candidate = isLayoutNameDuplicate(name, all)
     ? generateDuplicateName(name, all)
-    : normalizeLayoutName(name) || `TH${townHallLevel} – Nhập 01`;
+    : normalizeLayoutName(name) || `TH${townHallLevel} – ${vi.basePlanner.labels.methodNameTag.import} 01`;
 
   const importedProject: LayoutProject = {
     id: generateId(),

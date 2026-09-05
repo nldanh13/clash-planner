@@ -4,6 +4,7 @@ import type { BaseLayoutData, PlacedBuilding } from "./types";
 import { BUILDING_METADATA_MAP, getAllBuildingLimits, getTownHallCatalog } from "./catalog";
 import { PlacementEngine } from "./generator/placementEngine";
 import { PRNG } from "./generator/prng";
+import { vi } from "../../i18n/locales/vi";
 
 /**
  * Generates and downloads high-resolution PNG of the 44x44 base layout
@@ -48,7 +49,10 @@ export async function exportLayoutAsImage(
   ctx.fillStyle = "#91a0ad";
   ctx.font = "12px 'Segoe UI', Inter, sans-serif";
   ctx.fillText(
-    `Town Hall ${townHallLevel} · ${buildings.length} công trình/vật phẩm · ${new Date().toLocaleDateString("vi-VN")}`,
+    vi.exportUtils.headerSubtitle
+      .replace("{th}", String(townHallLevel))
+      .replace("{count}", String(buildings.length))
+      .replace("{date}", new Date().toLocaleDateString("vi-VN")),
     padding,
     52
   );
@@ -203,11 +207,11 @@ export async function importLayoutFromJSON(file: File): Promise<BaseLayoutData> 
   const parsed = JSON.parse(text);
 
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("Tệp JSON không đúng định dạng.");
+    throw new Error(vi.exportUtils.invalidJsonFormat);
   }
 
   if (!Array.isArray(parsed.buildings)) {
-    throw new Error("Không tìm thấy danh sách công trình trong tệp JSON.");
+    throw new Error(vi.exportUtils.missingBuildingsList);
   }
 
   const validBuildings: PlacedBuilding[] = [];

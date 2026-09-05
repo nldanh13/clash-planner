@@ -3,7 +3,8 @@ import type { Player } from "../types";
 import { type UpgradeItem, type UpgradeLane, upgradeItems } from "../upgradeData";
 import { emptyCosts, addCosts } from "../utils/formatters";
 import { currentLevelFor, targetForTownHall, summarizePlan, priorityFor, styleScoreFor, styleReasonFor, phaseFor, manualKey, trackerKindOrder } from "../utils/upgradeLogic";
-import type { Playstyle, StyleFocus } from "../utils/upgradeLogic";
+import type { Playstyle, StyleFocus, UpgradePhaseKey } from "../utils/upgradeLogic";
+import { useTranslation } from "../i18n";
 
 export const plannerItems = upgradeItems.filter(item => item.kind !== "wall");
 
@@ -26,6 +27,7 @@ export function useUpgradeTracker({
   guestTownHall: number;
   goldPassDiscount: number;
 }) {
+  const { t } = useTranslation();
   const townHallRows = useMemo(() => plannerItems.map(item => {
     const current = currentLevelFor(item, player, manualLevels);
     const target = targetForTownHall(item, maxTownHall);
@@ -85,12 +87,12 @@ export function useUpgradeTracker({
   const suggestTop = useMemo(() => suggestRows.slice(0, 14), [suggestRows]);
 
   const suggestPhases = useMemo(() => {
-    const phases = ["Mở khóa", "Farm/đội đánh", "Hero", "Trang bị/Pet", "Phòng thủ", "Khác"];
-    return phases.map(name => {
-      const rows = suggestRows.filter(row => phaseFor(row.item) === name);
-      return { name, rows, hours: rows.reduce((sum, row) => sum + row.plan.totalHours, 0) };
+    const phaseKeys: UpgradePhaseKey[] = ["unlock", "farm", "hero", "equipment", "defense", "other"];
+    return phaseKeys.map(key => {
+      const rows = suggestRows.filter(row => phaseFor(row.item) === key);
+      return { key, name: t(`upgradeTracker.phases.${key}` as const), rows, hours: rows.reduce((sum, row) => sum + row.plan.totalHours, 0) };
     }).filter(phase => phase.rows.length);
-  }, [suggestRows]);
+  }, [suggestRows, t]);
 
   return {
     townHallRows,

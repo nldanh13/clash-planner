@@ -265,7 +265,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               <div className="flex overflow-x-auto gap-3 pb-2 snap-x w-full">
                 {suggestPhases.map((phase, idx) => (
                   <article
-                    key={phase.name}
+                    key={phase.key}
                     className="flex-shrink-0 w-[180px] md:w-auto md:min-w-[160px] snap-start relative flex items-center gap-3 p-3 rounded-xl border border-[#ffffff10] bg-[#101b25] hover:bg-[#142636] transition-colors"
                   >
                     {idx < suggestPhases.length - 1 && (

@@ -121,15 +121,17 @@ export function lockNoteFor(item: UpgradeItem, playerTownHall: number) {
   return `Cần Town Hall ${item.unlockTownHall}`;
 }
 
-export function phaseFor(item: UpgradeItem) {
+export type UpgradePhaseKey = "unlock" | "farm" | "hero" | "equipment" | "defense" | "other";
+
+export function phaseFor(item: UpgradeItem): UpgradePhaseKey {
   const lane = item.lane;
-  if (lane === "Blacksmith" || lane === "Pet House") return "Trang bị/Pet";
-  if (item.kind === "hero") return "Hero";
-  if (lane === "Laboratory") return "Farm/đội đánh";
-  if (item.kind === "defense" || item.kind === "trap") return "Phòng thủ";
-  if (item.kind === "building" && item.id.includes("storage")) return "Mở khóa";
-  if (item.id === "laboratory" || item.id === "clan-castle" || item.id === "pet-house" || item.id === "blacksmith" || item.id === "army-camp") return "Mở khóa";
-  return "Khác";
+  if (lane === "Blacksmith" || lane === "Pet House") return "equipment";
+  if (item.kind === "hero") return "hero";
+  if (lane === "Laboratory") return "farm";
+  if (item.kind === "defense" || item.kind === "trap") return "defense";
+  if (item.kind === "building" && item.id.includes("storage")) return "unlock";
+  if (item.id === "laboratory" || item.id === "clan-castle" || item.id === "pet-house" || item.id === "blacksmith" || item.id === "army-camp") return "unlock";
+  return "other";
 }
 
 export function priorityFor(item: UpgradeItem): { score: number, reason: string } {

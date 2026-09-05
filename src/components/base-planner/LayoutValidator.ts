@@ -3,6 +3,11 @@ import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
 import { getAllBuildingLimits } from "./buildingLimits";
 import { computeDeploymentAnalysis } from "./deploymentZones";
 import { getDeploymentWarnings } from "./deploymentRisk";
+import { vi } from "../../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 export type ValidationIssueType = "critical" | "warning";
 
@@ -34,12 +39,12 @@ export function validateLayout(buildings: unknown, thLevel: number, purpose?: Ba
   const sanitizedBuildings: PlacedBuilding[] = [];
   
   if (!Array.isArray(buildings)) {
-    issues.push({ type: "critical", message: "Dữ liệu layout không phải là một mảng hợp lệ." });
+    issues.push({ type: "critical", message: vi.layoutValidator.notAnArray });
     return { isValid: false, validBuildings: [], sanitizedBuildings: [], issues, hasCriticals: true, hasWarnings: false };
   }
 
   if (buildings.length > 500) {
-    issues.push({ type: "critical", message: `Số lượng công trình quá lớn (${buildings.length}), vượt giới hạn 500.` });
+    issues.push({ type: "critical", message: fmt(vi.layoutValidator.tooMany, { count: buildings.length }) });
     return { isValid: false, validBuildings: [], sanitizedBuildings: [], issues, hasCriticals: true, hasWarnings: false };
   }
 
@@ -51,27 +56,27 @@ export function validateLayout(buildings: unknown, thLevel: number, purpose?: Ba
   for (let i = 0; i < buildings.length; i++) {
     const b = buildings[i];
     if (!b || typeof b !== "object") {
-      issues.push({ type: "critical", message: `Phần tử thứ ${i + 1} không hợp lệ.` });
+      issues.push({ type: "critical", message: fmt(vi.layoutValidator.invalidElement, { index: i + 1 }) });
       continue;
     }
 
     const { instanceId, buildingId, x, y } = b as Record<string, unknown>;
     if (typeof instanceId !== "string" || !instanceId) {
-      issues.push({ type: "critical", message: `Phần tử thứ ${i + 1} thiếu hoặc sai định dạng instanceId.` });
+      issues.push({ type: "critical", message: fmt(vi.layoutValidator.missingInstanceId, { index: i + 1 }) });
       continue;
     }
     if (seenInstanceIds.has(instanceId)) {
-      issues.push({ type: "critical", instanceId, message: `Trùng lặp mã công trình (instanceId: ${instanceId}).` });
+      issues.push({ type: "critical", instanceId, message: fmt(vi.layoutValidator.duplicateInstanceId, { id: instanceId }) });
       continue;
     }
     seenInstanceIds.add(instanceId);
 
     if (typeof buildingId !== "string" || !BUILDINGS_BY_ID.has(buildingId)) {
-      issues.push({ type: "critical", instanceId, message: `Loại công trình không tồn tại: ${buildingId}.` });
+      issues.push({ type: "critical", instanceId, message: fmt(vi.layoutValidator.unknownBuildingType, { buildingId: String(buildingId) }) });
       continue;
     }
     if (!Number.isFinite(x) || !Number.isFinite(y) || Math.floor(Number(x)) !== x || Math.floor(Number(y)) !== y) {
-      issues.push({ type: "critical", instanceId, message: `Tọa độ x, y không hợp lệ ở công trình ${buildingId}.` });
+      issues.push({ type: "critical", instanceId, message: fmt(vi.layoutValidator.invalidCoordinates, { buildingId }) });
       continue;
     }
 
@@ -80,7 +85,7 @@ export function validateLayout(buildings: unknown, thLevel: number, purpose?: Ba
     const numY = Number(y);
 
     if (numX < 0 || numY < 0 || numX + def.width > GRID_SIZE || numY + def.height > GRID_SIZE) {
-      issues.push({ type: "critical", instanceId, message: `Công trình ${def.name} (${buildingId}) vượt ra ngoài lưới ${GRID_SIZE}x${GRID_SIZE}.` });
+      issues.push({ type: "critical", instanceId, message: fmt(vi.layoutValidator.outOfBounds, { name: def.name, buildingId, size: GRID_SIZE }) });
       continue;
     }
 
@@ -95,7 +100,7 @@ export function validateLayout(buildings: unknown, thLevel: number, purpose?: Ba
     }
 
     if (overlap) {
-      issues.push({ type: "critical", instanceId, message: `Công trình ${def.name} bị chồng lấn với công trình khác.` });
+      issues.push({ type: "critical", instanceId, message: fmt(vi.layoutValidator.overlapping, { name: def.name }) });
       continue;
     }
 
@@ -120,9 +125,9 @@ export function validateLayout(buildings: unknown, thLevel: number, purpose?: Ba
     validBuildings.push(validBuilding);
 
     if (limit === 0) {
-      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} chưa được mở khóa ở TH${thLevel}.` });
+      issues.push({ type: "warning", instanceId, message: fmt(vi.layoutValidator.notUnlocked, { name: def.name, th: thLevel }) });
     } else if (currentCount >= limit) {
-      issues.push({ type: "warning", instanceId, message: `Công trình ${def.name} vượt quá giới hạn số lượng ở TH${thLevel} (Tối đa: ${limit}).` });
+      issues.push({ type: "warning", instanceId, message: fmt(vi.layoutValidator.overLimit, { name: def.name, th: thLevel, limit }) });
     } else {
       sanitizedBuildings.push(validBuilding);
       currentCounts[buildingId] = currentCount + 1;

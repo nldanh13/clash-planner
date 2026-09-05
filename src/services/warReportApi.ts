@@ -1,6 +1,7 @@
 import type { Player } from "../types";
 import { normalizeTag } from "../utils/formatters";
 import { clampInteger } from "../utils/villageImport";
+import { vi } from "../i18n/locales/vi";
 
 export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise<Player> {
   const tag = normalizeTag(rawTag);
@@ -11,11 +12,11 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
   const contentType = res.headers?.get ? (res.headers.get("content-type") || "") : "application/json";
 
   if (!res.ok) {
-    if (res.status === 404) throw new Error("Không tìm thấy người chơi. Hãy kiểm tra lại Player Tag.");
+    if (res.status === 404) throw new Error(vi.warReport.playerNotFound);
     if (res.status === 401 || res.status === 403)
-      throw new Error("Clash of Clans API từ chối quyền truy cập hoặc API Key bị lỗi. Cần kiểm tra lại cấu hình .env (COC_API_TOKEN).");
-    if (res.status === 502) throw new Error("Proxy không thể kết nối đến máy chủ API. Hãy chắc chắn bạn đã cấu hình đúng backend proxy.");
-    if (res.status === 503) throw new Error("Chưa cấu hình COC_API_TOKEN trong môi trường. Vui lòng thêm COC_API_TOKEN trong phần Cài đặt (Secrets).");
+      throw new Error(vi.warReport.apiAccessDenied);
+    if (res.status === 502) throw new Error(vi.warReport.proxyUnreachable);
+    if (res.status === 503) throw new Error(vi.warReport.tokenNotConfigured);
 
     if (contentType.includes("application/json")) {
       try {
@@ -29,26 +30,26 @@ export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise
         }
       }
     }
-    throw new Error(`Máy chủ War Report phản hồi lỗi ${res.status}.`);
+    throw new Error(vi.warReport.serverError.replace("{status}", String(res.status)));
   }
 
   if (res.redirected || (contentType && !contentType.includes("application/json") && !contentType.includes("+json"))) {
-    throw new Error("Phản hồi từ máy chủ không phải JSON (có thể do phiên kết nối hoặc proxy). Vui lòng thử lại.");
+    throw new Error(vi.warReport.nonJsonResponse);
   }
 
   let payload: Partial<Player>;
   try {
     payload = (await res.json()) as Partial<Player>;
   } catch {
-    throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
+    throw new Error(vi.warReport.invalidResponseData);
   }
   if (!payload || typeof payload !== "object" || !Number.isFinite(payload.townHallLevel)) {
-    throw new Error("Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.");
+    throw new Error(vi.warReport.invalidResponseData);
   }
   const data: Player = {
     ...payload,
     tag: typeof payload.tag === "string" ? normalizeTag(payload.tag) : tag,
-    name: typeof payload.name === "string" ? payload.name : "Người chơi",
+    name: typeof payload.name === "string" ? payload.name : vi.warReport.defaultPlayerName,
     townHallLevel: clampInteger(payload.townHallLevel, 1, 18, 1),
     expLevel: clampInteger(payload.expLevel, 0, 1000, 0),
     trophies: clampInteger(payload.trophies, 0, 100000, 0),

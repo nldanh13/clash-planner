@@ -3,8 +3,10 @@ import type { Player } from "../types";
 import { fetchPlayer } from "../services/warReportApi";
 import { readStoredRecord, writeStoredRecord } from "../storage/playerStorage";
 import { normalizeTag } from "../utils/formatters";
+import { useTranslation } from "../i18n";
 
 export function usePlayer() {
+  const { t } = useTranslation();
   const [input, setInput] = useState(() => localStorage.getItem("coc-last-tag") || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,14 +33,14 @@ export function usePlayer() {
     if (player?.tag) {
       localStorage.removeItem(`coc-cache-${player.tag}`);
       localStorage.removeItem(`coc-cache-time-${player.tag}`);
-      setCacheWarning("Đã xóa dữ liệu lưu trên máy cho tài khoản này.");
+      setCacheWarning(t("player.cacheCleared"));
     }
   }, [player]);
 
   const load = useCallback(async (rawTag = input) => {
     const tag = normalizeTag(rawTag);
     if (tag.length < 4) {
-      setError("Player Tag chưa hợp lệ.");
+      setError(t("player.invalidTag"));
       return;
     }
 
@@ -83,9 +85,9 @@ export function usePlayer() {
       
       if (isUserAborted) return; // ignore completely if user aborted
 
-      const message = isTimeout 
-        ? "Yêu cầu quá hạn (timeout). Máy chủ không phản hồi." 
-        : (e instanceof Error ? e.message : "Không thể kết nối đến máy chủ.");
+      const message = isTimeout
+        ? t("player.timeoutError")
+        : (e instanceof Error ? e.message : t("player.genericConnectionError"));
 
       const cached = localStorage.getItem(`coc-cache-${tag}`);
       const cachedTimeRaw = localStorage.getItem(`coc-cache-time-${tag}`);
@@ -94,7 +96,7 @@ export function usePlayer() {
         try {
           const parsed = JSON.parse(cached) as Player;
           if (!parsed || typeof parsed !== "object" || !Number.isFinite(parsed.townHallLevel)) {
-            throw new Error("Cache hỏng");
+            throw new Error(t("player.corruptedCache"));
           }
           
           setPlayer({
@@ -106,23 +108,23 @@ export function usePlayer() {
           });
           
           setError(message);
-          let timeMsg = "hiện chưa rõ";
+          let timeMsg = t("player.unknownTime");
           if (cachedTimeRaw) {
             const cachedTime = new Date(parseInt(cachedTimeRaw, 10));
             timeMsg = cachedTime.toLocaleString("vi-VN");
             const ageHours = (Date.now() - cachedTime.getTime()) / (1000 * 60 * 60);
             if (ageHours > 24) {
-              timeMsg += ` (hơn ${Math.floor(ageHours)} giờ trước, dữ liệu rất cũ)`;
+              timeMsg += t("player.staleSuffix", { hours: Math.floor(ageHours) });
             }
             setSyncedAt(cachedTime);
           } else {
             setSyncedAt(null);
           }
-          setCacheWarning(`Đang dùng dữ liệu lưu trên máy từ lúc ${timeMsg}.`);
+          setCacheWarning(t("player.usingCachedDataFrom", { time: timeMsg }));
         } catch {
           localStorage.removeItem(`coc-cache-${tag}`);
           localStorage.removeItem(`coc-cache-time-${tag}`);
-          setError(message + " Bản lưu trên máy bị hỏng và đã tự động được xóa.");
+          setError(message + t("player.cacheAutoDeletedSuffix"));
         }
       } else {
         setError(message);

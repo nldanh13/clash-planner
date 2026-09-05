@@ -1,4 +1,5 @@
 import type { UpgradeItem } from "../upgradeData";
+import { vi } from "../i18n/locales/vi";
 
 export type VillagePasteChange = {
   id: string;
@@ -36,14 +37,12 @@ export function extractDataLevels(raw: string): VillagePasteData {
   const start = raw.indexOf("{"),
     end = raw.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start)
-    throw new Error("Không tìm thấy dữ liệu JSON hợp lệ trong nội dung đã dán.");
+    throw new Error(vi.villageImport.noJsonFound);
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw.slice(start, end + 1));
   } catch {
-    throw new Error(
-      "Dữ liệu dán vào không phải JSON hợp lệ. Hãy dán đúng nội dung đã Copy ở Cài đặt > More Settings > Data Export trong game."
-    );
+    throw new Error(vi.villageImport.invalidJson);
   }
   const levels = new Map<number, number>();
   const builderBaseIds = new Set<number>();

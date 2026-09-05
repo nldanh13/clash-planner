@@ -324,26 +324,27 @@ export function generateDuplicateName(
 ): string {
   const trimmed = normalizeLayoutName(sourceName);
   let base = trimmed;
+  const copySuffix = vi.basePlanner.labels.copySuffix;
   // Match any existing copy pattern like " — Bản sao" or " — Bản sao 2"
-  const copyMatch = base.match(/^(.*?)(?:\s*[—–-]\s*Bản sao(?:\s*(\d+))?)$/i);
+  const copyMatch = base.match(new RegExp(`^(.*?)(?:\\s*[—–-]\\s*${copySuffix}(?:\\s*(\\d+))?)$`, "i"));
   if (copyMatch) {
     base = copyMatch[1].trim();
   }
 
-  const candidateFirst = `${base} — Bản sao`;
+  const candidateFirst = `${base} — ${copySuffix}`;
   if (!isLayoutNameDuplicate(candidateFirst, existingLayouts, excludeId)) {
     return candidateFirst;
   }
 
   let counter = 2;
   while (counter <= 999) {
-    const candidateNext = `${base} — Bản sao ${counter}`;
+    const candidateNext = `${base} — ${copySuffix} ${counter}`;
     if (!isLayoutNameDuplicate(candidateNext, existingLayouts, excludeId)) {
       return candidateNext;
     }
     counter++;
   }
-  return `${base} — Bản sao ${Date.now()}`;
+  return `${base} — ${copySuffix} ${Date.now()}`;
 }
 
 /**
@@ -357,7 +358,8 @@ export function generateVariantName(
 ): string {
   const trimmed = normalizeLayoutName(sourceName);
   let base = trimmed;
-  const variantMatch = base.match(/^(.*?)(?:\s*[—–-]\s*Biến thể(?:\s*(\d+))?|\s*\(Biến thể(?:\s*(\d+))?\))$/i);
+  const variantSuffix = vi.basePlanner.labels.variantSuffix;
+  const variantMatch = base.match(new RegExp(`^(.*?)(?:\\s*[—–-]\\s*${variantSuffix}(?:\\s*(\\d+))?|\\s*\\(${variantSuffix}(?:\\s*(\\d+))?\\))$`, "i"));
   if (variantMatch) {
     base = variantMatch[1].trim();
   }
@@ -365,13 +367,13 @@ export function generateVariantName(
   let counter = 1;
   while (counter <= 999) {
     const pad = String(counter).padStart(2, "0");
-    const candidate = `${base} (Biến thể ${pad})`;
+    const candidate = `${base} (${variantSuffix} ${pad})`;
     if (!isLayoutNameDuplicate(candidate, existingLayouts, excludeId)) {
       return candidate;
     }
     counter++;
   }
-  return `${base} (Biến thể ${Date.now()})`;
+  return `${base} (${variantSuffix} ${Date.now()})`;
 }
 
 /**

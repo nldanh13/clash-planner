@@ -1,5 +1,6 @@
 import React, { Component, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { vi } from "../../i18n/locales/vi";
 
 interface Props {
   children: ReactNode;
@@ -39,10 +40,10 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="flex flex-col items-center justify-center p-6 text-center bg-slate-900/90 border border-red-500/30 rounded-xl m-4 text-slate-200">
           <AlertTriangle className="w-10 h-10 text-amber-400 mb-3" />
           <h3 className="text-base font-bold text-amber-200 mb-1">
-            {this.props.fallbackTitle || "Đã xảy ra lỗi khi hiển thị sa bàn"}
+            {this.props.fallbackTitle || vi.errorBoundary.title}
           </h3>
           <p className="text-xs text-slate-400 mb-4 max-w-md">
-            {this.props.fallbackMessage || "Hệ thống đã cách ly lỗi để tránh gián đoạn trải nghiệm. Bạn có thể khôi phục lại góc nhìn."}
+            {this.props.fallbackMessage || vi.errorBoundary.message}
           </p>
           <button
             type="button"
@@ -50,7 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-lg"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Khôi phục góc nhìn</span>
+            <span>{vi.errorBoundary.reset}</span>
           </button>
         </div>
       );
