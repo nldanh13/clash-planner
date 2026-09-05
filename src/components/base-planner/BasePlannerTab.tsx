@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FolderOpen,
   LayoutGrid,
+  LoaderCircle,
   Minimize,
   Plus,
   Shield,
@@ -38,6 +39,8 @@ import { IsometricGridBoard } from "./IsometricGridBoard";
 import { DefenseScorePanel } from "./DefenseScorePanel";
 import { DecorativeDesignPanel } from "./DecorativeDesignPanel";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
+import { SignInRequiredGate } from "./SignInRequiredGate";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface BasePlannerTabProps {
   initialTownHall?: number;
@@ -48,6 +51,11 @@ export function BasePlannerTab({
   initialTownHall = 11,
   onBackToPreviousTab,
 }: BasePlannerTabProps) {
+  // Layouts persist to the signed-in user's Firestore doc (see useCloudSync) —
+  // a guest's work only lives in this browser's localStorage, so the whole tab
+  // is gated behind sign-in rather than risking silent data loss.
+  const { user, loading: authLoading } = useAuth();
+
   // Active Layout state: auto-load last active or first layout if available
   const [activeLayout, setActiveLayout] = useState<LayoutProject | null>(() => {
     const activeId = getActiveLayoutId();
@@ -490,6 +498,22 @@ export function BasePlannerTab({
     if (settings.showChainLightning === "none") return { dangerPairs: [] };
     return scanChainLightningHazards(buildings, 2);
   }, [buildings, settings.showChainLightning]);
+
+  if (authLoading) {
+    return (
+      <section className="base-planner-module flex items-center justify-center !min-h-[380px]">
+        <LoaderCircle className="w-6 h-6 text-amber-400 animate-spin" />
+      </section>
+    );
+  }
+
+  if (!user) {
+    return (
+      <section className="base-planner-module">
+        <SignInRequiredGate onBackToPreviousTab={onBackToPreviousTab} />
+      </section>
+    );
+  }
 
   return (
     <section className="base-planner-module">
