@@ -1,22 +1,17 @@
 import { useCallback, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useTranslation, type TranslationKey } from "../i18n";
 
 /**
  * Firebase auth error codes worth a specific, human-readable message.
  * Shared by every sign-in button so the wording never drifts between them.
  */
-function describeSignInError(error: unknown): string {
+function describeSignInError(error: unknown, t: (key: TranslationKey) => string): string {
   const code = (error as { code?: string } | undefined)?.code;
-  if (code === "auth/popup-blocked") {
-    return "Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup cho trang này rồi thử lại.";
-  }
-  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-    return "Cửa sổ đăng nhập đã bị đóng trước khi hoàn tất. Bấm lại để thử tiếp.";
-  }
-  if (code === "auth/network-request-failed") {
-    return "Không thể kết nối tới máy chủ đăng nhập. Kiểm tra lại mạng rồi thử lại.";
-  }
-  return "Đăng nhập không thành công. Vui lòng thử lại.";
+  if (code === "auth/popup-blocked") return t("auth.errors.popupBlocked");
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return t("auth.errors.popupClosed");
+  if (code === "auth/network-request-failed") return t("auth.errors.networkFailed");
+  return t("auth.errors.generic");
 }
 
 /**
@@ -28,6 +23,7 @@ function describeSignInError(error: unknown): string {
  */
 export function useGoogleSignIn() {
   const { signInWithGoogle } = useAuth();
+  const { t } = useTranslation();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -37,11 +33,11 @@ export function useGoogleSignIn() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      setErrorMessage(describeSignInError(error));
+      setErrorMessage(describeSignInError(error, t));
     } finally {
       setIsSigningIn(false);
     }
-  }, [signInWithGoogle]);
+  }, [signInWithGoogle, t]);
 
   const clearError = useCallback(() => setErrorMessage(null), []);
 

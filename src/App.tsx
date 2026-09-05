@@ -21,6 +21,7 @@ import { PWAInstallButton } from "./components/PWAInstallButton";
 import { UserMenu } from "./components/UserMenu";
 import { useCloudSync } from "./hooks/useCloudSync";
 import { HomeTab } from "./components/app/HomeTab";
+import { useTranslation } from "./i18n";
 
 export type Tab = "home" | "overview" | "planner" | "roadmap" | "base-planner" | "admin";
 
@@ -35,6 +36,7 @@ const rosterEquipment = upgradeItems.filter(i => i.kind === "equipment")
   .sort((a, b) => a.unlockTownHall - b.unlockTownHall || (a.owner || "").localeCompare(b.owner || "") || a.name.localeCompare(b.name));
 
 export default function App() {
+  const { t } = useTranslation();
   useCloudSync();
   const [tab, setTab] = useState<Tab>("home");
   const [prevTab, setPrevTab] = useState<Tab>("home");
@@ -134,7 +136,7 @@ export default function App() {
       setPasteText("");
       setPasteReport({ changes, updated: changes.length });
     } catch (err: any) {
-      setPasteReport({ error: err?.message || "Dữ liệu không hợp lệ.", changes: [] });
+      setPasteReport({ error: err?.message || t("app.overviewTab.pasteInvalid"), changes: [] });
     }
   };
 
@@ -143,13 +145,13 @@ export default function App() {
   return (
     <main className={`app ${tab === "base-planner" ? "base-planner-full" : ""}`}>
       <header className="topbar">
-        <div className="brand"><span className="crest"><ShieldCheck /></span><div><strong>Clash Path</strong><small>Đồng bộ từ War Report</small></div></div>
+        <div className="brand"><span className="crest"><ShieldCheck /></span><div><strong>{t("app.brandName")}</strong><small>{t("app.brandTagline")}</small></div></div>
         <form className="searchbox" onSubmit={e => { e.preventDefault(); loadPlayer() }}>
-          <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập Player Tag, ví dụ #R0CV8RVU2" aria-label="Player Tag" /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : "Đồng bộ hồ sơ"}</button>
+          <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder={t("app.searchPlaceholder")} aria-label={t("common.playerTag")} /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : t("common.syncProfile")}</button>
         </form>
         <div className="flex items-center gap-2">
           <PWAInstallButton />
-          <button className="icon-button" onClick={() => loadPlayer()} disabled={loading} title="Đồng bộ lại"><RefreshCw className={loading ? "spin" : ""} /></button>
+          <button className="icon-button" onClick={() => loadPlayer()} disabled={loading} title={t("app.syncTooltip")}><RefreshCw className={loading ? "spin" : ""} /></button>
           <div className="w-px h-5 bg-[#ffffff1a] mx-1"></div>
           <UserMenu />
         </div>
@@ -157,15 +159,15 @@ export default function App() {
 
       {error && <div className="error-banner"><AlertTriangle /><span>{error}</span></div>}
       {cacheWarning && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678" }}>
-        <Info /><span>Không tìm thấy Player Tag này trên War Report. Hệ thống chỉ đồng bộ được các tài khoản đã từng được tra cứu trên war-report.com — thử mở hồ sơ của bạn ở đó trước, rồi quay lại đây.</span>
+        <Info /><span>{t("app.banners.notFound")}</span>
       </div>}
       {isStale && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#3498db17", borderColor: "#3498db50", color: "#85c1e9" }}>
-        <Info /><span>Dữ liệu đang hiển thị là bản lưu từ lần đồng bộ trước, có thể đã cũ. Bấm "Đồng bộ hồ sơ" hoặc biểu tượng đồng bộ ở góc trên bên phải để cập nhật số liệu mới nhất.</span>
+        <Info /><span>{t("app.banners.stale", { syncLabel: t("common.syncProfile") })}</span>
       </div>}
       {warnings.length > 0 && <div className="error-banner" style={{ marginTop: "10px", backgroundColor: "#ffc85717", borderColor: "#ffc85750", color: "#ffd678" }}>
         <AlertTriangle />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <strong>Cảnh báo dữ liệu:</strong>
+          <strong>{t("app.banners.dataWarningTitle")}</strong>
           <ul style={{ margin: 0, paddingLeft: '20px' }}>
             {warnings.map((w, i) => <li key={i}>{w}</li>)}
           </ul>
@@ -177,12 +179,12 @@ export default function App() {
       )}
 
       <nav className="tabs">
-        <button className={tab === "home" ? "active" : ""} onClick={() => handleTabChange("home")}>Trang chủ</button>
-        <button className={tab === "overview" ? "active" : ""} onClick={() => handleTabChange("overview")}>Hồ sơ người chơi</button>
-        <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>Upgrade Tracker</button>
-        <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>Roadmap TH1–18</button>
+        <button className={tab === "home" ? "active" : ""} onClick={() => handleTabChange("home")}>{t("app.nav.home")}</button>
+        <button className={tab === "overview" ? "active" : ""} onClick={() => handleTabChange("overview")}>{t("app.nav.overview")}</button>
+        <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>{t("app.nav.planner")}</button>
+        <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>{t("app.nav.roadmap")}</button>
         <button className={tab === "base-planner" ? "active" : ""} onClick={() => handleTabChange("base-planner")}>
-          Base Planner (Lưới 44×44)
+          {t("app.nav.basePlanner")}
         </button>
       </nav>
 
@@ -190,37 +192,40 @@ export default function App() {
 
       {tab === "overview" && (!player ? <EmptyPlayerState loading={loading} /> : <>
         <section className="panel army-panel">
-          <p className="roster-hint"><Info />Hiển thị toàn bộ hero/quân/phép/pet/máy công thành có trong game — mục nào chưa mở khóa vẫn hiện, làm mờ và có khóa; rê chuột vào để xem điều kiện mở.</p>
-          <RosterGroup title="Hero" subtitle="Toàn bộ hero hiện có trong game" items={rosterHeroes} player={player} manualLevels={manualLevels} />
-          <RosterGroup title="Quân đội" subtitle="Quân thường dùng để tấn công (không tính quân Super tạm thời)" items={rosterTroops} player={player} manualLevels={manualLevels} />
-          <RosterGroup title="Phép thuật" subtitle="Phép từ Spell Factory và Dark Spell Factory" items={rosterSpells} player={player} manualLevels={manualLevels} />
-          <RosterGroup title="Máy công thành" subtitle="Mở khóa qua Workshop, dùng để phá lớp phòng thủ ngoài" items={rosterSiege} player={player} manualLevels={manualLevels} />
-          <RosterGroup title="Pet" subtitle="Ghép cùng hero qua Pet House" items={rosterPets} player={player} manualLevels={manualLevels} />
-          <RosterGroup title="Trang bị" subtitle="Toàn bộ trang bị hero, nâng qua Blacksmith — xem nhãn hero trên từng thẻ" items={rosterEquipment} player={player} manualLevels={manualLevels} />
+          <p className="roster-hint"><Info />{t("app.overviewTab.rosterHint")}</p>
+          <RosterGroup title={t("common.hero")} subtitle={t("app.overviewTab.groupHeroSubtitle")} items={rosterHeroes} player={player} manualLevels={manualLevels} />
+          <RosterGroup title={t("common.troopsFull")} subtitle={t("app.overviewTab.groupTroopSubtitle")} items={rosterTroops} player={player} manualLevels={manualLevels} />
+          <RosterGroup title={t("app.overviewTab.spellTitle")} subtitle={t("app.overviewTab.groupSpellSubtitle")} items={rosterSpells} player={player} manualLevels={manualLevels} />
+          <RosterGroup title={t("common.siege")} subtitle={t("app.overviewTab.groupSiegeSubtitle")} items={rosterSiege} player={player} manualLevels={manualLevels} />
+          <RosterGroup title={t("common.pet")} subtitle={t("app.overviewTab.groupPetSubtitle")} items={rosterPets} player={player} manualLevels={manualLevels} />
+          <RosterGroup title={t("common.equipment")} subtitle={t("app.overviewTab.groupEquipmentSubtitle")} items={rosterEquipment} player={player} manualLevels={manualLevels} />
         </section>
         <section className="panel village-panel">
           <div className="section-head">
-            <div><p>NHẬP DỮ LIỆU KHÔNG CÓ TRONG API</p><h2>Tình trạng công trình và bẫy</h2></div>
-            <span className="road-current">{manualFilled}/{manualUpgradeItems.length} đã nhập · {manualPercent}%</span>
+            <div><p>{t("app.overviewTab.manualEyebrow")}</p><h2>{t("app.overviewTab.manualTitle")}</h2></div>
+            <span className="road-current">{t("app.overviewTab.manualCountLabel", { filled: manualFilled, total: manualUpgradeItems.length, percent: manualPercent })}</span>
           </div>
           <div className="paste-panel">
-            <p><Info />War Report không cung cấp cấp độ của công trình phòng thủ, bẫy và máy khai thác — những mục này bạn cần tự nhập tay ở dưới, hoặc dán dữ liệu JSON xuất ra từ công cụ bên ngoài vào ô dưới đây để cập nhật hàng loạt.</p>
+            <p><Info />{t("app.overviewTab.pasteDescription")}</p>
             <div className="paste-controls">
-              <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="Dán dữ liệu JSON vào đây..." />
-              <button onClick={applyVillagePaste} disabled={!pasteText.trim()}><ClipboardPaste /> Áp dụng</button>
+              <input value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder={t("app.overviewTab.pastePlaceholder")} />
+              <button onClick={applyVillagePaste} disabled={!pasteText.trim()}><ClipboardPaste /> {t("app.overviewTab.pasteApply")}</button>
             </div>
             {pasteReport && (
               <div className={`paste-report ${pasteReport.error ? "error" : "success"}`}>
                 {pasteReport.error ? pasteReport.error
-                  : (pasteReport.changes || []).length === 0 ? "Dữ liệu hợp lệ nhưng không có cấp độ nào thay đổi."
-                    : `Đã cập nhật ${(pasteReport.changes || []).length} công trình: ${(pasteReport.changes || []).map(c => `${c.name} lên Lv ${c.after}`).join(", ")}.`}
+                  : (pasteReport.changes || []).length === 0 ? t("app.overviewTab.pasteNoChange")
+                    : t("app.overviewTab.pasteSuccess", {
+                        count: (pasteReport.changes || []).length,
+                        list: (pasteReport.changes || []).map(c => `${c.name} lên Lv ${c.after}`).join(", "),
+                      })}
               </div>
             )}
           </div>
           <div className="manual-grid">
             {Object.entries(manualByKind).map(([kind, items]) => (
               <div className="manual-group" key={kind}>
-                <h3>{kind === "building" ? "Tài nguyên & Quân sự" : kind === "defense" ? "Phòng thủ" : "Bẫy"}</h3>
+                <h3>{kind === "building" ? t("app.overviewTab.manualGroupResource") : kind === "defense" ? t("common.defense") : t("common.trap")}</h3>
                 <div className="manual-items">
                   {items.map(item => {
                     const k = manualKey(player, item);
@@ -228,7 +233,7 @@ export default function App() {
                     const max = item.levels[item.levels.length - 1]?.level || 1;
                     return (
                       <label key={item.id}>
-                        <span>{item.name} <em>Max {max}</em></span>
+                        <span>{item.name} <em>{t("app.overviewTab.manualMax", { max })}</em></span>
                         <input type="number" min="0" max={max} value={val || ""} placeholder="0" onChange={e => handleManualChange(item, e.target.value)} />
                       </label>
                     );
@@ -236,7 +241,7 @@ export default function App() {
                 </div>
               </div>
             ))}
-            {manualUpgradeItems.length === 0 && <p className="no-data">Chưa mở khóa công trình nào ở mốc Town Hall này.</p>}
+            {manualUpgradeItems.length === 0 && <p className="no-data">{t("app.overviewTab.manualEmpty")}</p>}
           </div>
         </section>
       </>)}
@@ -255,16 +260,16 @@ export default function App() {
         <footer>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px" }}>
-              <span>Dữ liệu người chơi: War Report / API chính thức Clash of Clans</span>
-              <span>Tiến độ thủ công lưu riêng theo từng Player Tag</span>
-              <button 
-                onClick={() => handleTabChange("admin")} 
+              <span>{t("app.footer.dataSource")}</span>
+              <span>{t("app.footer.manualProgressNote")}</span>
+              <button
+                onClick={() => handleTabChange("admin")}
                 style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px" }}
               >
-                <ShieldCheck size={12} /> Admin
+                <ShieldCheck size={12} /> {t("app.footer.admin")}
               </button>
             </div>
-            <span>Nội dung không chính thức, không được Supercell xác nhận hay ủng hộ. Xem Fan Content Policy tại supercell.com/en/fan-content-policy</span>
+            <span>{t("app.footer.disclaimer")}</span>
           </div>
         </footer>
       )}

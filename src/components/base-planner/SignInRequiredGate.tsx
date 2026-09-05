@@ -1,5 +1,6 @@
 import { AlertTriangle, ArrowLeft, Cloud, LoaderCircle, LogIn, Shield } from "lucide-react";
 import { useGoogleSignIn } from "../../hooks/useGoogleSignIn";
+import { useTranslation } from "../../i18n";
 
 interface SignInRequiredGateProps {
   onBackToPreviousTab?: () => void;
@@ -13,6 +14,7 @@ interface SignInRequiredGateProps {
  */
 export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGateProps) {
   const { isSigningIn, errorMessage, signIn } = useGoogleSignIn();
+  const { t } = useTranslation();
 
   return (
     <section className="!min-h-[380px] !p-8 relative overflow-hidden bg-gradient-to-b from-[#1B202A] to-[#14171F] border border-[#2C3340] rounded-2xl shadow-xl flex items-center justify-center">
@@ -25,13 +27,11 @@ export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGatePr
         </div>
 
         <h1 className="text-xl sm:text-2xl font-extrabold text-[#F0F0F0] tracking-tight mb-2">
-          Cần đăng nhập để tạo Base
+          {t("auth.gate.title")}
         </h1>
 
         <p className="text-sm text-[#B0BECA] leading-relaxed mb-6">
-          Bản thiết kế được lưu thẳng vào tài khoản của bạn để không bị mất khi đổi
-          máy hoặc trình duyệt tự xoá bộ nhớ tạm. Đăng nhập bằng Google — miễn phí,
-          không cần tạo mật khẩu riêng cho ClashPath.
+          {t("auth.gate.description")}
         </p>
 
         {errorMessage && (
@@ -51,12 +51,12 @@ export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGatePr
           ) : (
             <LogIn className="w-4 h-4" />
           )}
-          {isSigningIn ? "Đang mở cửa sổ đăng nhập…" : "Đăng nhập với Google"}
+          {isSigningIn ? t("auth.openingPopupFull") : t("auth.signInWithGoogle")}
         </button>
 
         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-3">
           <Shield className="w-3 h-3" />
-          Chỉ dùng tài khoản Google để xác thực, không lưu mật khẩu của bạn.
+          {t("auth.gate.privacyNote")}
         </div>
 
         {onBackToPreviousTab && (
@@ -65,7 +65,7 @@ export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGatePr
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 mt-6 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Quay lại
+            {t("auth.gate.back")}
           </button>
         )}
       </div>
