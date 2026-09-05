@@ -2,6 +2,7 @@ import { Clock3, Crown, FlaskConical, Hammer, Sparkles, Swords, Trophy, Users, Z
 import type { Player } from "../../types";
 import { thImage } from "../SmartArt";
 import { AnimatedCounter, AnimatedProgressBar } from "../ui/AnimatedFeedback";
+import { useTranslation } from "../../i18n";
 
 interface PlayerProfileProps {
   player: Player;
@@ -19,6 +20,7 @@ interface PlayerProfileProps {
 }
 
 export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSpells, equipment, progress }: PlayerProfileProps) {
+  const { t } = useTranslation();
   return (
     <>
       <section className="profile-hero">
@@ -28,17 +30,17 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
           <span>TH<strong>{player.townHallLevel}</strong></span>
         </div>
         <div className="profile-copy">
-          <p>HỒ SƠ NGƯỜI CHƠI</p>
+          <p>{t("overview.profileEyebrow")}</p>
           <h1>{player.name}</h1>
           <h2>{player.tag} {player.clan && <>· {player.clan.name}</>}</h2>
           <div className="profile-badges">
-            <span><Trophy />{player.trophies} cúp</span>
-            <span><Swords />{player.warStars} sao war</span>
-            <span><Zap />Cấp kinh nghiệm {player.expLevel}</span>
+            <span><Trophy />{player.trophies} {t("overview.trophies")}</span>
+            <span><Swords />{player.warStars} {t("overview.warStars")}</span>
+            <span><Zap />{t("overview.expLevel", { level: player.expLevel })}</span>
             {player.builderHallLevel && <span><Hammer />BH{player.builderHallLevel}</span>}
           </div>
           <small className="sync-time">
-            <Clock3 />Đồng bộ lúc {syncedAt?.toLocaleTimeString("vi-VN") || "bản lưu trên máy"}
+            <Clock3 />{t("overview.syncedAt", { time: syncedAt?.toLocaleTimeString("vi-VN") || t("overview.syncedFromCache") })}
           </small>
         </div>
       </section>
@@ -47,7 +49,7 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
           <div className="flex items-center gap-2">
             <Crown className="shrink-0" />
             <div className="min-w-0 flex-1">
-              <small>Hero</small>
+              <small>{t("overview.heroStat")}</small>
               <strong>
                 {homeHeroes.length} · <AnimatedCounter value={progress.heroes} suffix="%" />
               </strong>
@@ -63,7 +65,7 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
           <div className="flex items-center gap-2">
             <Users className="shrink-0" />
             <div className="min-w-0 flex-1">
-              <small>Quân đã mở</small>
+              <small>{t("overview.troopsUnlockedStat")}</small>
               <strong>
                 {homeTroops.filter((x) => !x.name.startsWith("Super ")).length} ·{" "}
                 <AnimatedCounter value={progress.troops} suffix="%" />
@@ -80,7 +82,7 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
           <div className="flex items-center gap-2">
             <FlaskConical className="shrink-0" />
             <div className="min-w-0 flex-1">
-              <small>Phép đã mở</small>
+              <small>{t("overview.spellsUnlockedStat")}</small>
               <strong>
                 {homeSpells.length} · <AnimatedCounter value={progress.spells} suffix="%" />
               </strong>
@@ -96,7 +98,7 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
           <div className="flex items-center gap-2">
             <Sparkles className="shrink-0" />
             <div className="min-w-0 flex-1">
-              <small>Trang bị</small>
+              <small>{t("overview.equipmentStat")}</small>
               <strong>
                 {equipment.length} · <AnimatedCounter value={progress.equipment} suffix="%" />
               </strong>

@@ -4,25 +4,27 @@ import type { LucideIcon } from "lucide-react";
 import { thImage } from "../SmartArt";
 import type { Player } from "../../types";
 import { townHallInfo, type TownHallInfo, type TownHallUnlocks } from "../../townHallData";
+import { useTranslation, type TranslationKey } from "../../i18n";
 
 interface RoadmapProps {
   player: Player | null;
   loading: boolean;
 }
 
-const unlockGroups: { key: keyof TownHallUnlocks; label: string; icon: LucideIcon }[] = [
-  {key:"buildings",label:"Công trình mới",icon:Hammer},
-  {key:"defenses",label:"Phòng thủ mới",icon:ShieldCheck},
-  {key:"traps",label:"Bẫy mới",icon:Target},
-  {key:"troops",label:"Quân mới",icon:Users},
-  {key:"spells",label:"Phép mới",icon:FlaskConical},
-  {key:"heroes",label:"Hero mới",icon:Crown},
-  {key:"siege",label:"Máy công thành mới",icon:Truck},
-  {key:"pets",label:"Pet mới",icon:PawPrint},
-  {key:"guardians",label:"Guardian mới",icon:Sparkles}
+const unlockGroups: { key: keyof TownHallUnlocks; labelKey: TranslationKey; icon: LucideIcon }[] = [
+  {key:"buildings",labelKey:"roadmap.unlockGroups.buildings",icon:Hammer},
+  {key:"defenses",labelKey:"roadmap.unlockGroups.defenses",icon:ShieldCheck},
+  {key:"traps",labelKey:"roadmap.unlockGroups.traps",icon:Target},
+  {key:"troops",labelKey:"roadmap.unlockGroups.troops",icon:Users},
+  {key:"spells",labelKey:"roadmap.unlockGroups.spells",icon:FlaskConical},
+  {key:"heroes",labelKey:"roadmap.unlockGroups.heroes",icon:Crown},
+  {key:"siege",labelKey:"roadmap.unlockGroups.siege",icon:Truck},
+  {key:"pets",labelKey:"roadmap.unlockGroups.pets",icon:PawPrint},
+  {key:"guardians",labelKey:"roadmap.unlockGroups.guardians",icon:Sparkles}
 ];
 
 export function Roadmap({ player, loading }: RoadmapProps) {
+  const { t } = useTranslation();
   const [roadTH, setRoadTH] = useState(player ? player.townHallLevel : 11);
 
   if (!player) {
@@ -31,13 +33,13 @@ export function Roadmap({ player, loading }: RoadmapProps) {
         {loading ? (
           <>
             <LoaderCircle className="spin" />
-            <h1>Đang kết nối War Report…</h1>
+            <h1>{t("overview.connecting")}</h1>
           </>
         ) : (
           <>
             <Info />
-            <h1>Chưa có dữ liệu người chơi</h1>
-            <p>Nhập Player Tag ở trên rồi bấm "Đồng bộ hồ sơ" để xem roadmap Town Hall 1 → 18 theo tài khoản của bạn.</p>
+            <h1>{t("overview.emptyTitle")}</h1>
+            <p>{t("roadmap.emptyCta", { syncLabel: t("common.syncProfile") })}</p>
           </>
         )}
       </section>
@@ -52,10 +54,10 @@ export function Roadmap({ player, loading }: RoadmapProps) {
     <section className="panel roadmap-panel">
       <div className="section-head">
         <div>
-          <p>TOÀN BỘ HÀNH TRÌNH</p>
-          <h2>Town Hall 1 → Town Hall 18</h2>
+          <p>{t("roadmap.eyebrow")}</p>
+          <h2>{t("roadmap.title")}</h2>
         </div>
-        <span className="road-current">Bạn đang ở TH{player.townHallLevel}</span>
+        <span className="road-current">{t("roadmap.currentTownHall", { th: player.townHallLevel })}</span>
       </div>
       <div className="th-track" style={{ "--progress": `${progressPct}%` } as React.CSSProperties}>
         {townHallInfo.map(({ level, title }) => {
@@ -77,7 +79,7 @@ export function Roadmap({ player, loading }: RoadmapProps) {
         <div className="th-detail-head">
           <div className="th-detail-art"><img src={thImage(roadTH)} alt={`Town Hall ${roadTH}`} /></div>
           <div className="th-detail-copy">
-            <span className={`th-badge ${roadState}`}>{roadState === "past" ? "Đã hoàn thành" : roadState === "current" ? "Chặng hiện tại" : "Chặng sắp tới"}</span>
+            <span className={`th-badge ${roadState}`}>{roadState === "past" ? t("roadmap.statusPast") : roadState === "current" ? t("roadmap.statusCurrent") : t("roadmap.statusFuture")}</span>
             <h3>TH{roadTH} · {info.title}</h3>
             <p>{info.blurb}</p>
             {info.unlocks.note && <p className="th-note"><Info />{info.unlocks.note}</p>}
@@ -94,12 +96,12 @@ export function Roadmap({ player, loading }: RoadmapProps) {
             const Icon = group.icon;
             return (
               <div className="th-unlock-group" key={group.key}>
-                <header><Icon /><strong>{group.label}</strong><span>{values.length}</span></header>
+                <header><Icon /><strong>{t(group.labelKey)}</strong><span>{values.length}</span></header>
                 <div className="th-unlock-pills">{values.map(v => <span key={v}>{v}</span>)}</div>
               </div>
             );
           })}
-          {!Object.values(info.unlocks).some(v => Array.isArray(v) && v.length) && <p className="no-data">Không có mở khóa mới nào ghi nhận ở mốc này.</p>}
+          {!Object.values(info.unlocks).some(v => Array.isArray(v) && v.length) && <p className="no-data">{t("roadmap.noUnlocks")}</p>}
         </div>
       </div>
     </section>
