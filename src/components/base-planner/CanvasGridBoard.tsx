@@ -28,6 +28,7 @@ import { DECORATIONS_BY_ID } from "./decorationCatalog";
 import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
 import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
+import { getDecorationImage } from "./decorationImageMapper";
 import { getMaxBuildingLevel } from "./buildingLevels";
 
 interface CanvasGridBoardProps {
@@ -707,26 +708,34 @@ export function CanvasGridBoard({
       const ph = def.height * cellSize;
       const radius = Math.min(pw, ph) * 0.22;
 
-      ctx.beginPath();
-      if (typeof (ctx as CanvasRenderingContext2D & { roundRect?: Function }).roundRect === "function") {
-        ctx.roundRect(px + 1, py + 1, pw - 2, ph - 2, radius);
+      // Decorations ship with no bundled art (see decorationCatalog.ts) — an
+      // admin can upload one via AdminImageManager, at which point it takes
+      // over from the color-tile-plus-emoji placeholder entirely.
+      const decoImg = getDecorationImage(def.id, () => setRedrawCounter((c) => c + 1));
+      if (decoImg && decoImg.complete && decoImg.naturalWidth > 0) {
+        ctx.drawImage(decoImg, px + 1, py + 1, pw - 2, ph - 2);
       } else {
-        ctx.rect(px + 1, py + 1, pw - 2, ph - 2);
-      }
-      ctx.fillStyle = def.color;
-      ctx.globalAlpha = 0.88;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = def.accentColor || "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
+        ctx.beginPath();
+        if (typeof (ctx as CanvasRenderingContext2D & { roundRect?: Function }).roundRect === "function") {
+          ctx.roundRect(px + 1, py + 1, pw - 2, ph - 2, radius);
+        } else {
+          ctx.rect(px + 1, py + 1, pw - 2, ph - 2);
+        }
+        ctx.fillStyle = def.color;
+        ctx.globalAlpha = 0.88;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = def.accentColor || "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-      const fontSize = Math.max(8, Math.min(pw, ph) * 0.62);
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(def.emoji, px + pw / 2, py + ph / 2 + 1);
+        const fontSize = Math.max(8, Math.min(pw, ph) * 0.62);
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(def.emoji, px + pw / 2, py + ph / 2 + 1);
+      }
     }
 
     // 4d. Shape Stamp ghost preview (Decorative Design tool)

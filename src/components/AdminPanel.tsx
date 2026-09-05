@@ -11,9 +11,11 @@ import {
   RefreshCw,
   Search,
   Sparkles,
-  Layers
+  Layers,
+  UploadCloud
 } from "lucide-react";
 import { useTranslation } from "../i18n";
+import { AdminImageManager } from "./AdminImageManager";
 
 interface ManifestCategory {
   name: string;
@@ -50,7 +52,7 @@ export function AdminPanel() {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<"repository" | "gallery" | "scraper">("repository");
+  const [activeTab, setActiveTab] = useState<"repository" | "gallery" | "scraper" | "images">("repository");
 
   // Asset Repository state
   const [manifest, setManifest] = useState<AssetsManifest | null>(null);
@@ -275,6 +277,25 @@ export function AdminPanel() {
           }}
         >
           <Database size={16} /> {t("admin.tabs.scraper")}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("images")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "9px 16px",
+            borderRadius: "8px",
+            border: activeTab === "images" ? "1px solid var(--gold)" : "1px solid transparent",
+            background: activeTab === "images" ? "rgba(255, 214, 120, 0.12)" : "#0d1720",
+            color: activeTab === "images" ? "var(--gold)" : "#9fb0bb",
+            fontWeight: activeTab === "images" ? "bold" : "normal",
+            fontSize: "13px",
+            cursor: "pointer"
+          }}
+        >
+          <UploadCloud size={16} /> {t("admin.images.tab")}
         </button>
       </div>
 
@@ -549,6 +570,9 @@ export function AdminPanel() {
           )}
         </div>
       )}
+
+      {/* Tab 4: Quản lý ảnh công trình, Town Hall & trang trí */}
+      {activeTab === "images" && <AdminImageManager password={password} />}
     </div>
   );
 }
