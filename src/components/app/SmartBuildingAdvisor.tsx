@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { Player } from "../../types";
 import { SmartArt } from "../SmartArt";
+import { AnimatedCounter, AnimatedProgressBar } from "../ui/AnimatedFeedback";
 import { fmtCost, fmtTime, fmtTimeExact, itemKindLabel } from "../../utils/formatters";
 import {
   getTop3BuildingRecommendations,
@@ -244,37 +245,36 @@ export function SmartBuildingAdvisor({
                   {/* Defense Score / Tactical Impact Meter - Flattened */}
                   <div className="mb-5">
                     <div className="flex items-center justify-between text-sm mb-1.5 flex-wrap gap-1">
-                      <span className="text-slate-400 flex items-center gap-1.5 font-medium whitespace-nowrap">
+                      <span className="text-slate-300 flex items-center gap-1.5 font-medium whitespace-nowrap">
                         <Shield className="w-4 h-4 text-cyan-400" />
                         Ảnh hưởng
                       </span>
                       <span className="font-bold text-cyan-300 whitespace-nowrap">
-                        {rec.defenseImpact.score}/100 · Hạng {rec.defenseImpact.tier}
+                        <AnimatedCounter value={rec.defenseImpact.score} />/100 · Hạng {rec.defenseImpact.tier}
                       </span>
                     </div>
-                    <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          rec.defenseImpact.score >= 90
-                            ? "bg-rose-500"
-                            : rec.defenseImpact.score >= 80
-                            ? "bg-amber-400"
-                            : rec.defenseImpact.score >= 65
-                            ? "bg-cyan-400"
-                            : "bg-slate-400"
-                        }`}
-                        style={{ width: `${rec.defenseImpact.score}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                      <strong className="text-slate-300 font-semibold">{rec.defenseImpact.role}:</strong> {rec.defenseImpact.description}
+                    <AnimatedProgressBar
+                      percent={rec.defenseImpact.score}
+                      className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2"
+                      barClassName={`h-full rounded-full ${
+                        rec.defenseImpact.score >= 90
+                          ? "bg-rose-500"
+                          : rec.defenseImpact.score >= 80
+                          ? "bg-amber-400"
+                          : rec.defenseImpact.score >= 65
+                          ? "bg-cyan-400"
+                          : "bg-slate-400"
+                      }`}
+                    />
+                    <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                      <strong className="text-slate-200 font-semibold">{rec.defenseImpact.role}:</strong> {rec.defenseImpact.description}
                     </p>
                   </div>
 
                   {/* Cost & Time Next Step Details - Flattened */}
                   <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-[#ffffff10]">
                     <div className="min-w-0">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
                         <img src="/resources/gold.png" className="w-3.5 h-3.5 object-contain inline-block shrink-0" alt="Cost" /> Chi phí
                       </span>
                       <strong className="text-amber-300 font-bold text-sm truncate block" title={nextCostStr}>
@@ -282,7 +282,7 @@ export function SmartBuildingAdvisor({
                       </strong>
                     </div>
                     <div className="min-w-0">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
                         <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Thời gian
                       </span>
                       <strong

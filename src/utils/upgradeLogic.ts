@@ -111,7 +111,7 @@ export function summarizePlan(item: UpgradeItem, currentLevel: number, targetLev
 
 export function targetForTownHall(item: UpgradeItem, townHall: number) {
   for (let lvl = item.levels.length; lvl >= 1; lvl--) {
-    if (item.levels[lvl - 1].townHall <= townHall) return lvl;
+    if (item.levels[lvl - 1].townHall <= townHall) return item.levels[lvl - 1].level;
   }
   return 0;
 }

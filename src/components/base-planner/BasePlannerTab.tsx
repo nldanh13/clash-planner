@@ -611,7 +611,7 @@ export function BasePlannerTab({
           >
             {/* Left: Building Inventory / Sidebar */}
             <aside
-              className={`planner-sidebar-panel ${
+              className={`planner-sidebar-panel flex-col w-full h-full min-h-0 overflow-hidden ${
                 isSidebarCollapsed
                   ? "hidden"
                   : mobileWorkspaceTab === "map"
@@ -669,7 +669,7 @@ export function BasePlannerTab({
 
             {/* Center: Grid Canvas (2D editable board, or read-only Isometric view) */}
             <main
-              className={`planner-canvas-panel ${
+              className={`planner-canvas-panel flex-col w-full h-full min-h-0 min-w-0 relative overflow-hidden ${
                 isFullscreen ? "canvas-fullscreen" : ""
               } ${mobileWorkspaceTab === "inventory" ? "hidden md:flex" : "flex"}`}
             >

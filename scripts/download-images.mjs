@@ -93,6 +93,14 @@ for (const item of MANIFEST) {
   if (isBuildingKind(item.kind)) {
     const p = COC_GUIDE_BUILDING_ART[item.id];
     if (!p) { console.warn(`(bỏ qua) chưa có URL coc.guide cho: ${item.id}`); continue; }
+    const match = p.match(/^(.*)-(\d+)\.png$/);
+    if (match) {
+      const baseRemote = match[1];
+      const maxLvl = parseInt(match[2], 10);
+      for (let l = 1; l <= maxLvl; l++) {
+        jobs.push({ url: `https://coc.guide${baseRemote}-${l}.png`, out: path.join(PUBLIC, "buildings", `${item.id}-${l}.png`) });
+      }
+    }
     jobs.push({ url: `https://coc.guide${p}`, out: path.join(PUBLIC, "buildings", `${item.id}.png`) });
   } else {
     const remoteFolder = item.kind === "hero" ? "heroes" : item.kind === "spell" ? "spells" : item.kind === "equipment" ? "heroes/equipment" : "troops";

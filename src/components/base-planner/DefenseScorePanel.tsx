@@ -12,6 +12,7 @@ import {
   Target,
   X,
 } from "lucide-react";
+import { AnimatedCounter, AnimatedProgressBar } from "../ui/AnimatedFeedback";
 import { DeploymentZonePanel } from "./DeploymentZonePanel";
 import type { AutoFixResult } from "./deploymentAutoFix";
 import type { BasePurpose, DefenseScoreResult, PlacedBuilding } from "./types";
@@ -82,7 +83,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
         <div className="flex items-center gap-3">
           <div className="text-right">
             <div className="text-2xl sm:text-3xl font-black text-white tracking-tight font-mono">
-              {totalScore.toFixed(1)}
+              <AnimatedCounter value={totalScore} decimals={1} />
               <span className="text-xs text-slate-400 font-bold ml-1">/100</span>
             </div>
             <span className="text-[9.5px] text-emerald-400 font-black uppercase tracking-wider block">
@@ -208,18 +209,17 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
                           {scoreLabel}
                         </span>
                         <span className="font-black font-mono text-white text-xs">
-                          {percent}%
+                          <AnimatedCounter value={percent} suffix="%" />
                         </span>
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${barGradient}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                    <AnimatedProgressBar
+                      percent={percent}
+                      className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800"
+                      barClassName={`h-full rounded-full ${barGradient}`}
+                    />
 
                     <p className="text-[10px] text-slate-400 leading-relaxed">{cat.description}</p>
                   </div>

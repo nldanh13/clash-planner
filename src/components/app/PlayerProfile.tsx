@@ -1,6 +1,7 @@
 import { Clock3, Crown, FlaskConical, Hammer, Sparkles, Swords, Trophy, Users, Zap } from "lucide-react";
 import type { Player } from "../../types";
 import { thImage } from "../SmartArt";
+import { AnimatedCounter, AnimatedProgressBar } from "../ui/AnimatedFeedback";
 
 interface PlayerProfileProps {
   player: Player;
@@ -42,23 +43,73 @@ export function PlayerProfile({ player, syncedAt, homeHeroes, homeTroops, homeSp
         </div>
       </section>
       <section className="stats">
-        <article>
-          <Crown />
-          <div><small>Hero</small><strong>{homeHeroes.length} · {progress.heroes}%</strong></div>
+        <article className="flex-col !items-stretch !justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <Crown className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <small>Hero</small>
+              <strong>
+                {homeHeroes.length} · <AnimatedCounter value={progress.heroes} suffix="%" />
+              </strong>
+            </div>
+          </div>
+          <AnimatedProgressBar
+            percent={progress.heroes}
+            className="w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden mt-0.5"
+            barClassName="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-300"
+          />
         </article>
-        <article>
-          <Users />
-          <div><small>Quân đã mở</small><strong>{homeTroops.filter(x => !x.name.startsWith("Super ")).length} · {progress.troops}%</strong></div>
+        <article className="flex-col !items-stretch !justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <Users className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <small>Quân đã mở</small>
+              <strong>
+                {homeTroops.filter((x) => !x.name.startsWith("Super ")).length} ·{" "}
+                <AnimatedCounter value={progress.troops} suffix="%" />
+              </strong>
+            </div>
+          </div>
+          <AnimatedProgressBar
+            percent={progress.troops}
+            className="w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden mt-0.5"
+            barClassName="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-300"
+          />
         </article>
-        <article>
-          <FlaskConical />
-          <div><small>Phép đã mở</small><strong>{homeSpells.length} · {progress.spells}%</strong></div>
+        <article className="flex-col !items-stretch !justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <small>Phép đã mở</small>
+              <strong>
+                {homeSpells.length} · <AnimatedCounter value={progress.spells} suffix="%" />
+              </strong>
+            </div>
+          </div>
+          <AnimatedProgressBar
+            percent={progress.spells}
+            className="w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden mt-0.5"
+            barClassName="h-full rounded-full bg-gradient-to-r from-purple-400 to-pink-300"
+          />
         </article>
-        <article>
-          <Sparkles />
-          <div><small>Trang bị</small><strong>{equipment.length} · {progress.equipment}%</strong></div>
+        <article className="flex-col !items-stretch !justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <small>Trang bị</small>
+              <strong>
+                {equipment.length} · <AnimatedCounter value={progress.equipment} suffix="%" />
+              </strong>
+            </div>
+          </div>
+          <AnimatedProgressBar
+            percent={progress.equipment}
+            className="w-full h-1.5 rounded-full bg-slate-800/80 overflow-hidden mt-0.5"
+            barClassName="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-300"
+          />
         </article>
       </section>
     </>
   );
 }
+

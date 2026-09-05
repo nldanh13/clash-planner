@@ -2,7 +2,7 @@ import { imageCache, preloadImage, getCachedImage } from "./imageCache";
 import { BUILDINGS_CATALOG } from "./constants";
 import { PlacedBuilding } from "./types";
 
-export { getCachedImage };
+export { getCachedImage, preloadImage };
 
 export function getBuildingImagePath(buildingId: string, level?: number): string | null {
   if (buildingId === "town-hall") {
@@ -21,10 +21,26 @@ export function getBuildingImagePath(buildingId: string, level?: number): string
     return null;
   }
   
+  if (level) {
+    return `/buildings/${buildingId}-${level}.png`;
+  }
   return `/buildings/${buildingId}.png`;
 }
 
-// Preload all buildings to avoid flickering on first draw
+// Same logic but for rendering leveled if we add it in the future
+export function getBuildingLeveledImagePath(buildingId: string, level?: number): string[] | null {
+  const base = getBuildingImagePath(buildingId, level);
+  if (!base) return null;
+  if (buildingId === "town-hall" || base.includes("/heroes/")) {
+    return [base];
+  }
+  if (level) {
+    return [`/buildings/${buildingId}-${level}.png`, base];
+  }
+  return [base];
+}
+
+// Preload all base buildings to avoid flickering on first draw
 export function preloadAllBaseImages(triggerRedraw?: () => void) {
   let loadedCount = 0;
   
