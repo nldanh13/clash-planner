@@ -1,3 +1,4 @@
+import { config as loadEnvFile } from "dotenv";
 import express from "express";
 import path from "path";
 import { timingSafeEqual } from "crypto";
@@ -6,6 +7,15 @@ import multer from "multer";
 import sharp from "sharp";
 import { BUILDINGS_BY_ID } from "./src/components/base-planner/constants";
 import { DECORATIONS_BY_ID } from "./src/components/base-planner/decorationCatalog";
+
+// This is a plain Node/Express process — unlike the Vite dev server (which
+// auto-loads .env* files for client code via import.meta.env), it never
+// reads .env files on its own, only real OS environment variables. Load the
+// same files Vite does, in the same precedence order (.env.local wins),
+// so a key set in either actually reaches process.env here too. Both are
+// gitignored — see .gitignore — never commit real secrets into them.
+loadEnvFile({ path: ".env" });
+loadEnvFile({ path: ".env.local", override: true });
 
 // In-memory only — every upload is validated then resized/re-encoded by sharp
 // before ever touching disk, so nothing user-supplied is written verbatim.
