@@ -1,21 +1,5 @@
-import { useState } from "react";
 import { AlertTriangle, ArrowLeft, Cloud, LoaderCircle, LogIn, Shield } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
-
-/** Firebase auth error codes worth a specific, human-readable message instead of a generic one. */
-function describeSignInError(error: unknown): string {
-  const code = (error as { code?: string })?.code;
-  if (code === "auth/popup-blocked") {
-    return "Trình duyệt đã chặn cửa sổ đăng nhập. Hãy cho phép popup cho trang này rồi thử lại.";
-  }
-  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-    return "Cửa sổ đăng nhập đã bị đóng trước khi hoàn tất. Bấm lại để thử tiếp.";
-  }
-  if (code === "auth/network-request-failed") {
-    return "Không thể kết nối tới máy chủ đăng nhập. Kiểm tra lại mạng rồi thử lại.";
-  }
-  return "Đăng nhập không thành công. Vui lòng thử lại.";
-}
+import { useGoogleSignIn } from "../../hooks/useGoogleSignIn";
 
 interface SignInRequiredGateProps {
   onBackToPreviousTab?: () => void;
@@ -28,21 +12,7 @@ interface SignInRequiredGateProps {
  * feature is gated behind sign-in rather than silently risking that.
  */
 export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGateProps) {
-  const { signInWithGoogle } = useAuth();
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleSignIn = async () => {
-    setErrorMessage(null);
-    setIsSigningIn(true);
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      setErrorMessage(describeSignInError(error));
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
+  const { isSigningIn, errorMessage, signIn } = useGoogleSignIn();
 
   return (
     <section className="!min-h-[380px] !p-8 relative overflow-hidden bg-gradient-to-b from-[#1B202A] to-[#14171F] border border-[#2C3340] rounded-2xl shadow-xl flex items-center justify-center">
@@ -72,7 +42,7 @@ export function SignInRequiredGate({ onBackToPreviousTab }: SignInRequiredGatePr
         )}
 
         <button
-          onClick={handleSignIn}
+          onClick={signIn}
           disabled={isSigningIn}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors w-full"
         >
