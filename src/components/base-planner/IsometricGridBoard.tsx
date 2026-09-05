@@ -329,82 +329,56 @@ export function IsometricGridBoard({
 
     for (const { b, def } of drawable) {
       const isSelected = b.instanceId === selectedPlacedId;
-      const heightPx = getBuildingHeightPx(def) * viewport.zoom;
 
       const top = project(b.x, b.y);
       const right = project(b.x + def.width, b.y);
       const bottom = project(b.x + def.width, b.y + def.height);
       const left = project(b.x, b.y + def.height);
-      const lift = (p: { x: number; y: number }) => ({ x: p.x, y: p.y - heightPx });
 
       drawGroundShadow([top, right, bottom, left]);
 
-      const baseColor = def.category === "wall" ? "#7d8796" : def.color || "#34495e";
-      const roofColor = shadeColor(baseColor, 12);
-      const rightFaceColor = shadeColor(baseColor, -18);
-      const leftFaceColor = shadeColor(baseColor, -34);
-      const strokeColor = isSelected ? "#ffc857" : "rgba(0,0,0,0.35)";
-      const strokeWidth = isSelected ? 2.5 : 1;
-
-      const liftedTop = lift(top);
-      const liftedRight = lift(right);
-      const liftedBottom = lift(bottom);
-      const liftedLeft = lift(left);
-
-      // Right/left faces darken toward the ground (cheap ambient occlusion —
-      // real light doesn't reach the base-to-grass seam as brightly as the
-      // shoulder just under the roofline), instead of one flat slab of color.
-      const rightFaceGradient = ctx.createLinearGradient(liftedRight.x, liftedRight.y, right.x, right.y);
-      rightFaceGradient.addColorStop(0, rightFaceColor);
-      rightFaceGradient.addColorStop(1, shadeColor(rightFaceColor, -14));
-      const leftFaceGradient = ctx.createLinearGradient(liftedLeft.x, liftedLeft.y, left.x, left.y);
-      leftFaceGradient.addColorStop(0, leftFaceColor);
-      leftFaceGradient.addColorStop(1, shadeColor(leftFaceColor, -14));
-
-      // Right face (between E and S corners, extruded to ground)
-      drawDiamond([liftedRight, liftedBottom, bottom, right], rightFaceGradient, strokeColor, strokeWidth);
-      // Left face (between S and W corners, extruded to ground)
-      drawDiamond([liftedBottom, liftedLeft, left, bottom], leftFaceGradient, strokeColor, strokeWidth);
-      // Roof (top face)
-      drawDiamond([liftedTop, liftedRight, liftedBottom, liftedLeft], roofColor, strokeColor, strokeWidth);
-
-      // Building sprite, sheared to lie flat on the roof plane instead of
-      // being squared-off and clipped into the diamond. The projection is an
-      // affine map (see isometricUtils.ts), so the sprite's rectangle maps
-      // onto the roof parallelogram exactly — (0,0)->top, (naturalWidth,0)
-      // ->right, (0,naturalHeight)->left — with no distortion at the corners.
+      // The building art (public/buildings, public/town-halls, public/heroes)
+      // is already a fully-rendered 3D isometric asset — the same style the
+      // real game uses for its build-menu icons, not a flat top-down photo.
+      // Squashing it onto a procedural colored box (the previous approach)
+      // fought the art instead of using it: it flattened real perspective,
+      // shading and silhouette into a shear transform, then buried it under a
+      // second, fake 3D shape. Drawing the sprite upright and letting it
+      // supply 100% of the building's shape is what actually reads as "real".
       const img = getLeveledBuildingImage(
         b.buildingId,
         b.level,
         townHallLevel,
         () => setRedrawCounter((c) => c + 1)
       );
+
       if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-        try {
-          const nw = img.naturalWidth;
-          const nh = img.naturalHeight;
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(liftedTop.x, liftedTop.y);
-          ctx.lineTo(liftedRight.x, liftedRight.y);
-          ctx.lineTo(liftedBottom.x, liftedBottom.y);
-          ctx.lineTo(liftedLeft.x, liftedLeft.y);
-          ctx.closePath();
-          ctx.clip(); // floating-point safety net; the transform below should already land exactly on this outline
-          ctx.transform(
-            (liftedRight.x - liftedTop.x) / nw,
-            (liftedRight.y - liftedTop.y) / nw,
-            (liftedLeft.x - liftedTop.x) / nh,
-            (liftedLeft.y - liftedTop.y) / nh,
-            liftedTop.x,
-            liftedTop.y
-          );
-          ctx.globalAlpha = 0.94;
-          ctx.drawImage(img, 0, 0, nw, nh);
-          ctx.restore();
-        } catch {
-          // Guard against canvas draw failures
-        }
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        // Scale to the footprint's screen-space diagonal span rather than its
+        // (tiny, near-flat) height, so a 4x4 Town Hall draws visibly bigger
+        // than a 1x1 wall — then let the source image's own aspect ratio
+        // decide how tall the sprite stands, exactly as the artist drew it.
+        const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
+        const drawWidth = footprintSpan * 1.08;
+        const drawHeight = drawWidth * (nh / nw);
+        const centerX = (top.x + right.x + bottom.x + left.x) / 4;
+        // Anchor the sprite's bottom edge near the diamond's front (south)
+        // corner — where an isometric object visually "touches down" — not
+        // at its vertical center, which would sink half the building into
+        // the ground plane.
+        const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
+        ctx.globalAlpha = 1;
+        ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+      } else {
+        // Loading placeholder only — a flat footprint tint, not a fake box,
+        // so there's no shape to "un-flatten" once the real sprite arrives.
+        const baseColor = def.category === "wall" ? "#7d8796" : def.color || "#34495e";
+        drawDiamond([top, right, bottom, left], baseColor, "rgba(0,0,0,0.35)", 1);
+      }
+
+      if (isSelected) {
+        drawDiamond([top, right, bottom, left], "rgba(255,200,87,0.1)", "#ffc857", 2);
       }
     }
 
@@ -851,39 +825,6 @@ export function IsometricGridBoard({
       </div>
     </div>
   );
-}
-
-function getBuildingHeightPx(def: BuildingDef): number {
-  if (def.id === "town-hall") return 34;
-  switch (def.category) {
-    case "wall":
-      return 8;
-    case "trap":
-      return 3;
-    case "resource":
-      return 20;
-    case "army":
-      return 22;
-    case "hero":
-      return 22;
-    case "defense":
-      return 26;
-    default:
-      return 18;
-  }
-}
-
-function shadeColor(hex: string, percent: number): string {
-  const clean = hex.replace("#", "");
-  const num = parseInt(clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean, 16);
-  const amount = Math.round(2.55 * percent);
-  let r = (num >> 16) + amount;
-  let g = ((num >> 8) & 0x00ff) + amount;
-  let bl = (num & 0x0000ff) + amount;
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  bl = Math.max(0, Math.min(255, bl));
-  return `#${(0x1000000 + r * 0x10000 + g * 0x100 + bl).toString(16).slice(1)}`;
 }
 
 export default IsometricGridBoard;
