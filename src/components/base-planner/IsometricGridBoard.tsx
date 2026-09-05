@@ -199,6 +199,14 @@ export function IsometricGridBoard({
       ctx.fillStyle = "#0b1720";
       ctx.fillRect(0, 0, width, height);
 
+      // Building art is scaled up from fairly small source crops (~100-150px)
+      // to their on-screen footprint — the canvas default smoothing quality
+      // ("low") blurs that upscale into a soft, flat look with no crisp
+      // edges. "high" runs a better resampling filter so silhouettes and
+      // shading detail stay defined instead of turning to mush.
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
     const project = (gx: number, gy: number) => gridToCanvas(gx, gy, viewport);
 
     const drawDiamond = (
@@ -382,7 +390,18 @@ export function IsometricGridBoard({
         // the ground plane.
         const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
         ctx.globalAlpha = 1;
+        // A tight drop shadow right under the sprite (on top of the wider
+        // ambient one from drawGroundShadow) reads as contact with the
+        // ground instead of a flat cutout pasted on the grass. A small
+        // contrast/saturation lift compensates for these being fairly flat
+        // icon-style crops rather than the game's own in-scene lighting.
+        ctx.save();
+        ctx.filter = "saturate(1.12) contrast(1.06)";
+        ctx.shadowColor = "rgba(0,0,0,0.45)";
+        ctx.shadowBlur = Math.max(2, drawWidth * 0.05);
+        ctx.shadowOffsetY = Math.max(1, drawHeight * 0.02);
         ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+        ctx.restore();
       } else {
         // Loading placeholder only — a flat footprint tint, not a fake box,
         // so there's no shape to "un-flatten" once the real sprite arrives.
