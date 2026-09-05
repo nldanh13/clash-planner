@@ -41,6 +41,7 @@ import { DecorativeDesignPanel } from "./DecorativeDesignPanel";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { SignInRequiredGate } from "./SignInRequiredGate";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "../../i18n";
 
 interface BasePlannerTabProps {
   initialTownHall?: number;
@@ -55,6 +56,7 @@ export function BasePlannerTab({
   // a guest's work only lives in this browser's localStorage, so the whole tab
   // is gated behind sign-in rather than risking silent data loss.
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
 
   // Active Layout state: auto-load last active or first layout if available
   const [activeLayout, setActiveLayout] = useState<LayoutProject | null>(() => {
@@ -275,10 +277,10 @@ export function BasePlannerTab({
         second: "2-digit",
       });
       setLastSavedTime(timeStr);
-      showToast(`Đã lưu bản thiết kế lúc ${timeStr}!`);
+      showToast(t("basePlanner.tab.savedAt", { time: timeStr }));
     } catch {
       setSaveStatus("error");
-      showToast("Lưu bản thiết kế thất bại.");
+      showToast(t("basePlanner.tab.saveFailed"));
     }
   };
 
@@ -310,16 +312,16 @@ export function BasePlannerTab({
     setLastSavedTime(
       new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     );
-    showToast(`Đã mở bản thiết kế: "${layout.name}" (TH${layout.townHallLevel})`);
+    showToast(t("basePlanner.tab.opened", { name: layout.name, th: layout.townHallLevel }));
   };
 
   // Rename layout
   const handleRename = (newName: string) => {
-    if (!activeLayout) return { success: false, error: "Chưa chọn bản thiết kế." };
+    if (!activeLayout) return { success: false, error: t("basePlanner.tab.notSelected") };
     const res = renameLayout(activeLayout.id, newName);
     if (res.success) {
       setActiveLayout((prev) => (prev ? { ...prev, name: newName } : null));
-      showToast(`Đã đổi tên thành: "${newName}"`);
+      showToast(t("basePlanner.tab.renamed", { name: newName }));
     }
     return res;
   };
@@ -330,7 +332,7 @@ export function BasePlannerTab({
     const cloned = duplicateLayout(activeLayout.id);
     if (cloned) {
       applySelectedLayout(cloned);
-      showToast(`Đã tạo bản sao: "${cloned.name}"`);
+      showToast(t("basePlanner.tab.duplicated", { name: cloned.name }));
     }
   };
 
@@ -340,7 +342,7 @@ export function BasePlannerTab({
     const cloned = duplicateLayout(activeLayout.id, targetTH);
     if (cloned) {
       applySelectedLayout(cloned);
-      showToast(`Đã tạo bản sao tại TH${targetTH}: "${cloned.name}"`);
+      showToast(t("basePlanner.tab.duplicatedAtTH", { th: targetTH, name: cloned.name }));
     }
   };
 
@@ -368,11 +370,11 @@ export function BasePlannerTab({
   // Clear Map
   const handleClearMap = () => {
     if (buildings.length === 0) return;
-    if (window.confirm("Bạn có chắc chắn muốn dọn sạch toàn bộ công trình và tường trên bản đồ?")) {
+    if (window.confirm(t("basePlanner.tab.confirmClearMap"))) {
       handleUpdateBuildings([]);
       setSelectedPlacedId(null);
       setSelectedDefId(null);
-      showToast("Đã dọn sạch bản đồ.");
+      showToast(t("basePlanner.tab.clearedMap"));
     }
   };
 
@@ -380,9 +382,9 @@ export function BasePlannerTab({
   const handleExportPNG = async () => {
     try {
       await exportLayoutAsImage(buildings, townHallLevel, activeLayout?.name);
-      showToast("Đã xuất tệp ảnh PNG bản đồ thành công!");
+      showToast(t("basePlanner.tab.exportedPng"));
     } catch {
-      showToast("Lỗi khi xuất ảnh bản đồ.");
+      showToast(t("basePlanner.tab.exportPngError"));
     }
   };
 
@@ -390,9 +392,9 @@ export function BasePlannerTab({
   const handleExportJSON = () => {
     try {
       exportLayoutAsJSON(buildings, townHallLevel, activeLayout?.name);
-      showToast("Đã xuất dữ liệu bố cục JSON thành công!");
+      showToast(t("basePlanner.tab.exportedJson"));
     } catch {
-      showToast("Lỗi khi xuất JSON.");
+      showToast(t("basePlanner.tab.exportJsonError"));
     }
   };
 
@@ -405,7 +407,7 @@ export function BasePlannerTab({
       const data = await importLayoutFromJSON(file);
       const newLayout = saveLayout({
         id: `imported-${Date.now()}`,
-        name: data.name || `TH${data.townHallLevel} Nhập khẩu`,
+        name: data.name || t("basePlanner.tab.importedName", { th: data.townHallLevel }),
         townHallLevel: data.townHallLevel,
         purpose: "hybrid",
         creationMethod: "import",
@@ -415,9 +417,9 @@ export function BasePlannerTab({
         updatedAt: new Date().toISOString(),
       });
       applySelectedLayout(newLayout);
-      showToast(`Đã nhập bố cục "${data.name}" thành công!`);
+      showToast(t("basePlanner.tab.importedJson", { name: data.name }));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Lỗi khi nhập tệp JSON.");
+      showToast(err instanceof Error ? err.message : t("basePlanner.tab.importJsonError"));
     } finally {
       e.target.value = "";
     }
@@ -480,14 +482,14 @@ export function BasePlannerTab({
 
       if (!fix.applied) {
         setAutoFixPreview(fix);
-        showToast("Không tìm được cách khắc phục an toàn cho các lỗ thả quân hiện tại.");
+        showToast(t("basePlanner.tab.noSafeFix"));
         return;
       }
 
-      createCheckpoint(activeLayout.id, "Trước khi Tự động khắc phục Vùng triển khai", buildings);
+      createCheckpoint(activeLayout.id, t("basePlanner.tab.fixCheckpointReason"), buildings);
       handleUpdateBuildings(fix.updatedBuildings);
       setAutoFixPreview(fix);
-      showToast(`Đã tự động đóng ${fix.resolvedHoleCount} lỗ thả quân nguy hiểm.`);
+      showToast(t("basePlanner.tab.fixApplied", { count: fix.resolvedHoleCount }));
     } finally {
       setIsApplyingFix(false);
     }
@@ -586,10 +588,10 @@ export function BasePlannerTab({
                   ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
-              aria-label="Xem Bản đồ"
+              aria-label={t("basePlanner.mobileTabs.mapAria")}
             >
               <LayoutGrid className="w-4 h-4" />
-              <span>Bản đồ (Lưới 44x44)</span>
+              <span>{t("basePlanner.mobileTabs.mapLabel")}</span>
             </button>
             <button
               onClick={() => setMobileWorkspaceTab("inventory")}
@@ -600,16 +602,16 @@ export function BasePlannerTab({
               }`}
               aria-label={
                 settings.plannerMode === "design"
-                  ? "Xem Kho công trình"
+                  ? t("basePlanner.mobileTabs.inventoryAria")
                   : settings.plannerMode === "decorate"
-                  ? "Xem Trang trí & Hình dạng"
-                  : "Xem Phân tích phòng thủ"
+                  ? t("basePlanner.mobileTabs.decorateAria")
+                  : t("basePlanner.mobileTabs.analysisAria")
               }
             >
               {settings.plannerMode === "design" ? (
                 <>
                   <Shield className="w-4 h-4" />
-                  <span>Kho công trình</span>
+                  <span>{t("basePlanner.mobileTabs.inventoryLabel")}</span>
                   {selectedDefId && (
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                   )}
@@ -617,12 +619,12 @@ export function BasePlannerTab({
               ) : settings.plannerMode === "decorate" ? (
                 <>
                   <Shield className="w-4 h-4" />
-                  <span>Trang trí</span>
+                  <span>{t("basePlanner.mobileTabs.decorateLabel")}</span>
                 </>
               ) : (
                 <>
                   <Shield className="w-4 h-4" />
-                  <span>Phân tích ({defenseScoreResult?.tier || "C"})</span>
+                  <span>{t("basePlanner.mobileTabs.analysisLabel", { tier: defenseScoreResult?.tier || "C" })}</span>
                 </>
               )}
             </button>
@@ -702,18 +704,18 @@ export function BasePlannerTab({
                 <button
                   onClick={() => setIsFullscreen(false)}
                   className="absolute top-3 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold shadow-2xl transition-colors cursor-pointer"
-                  title="Thoát toàn màn hình (Esc)"
-                  aria-label="Thoát toàn màn hình"
+                  title={t("basePlanner.tab.exitFullscreenTitle")}
+                  aria-label={t("basePlanner.toolbar.exitFullscreenAria")}
                 >
                   <Minimize className="w-3.5 h-3.5" />
-                  <span>Thoát toàn màn hình (Esc)</span>
+                  <span>{t("basePlanner.tab.exitFullscreenTitle")}</span>
                 </button>
               )}
 
               {settings.viewMode === "isometric" ? (
                 <ErrorBoundary
-                  fallbackTitle="Lỗi hiển thị sa bàn Isometric"
-                  fallbackMessage="Đã cách ly sự cố hiển thị sa bàn 3D. Bạn có thể khôi phục góc nhìn hoặc chuyển về chế độ 2D."
+                  fallbackTitle={t("basePlanner.tab.isoErrorTitle")}
+                  fallbackMessage={t("basePlanner.tab.isoErrorMessage")}
                 >
                   <IsometricGridBoard
                     buildings={buildings}
@@ -786,11 +788,10 @@ export function BasePlannerTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="bg-[#121c24] border border-amber-500/40 p-6 rounded-2xl max-w-lg w-full shadow-2xl">
             <h2 className="text-base font-bold text-amber-400 flex items-center gap-2 mb-3">
-              <AlertTriangle className="w-5 h-5" /> Phát hiện xung đột dữ liệu bố cục
+              <AlertTriangle className="w-5 h-5" /> {t("basePlanner.recovery.title")}
             </h2>
             <p className="text-slate-300 mb-4 text-xs leading-relaxed">
-              Bản thiết kế &quot;{pendingRecovery.layout.name}&quot; có một số công trình vượt giới
-              hạn hoặc không khớp với Town Hall {pendingRecovery.layout.townHallLevel}.
+              {t("basePlanner.recovery.description", { name: pendingRecovery.layout.name, th: pendingRecovery.layout.townHallLevel })}
             </p>
             <ul className="text-xs text-slate-400 mb-6 bg-black/40 p-3 rounded-xl h-28 overflow-y-auto space-y-1">
               {pendingRecovery.issues.map((issue, idx) => (
@@ -815,13 +816,13 @@ export function BasePlannerTab({
                 }}
                 className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                Tự động chuẩn hóa và mở bản thiết kế
+                {t("basePlanner.recovery.autoFix")}
               </button>
               <button
                 onClick={() => setPendingRecovery(null)}
                 className="w-full py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-700 transition-colors"
               >
-                Hủy bỏ
+                {t("basePlanner.recovery.discard")}
               </button>
             </div>
           </div>

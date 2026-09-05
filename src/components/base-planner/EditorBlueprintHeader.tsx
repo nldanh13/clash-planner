@@ -18,6 +18,7 @@ import {
 import type { LayoutProject } from "./types";
 import { METHOD_LABELS, normalizeLayoutName, PURPOSE_LABELS } from "./blueprintUtils";
 import { getTownHallRequirements } from "./catalog";
+import { useTranslation } from "../../i18n";
 
 interface EditorBlueprintHeaderProps {
   layout: LayoutProject;
@@ -42,6 +43,7 @@ export function EditorBlueprintHeader({
   onOpenNewWizard,
   onDuplicateToTownHall,
 }: EditorBlueprintHeaderProps) {
+  const { t } = useTranslation();
   // Rename Modal State
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameInput, setRenameInput] = useState("");
@@ -63,13 +65,13 @@ export function EditorBlueprintHeader({
     if (e) e.preventDefault();
     const clean = normalizeLayoutName(renameInput);
     if (!clean) {
-      setRenameError("Tên bản thiết kế không được để trống.");
+      setRenameError(t("basePlanner.editorHeader.renameModal.nameEmpty"));
       return;
     }
 
     const res = onRename(clean);
     if (!res.success) {
-      setRenameError(res.error || "Tên bản thiết kế đã tồn tại trong danh sách.");
+      setRenameError(res.error || t("basePlanner.editorHeader.renameModal.nameExists"));
       return;
     }
 
@@ -99,7 +101,7 @@ export function EditorBlueprintHeader({
               setIsThModalOpen(true);
             }}
             className="group relative flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-b from-[#132738] to-[#0a1824] border border-amber-500/40 text-amber-400 font-black text-xs shrink-0 cursor-pointer shadow-sm hover:border-amber-400 transition-all hover:scale-105"
-            title="Town Hall được gắn cố định với bản thiết kế này (Bấm để xem tùy chọn đổi cấp)"
+            title={t("basePlanner.editorHeader.thFixedTooltip")}
           >
             <div className="flex items-center gap-0.5">
               <Castle className="w-3.5 h-3.5" />
@@ -107,7 +109,7 @@ export function EditorBlueprintHeader({
             </div>
             <span className="text-[11px] font-black tracking-tight">TH{layout.townHallLevel}</span>
             <span className="absolute -bottom-1 text-[8px] bg-slate-900 px-1 rounded text-slate-400 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              Cố định
+              {t("basePlanner.editorHeader.thFixedBadge")}
             </span>
           </button>
 
@@ -117,7 +119,7 @@ export function EditorBlueprintHeader({
               <h3
                 className="font-black text-sm sm:text-base text-white truncate max-w-lg cursor-pointer hover:text-amber-300 transition-colors"
                 onClick={handleOpenRename}
-                title="Bấm để đổi tên nhanh"
+                title={t("basePlanner.editorHeader.renameQuickTitle")}
               >
                 {layout.name}
               </h3>
@@ -125,7 +127,7 @@ export function EditorBlueprintHeader({
                 type="button"
                 onClick={handleOpenRename}
                 className="p-1 text-slate-400 hover:text-amber-400 rounded transition-colors"
-                title="Đổi tên bản thiết kế"
+                title={t("basePlanner.editorHeader.renameTitle")}
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
@@ -148,27 +150,27 @@ export function EditorBlueprintHeader({
                 {saveStatus === "saving" && (
                   <span className="flex items-center gap-1 text-cyan-400 animate-pulse">
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Đang lưu...</span>
+                    <span>{t("basePlanner.editorHeader.saving")}</span>
                   </span>
                 )}
                 {saveStatus === "saved" && (
                   <span className="flex items-center gap-1 text-emerald-400">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>
-                      {lastSavedTime ? `Đã lưu lúc ${lastSavedTime}` : "Đã lưu"}
+                      {lastSavedTime ? t("basePlanner.editorHeader.savedAt", { time: lastSavedTime }) : t("basePlanner.editorHeader.saved")}
                     </span>
                   </span>
                 )}
                 {saveStatus === "unsaved" && (
                   <span className="flex items-center gap-1 text-amber-400">
                     <Clock className="w-3 h-3" />
-                    <span>Có thay đổi chưa lưu</span>
+                    <span>{t("basePlanner.editorHeader.unsaved")}</span>
                   </span>
                 )}
                 {saveStatus === "error" && (
                   <span className="flex items-center gap-1 text-rose-400">
                     <AlertCircle className="w-3 h-3" />
-                    <span>Lưu thất bại</span>
+                    <span>{t("basePlanner.editorHeader.saveFailed")}</span>
                   </span>
                 )}
               </div>
@@ -183,10 +185,10 @@ export function EditorBlueprintHeader({
             type="button"
             onClick={onOpenManager}
             className="px-3.5 py-2 rounded-xl bg-[#0f2334] hover:bg-[#16334c] border border-[#23425f] text-cyan-300 hover:text-cyan-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-            title="Xem danh sách bản thiết kế đã lưu, tìm kiếm, nhập/xuất"
+            title={t("basePlanner.editorHeader.manageTitle")}
           >
             <FolderOpen className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">Quản lý bản thiết kế</span>
+            <span className="hidden sm:inline">{t("basePlanner.editorHeader.manage")}</span>
           </button>
 
           {/* Lưu */}
@@ -194,10 +196,10 @@ export function EditorBlueprintHeader({
             type="button"
             onClick={onSaveManual}
             className="px-3 py-2 sm:px-3.5 rounded-xl bg-[#142636] hover:bg-[#1c354a] border border-[#23405b] text-emerald-300 hover:text-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-            title="Lưu ngay bản thiết kế hiện tại"
+            title={t("basePlanner.editorHeader.saveNowTitle")}
           >
             <Save className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Lưu</span>
+            <span className="hidden sm:inline">{t("common.save")}</span>
           </button>
 
           {/* Đổi tên */}
@@ -205,10 +207,10 @@ export function EditorBlueprintHeader({
             type="button"
             onClick={handleOpenRename}
             className="px-2.5 py-2 sm:px-3 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Đổi tên bản thiết kế"
+            title={t("basePlanner.editorHeader.renameTitle")}
           >
             <Edit2 className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Đổi tên</span>
+            <span className="hidden sm:inline">{t("basePlanner.editorHeader.renameAction")}</span>
           </button>
 
           {/* Tạo bản sao */}
@@ -216,10 +218,10 @@ export function EditorBlueprintHeader({
             type="button"
             onClick={onDuplicate}
             className="px-2.5 py-2 sm:px-3 rounded-xl bg-[#0e1c27] hover:bg-[#142838] border border-[#1f374c] text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Nhân bản bản thiết kế này thành một bản lưu mới"
+            title={t("basePlanner.editorHeader.duplicateTitle")}
           >
             <Copy className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden sm:inline">Tạo bản sao</span>
+            <span className="hidden sm:inline">{t("basePlanner.editorHeader.duplicate")}</span>
           </button>
         </div>
       </div>
@@ -232,7 +234,7 @@ export function EditorBlueprintHeader({
               <div className="flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                  Đổi Tên Bản Thiết Kế
+                  {t("basePlanner.editorHeader.renameModal.title")}
                 </h3>
               </div>
               <button
@@ -246,7 +248,7 @@ export function EditorBlueprintHeader({
 
             <form onSubmit={handleConfirmRename} className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-300">
-                Nhập tên mới:
+                {t("basePlanner.editorHeader.renameModal.label")}
               </label>
               <input
                 type="text"
@@ -276,13 +278,13 @@ export function EditorBlueprintHeader({
                   onClick={() => setIsRenameOpen(false)}
                   className="px-3.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black shadow transition-all cursor-pointer"
                 >
-                  Xác nhận đổi tên
+                  {t("basePlanner.editorHeader.renameModal.confirm")}
                 </button>
               </div>
             </form>
@@ -299,10 +301,10 @@ export function EditorBlueprintHeader({
                 <Castle className="w-5 h-5 text-amber-400" />
                 <div>
                   <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                    Cấp Town Hall Của Bản Thiết Kế
+                    {t("basePlanner.editorHeader.thModal.title")}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Bản thiết kế này thuộc <strong className="text-amber-400">TH{layout.townHallLevel}</strong> ({reqs.total} vật thể quy chuẩn).
+                    {t("basePlanner.editorHeader.thModal.belongsToPrefix")} <strong className="text-amber-400">TH{layout.townHallLevel}</strong> {t("basePlanner.editorHeader.thModal.belongsToSuffix", { count: reqs.total })}
                   </p>
                 </div>
               </div>
@@ -316,13 +318,13 @@ export function EditorBlueprintHeader({
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#060e15] border border-[#1b2b3a] text-xs text-slate-300 leading-relaxed">
-              Town Hall là thuộc tính cấu trúc cơ sở của bản thiết kế. Để tránh làm mất cân bằng hoặc sai lệch giới hạn công trình của bản vẽ hiện tại, bạn có 2 lựa chọn:
+              {t("basePlanner.editorHeader.thModal.explanation")}
             </div>
 
             {/* Target TH Picker */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-slate-300">
-                Chọn cấp Town Hall mới:
+                {t("basePlanner.editorHeader.thModal.pickLabel")}
               </label>
               <div className="grid grid-cols-6 gap-1.5 max-h-36 overflow-y-auto p-1 bg-[#060e15] rounded-xl border border-[#182837]">
                 {Array.from({ length: 18 }, (_, i) => i + 1).map((lvl) => {
@@ -355,12 +357,12 @@ export function EditorBlueprintHeader({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-cyan-300 group-hover:text-cyan-200">
-                    1. Tạo bản sao ở TH{selectedTargetTH}
+                    {t("basePlanner.editorHeader.thModal.option1Title", { th: `TH${selectedTargetTH}` })}
                   </span>
                   <Copy className="w-3.5 h-3.5 text-cyan-400" />
                 </div>
                 <p className="text-[11px] text-slate-400 leading-snug">
-                  Nhân bản layout sang TH{selectedTargetTH}, tự động giữ lại và cắt lọc các công trình theo giới hạn mới.
+                  {t("basePlanner.editorHeader.thModal.option1Desc", { th: `TH${selectedTargetTH}` })}
                 </p>
               </button>
 
@@ -372,12 +374,12 @@ export function EditorBlueprintHeader({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-amber-300 group-hover:text-amber-200">
-                    2. Tạo bản thiết kế mới
+                    {t("basePlanner.editorHeader.thModal.option2Title")}
                   </span>
                   <Plus className="w-3.5 h-3.5 text-amber-400" />
                 </div>
                 <p className="text-[11px] text-slate-400 leading-snug">
-                  Mở trình tạo bản thiết kế mới cho TH{selectedTargetTH} (Tự động 100%, Bố cục mẫu hoặc Bản đồ trống).
+                  {t("basePlanner.editorHeader.thModal.option2Desc", { th: `TH${selectedTargetTH}` })}
                 </p>
               </button>
             </div>
