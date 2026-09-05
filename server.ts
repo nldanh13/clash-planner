@@ -1,6 +1,28 @@
 import express from "express";
 import path from "path";
+import { timingSafeEqual } from "crypto";
 import { createServer as createViteServer } from "vite";
+
+// Fail-closed admin auth: without ADMIN_PASSWORD set, the admin endpoints run
+// shell commands (npm run update-data / download-images.mjs), so a missing
+// password must reject every request rather than let them all through.
+function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    return res.status(503).json({ error: "Máy chủ chưa cấu hình ADMIN_PASSWORD. Tính năng quản trị đang bị khoá vì lý do an toàn." });
+  }
+
+  const provided = req.headers["x-admin-password"];
+  const providedStr = Array.isArray(provided) ? provided[0] : provided || "";
+  const providedBuf = Buffer.from(providedStr, "utf8");
+  const expectedBuf = Buffer.from(adminPassword, "utf8");
+  const isValid = providedBuf.length === expectedBuf.length && timingSafeEqual(providedBuf, expectedBuf);
+
+  if (!isValid) {
+    return res.status(401).json({ error: "Mật khẩu quản trị không hợp lệ." });
+  }
+  next();
+}
 
 async function startServer() {
   const apiKey = process.env.COC_API_TOKEN || process.env.WAR_REPORT_API_KEY;
@@ -58,14 +80,7 @@ async function startServer() {
   });
 
   // Admin API to run data scraping
-  app.post("/api/admin/update-data", async (req, res) => {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    const providedPassword = req.headers["x-admin-password"];
-
-    if (adminPassword && providedPassword !== adminPassword) {
-      return res.status(401).json({ error: "Mật khẩu quản trị không hợp lệ." });
-    }
-
+  app.post("/api/admin/update-data", requireAdmin, async (req, res) => {
     try {
       const { exec } = await import("child_process");
       exec("npm run update-data", { maxBuffer: 1024 * 1024 * 5 }, (error, stdout, stderr) => {
@@ -108,14 +123,7 @@ async function startServer() {
   });
 
   // Admin API to run incremental or forced image sync
-  app.post("/api/admin/download-images", async (req, res) => {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    const providedPassword = req.headers["x-admin-password"];
-
-    if (adminPassword && providedPassword !== adminPassword) {
-      return res.status(401).json({ error: "Mật khẩu quản trị không hợp lệ." });
-    }
-
+  app.post("/api/admin/download-images", requireAdmin, async (req, res) => {
     const force = Boolean(req.body?.force);
     const cmd = force ? "node scripts/download-images.mjs --force" : "node scripts/download-images.mjs";
 

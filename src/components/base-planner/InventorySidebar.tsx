@@ -13,6 +13,7 @@ import {
 import { BUILDINGS_CATALOG } from "./constants";
 import { getCachedImage, getBuildingImagePath } from "./imageMapper";
 import type { BuildingCategory, PlacedBuilding } from "./types";
+import { useTranslation, type TranslationKey } from "../../i18n";
 
 interface InventorySidebarProps {
   townHallLevel: number;
@@ -25,14 +26,14 @@ interface InventorySidebarProps {
   onToggleWallBrush: () => void;
 }
 
-const CATEGORIES: { key: BuildingCategory | "all"; label: string; icon: React.ElementType }[] = [
-  { key: "defense", label: "Phòng thủ", icon: Shield },
-  { key: "resource", label: "Tài nguyên", icon: Coins },
-  { key: "army", label: "Quân đội", icon: Swords },
-  { key: "hero", label: "Hero", icon: Crown },
-  { key: "trap", label: "Bẫy", icon: Bomb },
-  { key: "wall", label: "Tường", icon: Layers },
-  { key: "all", label: "Tất cả", icon: Sparkles },
+const CATEGORIES: { key: BuildingCategory | "all"; labelKey: TranslationKey; icon: React.ElementType }[] = [
+  { key: "defense", labelKey: "common.defense", icon: Shield },
+  { key: "resource", labelKey: "common.resource", icon: Coins },
+  { key: "army", labelKey: "common.troopsFull", icon: Swords },
+  { key: "hero", labelKey: "common.hero", icon: Crown },
+  { key: "trap", labelKey: "common.trap", icon: Bomb },
+  { key: "wall", labelKey: "common.wall", icon: Layers },
+  { key: "all", labelKey: "common.all", icon: Sparkles },
 ];
 
 export function InventorySidebar({
@@ -45,6 +46,7 @@ export function InventorySidebar({
   wallBrushActive,
   onToggleWallBrush,
 }: InventorySidebarProps) {
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<BuildingCategory | "all">("defense");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -103,7 +105,7 @@ export function InventorySidebar({
           <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <input
             type="text"
-            placeholder="Tìm công trình, bẫy..."
+            placeholder={t("basePlanner.inventory.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-transparent border-none outline-none text-xs text-white placeholder-slate-500 font-medium"
@@ -112,7 +114,7 @@ export function InventorySidebar({
             <button
               onClick={() => setSearchQuery("")}
               className="text-slate-400 hover:text-white p-0.5"
-              title="Xóa tìm kiếm"
+              title={t("basePlanner.inventory.clearSearch")}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -135,7 +137,7 @@ export function InventorySidebar({
                 }`}
               >
                 <Icon className="w-3 h-3" />
-                <span>{cat.label}</span>
+                <span>{t(cat.labelKey)}</span>
               </button>
             );
           })}
@@ -145,13 +147,13 @@ export function InventorySidebar({
       {/* Progress & Wall Brush Banner */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-950/70 border border-slate-800 rounded-xl text-xs font-mono">
         <div className="flex items-center gap-1 text-slate-400">
-          <span>Công trình:</span>
+          <span>{t("basePlanner.inventory.buildingsLabel")}</span>
           <strong className="text-white">
             {totalStats.placedTotal}/{totalStats.maxTotal}
           </strong>
         </div>
         <div className="flex items-center gap-1 text-slate-400">
-          <span>Tường:</span>
+          <span>{t("basePlanner.inventory.wallsLabel")}</span>
           <strong
             className={
               totalStats.wallPlaced >= totalStats.wallMax && totalStats.wallMax > 0
@@ -169,9 +171,9 @@ export function InventorySidebar({
         <div className="flex items-center justify-between gap-2 p-2 bg-slate-950/80 border border-cyan-500/30 rounded-xl">
           <div className="flex flex-col">
             <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
-              <Layers className="w-3 h-3" /> Cọ vẽ Tường liên tục
+              <Layers className="w-3 h-3" /> {t("basePlanner.inventory.wallBrushTitle")}
             </span>
-            <span className="text-[9.5px] text-slate-400">Kéo chuột trên map để xây tường</span>
+            <span className="text-[9.5px] text-slate-400">{t("basePlanner.inventory.wallBrushHint")}</span>
           </div>
           <button
             onClick={onToggleWallBrush}
@@ -181,7 +183,7 @@ export function InventorySidebar({
                 : "bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-cyan-500/40"
             }`}
           >
-            {wallBrushActive ? "Bật" : "Tắt"}
+            {wallBrushActive ? t("basePlanner.inventory.on") : t("basePlanner.inventory.off")}
           </button>
         </div>
       )}
@@ -190,7 +192,7 @@ export function InventorySidebar({
       <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-1.5">
         {availableItems.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-500">
-            Không có công trình nào phù hợp ở TH{townHallLevel}.
+            {t("basePlanner.inventory.noneAtTH", { th: townHallLevel })}
           </div>
         ) : (
           availableItems.map((item) => {
@@ -249,14 +251,14 @@ export function InventorySidebar({
                     <span className="font-extrabold text-xs text-white truncate">{item.name}</span>
                     {item.range && (
                       <span className="text-[9px] font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-1.5 py-0.2 rounded">
-                        Tầm: {item.range}
+                        {t("basePlanner.inventory.rangeLabel", { range: item.range })}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center justify-between text-[10.5px]">
                     <span className="text-slate-400">
-                      Đã đặt: <b className="text-slate-200">{placed}</b>/{max}
+                      {t("basePlanner.inventory.placedLabel")} <b className="text-slate-200">{placed}</b>/{max}
                     </span>
                     <span
                       className={`font-bold font-mono text-[10px] px-1.5 py-0.2 rounded ${
@@ -265,7 +267,7 @@ export function InventorySidebar({
                           : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                       }`}
                     >
-                      {isExhausted ? "Hết" : `Còn ${remaining}`}
+                      {isExhausted ? t("basePlanner.inventory.exhausted") : t("basePlanner.inventory.remaining", { count: remaining })}
                     </span>
                   </div>
                 </div>

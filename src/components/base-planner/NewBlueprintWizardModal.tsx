@@ -43,6 +43,7 @@ import {
 import { getTownHallRequirements } from "./catalog";
 import { GRID_SIZE } from "./constants";
 import { validateLayout } from "./LayoutValidator";
+import { useTranslation } from "../../i18n";
 
 interface NewBlueprintWizardModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export function NewBlueprintWizardModal({
   onCreated,
   initialTownHall = 11,
 }: NewBlueprintWizardModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Form State
@@ -181,7 +183,7 @@ export function NewBlueprintWizardModal({
 
         if (isMounted) {
           if (!res || !res.buildings || res.buildings.length === 0) {
-            setGenerationError("Không thể tạo bố cục công trình cho cấp Town Hall này.");
+            setGenerationError(t("basePlanner.wizard.errors.generationEmpty"));
             setGeneratedResult(null);
           } else {
             setGeneratedResult(res);
@@ -191,7 +193,7 @@ export function NewBlueprintWizardModal({
         }
       } catch (err: any) {
         if (isMounted) {
-          setGenerationError(err?.message || "Đã xảy ra lỗi khi tạo bố cục tự động.");
+          setGenerationError(err?.message || t("basePlanner.wizard.errors.generationGeneric"));
           setGeneratedResult(null);
           setIsGenerating(false);
         }
@@ -318,12 +320,12 @@ export function NewBlueprintWizardModal({
     setCreationError(null);
     const finalName = normalizeLayoutName(customName);
     if (!finalName) {
-      setCreationError("Vui lòng nhập tên cho bản thiết kế.");
+      setCreationError(t("basePlanner.wizard.errors.nameRequired"));
       return;
     }
 
     if (isLayoutNameDuplicate(finalName, savedLayouts)) {
-      setCreationError("Tên này đã được sử dụng. Vui lòng chọn tên khác.");
+      setCreationError(t("basePlanner.wizard.errors.nameDuplicate"));
       return;
     }
 
@@ -331,7 +333,7 @@ export function NewBlueprintWizardModal({
 
     if (creationMethod === "auto") {
       if (generationError || !generatedResult || !generatedResult.success) {
-        setCreationError("Thuật toán sinh base chưa hoàn tất hoặc gặp sự cố. Vui lòng thử đổi seed khác.");
+        setCreationError(t("basePlanner.wizard.errors.generationIncomplete"));
         return;
       }
       buildingsToSave = generatedResult.buildings;
@@ -346,7 +348,7 @@ export function NewBlueprintWizardModal({
     const validation = validateLayout(buildingsToSave, townHallLevel);
     if (validation.hasCriticals) {
       const msgs = validation.issues.filter((i) => i.type === "critical").map((i) => i.message);
-      setCreationError(`Kiểm tra hợp lệ thất bại:\n${msgs.join("\n")}`);
+      setCreationError(`${t("basePlanner.wizard.errors.validationFailedPrefix")}\n${msgs.join("\n")}`);
       return;
     }
 
@@ -385,14 +387,14 @@ export function NewBlueprintWizardModal({
                 id="wizard-title"
                 className="text-xs sm:text-sm font-black text-white tracking-wide uppercase"
               >
-                Tạo Bản Thiết Kế Mới
+                {t("basePlanner.wizard.title")}
               </h2>
               <p className="text-[11px] text-slate-400">
-                Bước {step}/4 —{" "}
-                {step === 1 && "Chọn Town Hall"}
-                {step === 2 && "Chọn cách khởi tạo"}
-                {step === 3 && "Chọn loại base & mục đích"}
-                {step === 4 && "Đặt tên và hoàn tất"}
+                {t("basePlanner.wizard.stepPrefix", { step })}{" "}
+                {step === 1 && t("basePlanner.wizard.stepLabels.step1")}
+                {step === 2 && t("basePlanner.wizard.stepLabels.step2")}
+                {step === 3 && t("basePlanner.wizard.stepLabels.step3")}
+                {step === 4 && t("basePlanner.wizard.stepLabels.step4")}
               </p>
             </div>
           </div>
@@ -401,8 +403,8 @@ export function NewBlueprintWizardModal({
             type="button"
             onClick={handleRequestClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Đóng wizard"
-            aria-label="Đóng wizard"
+            title={t("basePlanner.wizard.closeTitle")}
+            aria-label={t("basePlanner.wizard.closeTitle")}
           >
             <X className="w-5 h-5" />
           </button>
@@ -424,10 +426,10 @@ export function NewBlueprintWizardModal({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">
-                    Bước 1: Chọn Cấp Town Hall
+                    {t("basePlanner.wizard.step1.title")}
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Town Hall là thuộc tính cố định xác định danh mục và giới hạn công trình.
+                    {t("basePlanner.wizard.step1.description")}
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black">
@@ -449,7 +451,7 @@ export function NewBlueprintWizardModal({
                           ? "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-105 border-2 border-amber-300"
                           : "bg-[#0d1c28] border border-[#23384c] text-slate-300 hover:bg-[#14293a] hover:text-white"
                       }`}
-                      aria-label={`Chọn Town Hall ${lvl}`}
+                      aria-label={t("basePlanner.wizard.step1.selectAria", { level: lvl })}
                     >
                       <Castle className="w-3.5 h-3.5" />
                       <span>TH{lvl}</span>
@@ -462,27 +464,27 @@ export function NewBlueprintWizardModal({
               <div className="p-3.5 rounded-xl bg-[#08121a] border border-[#1d3042] flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Thông số quy chuẩn Town Hall {townHallLevel}:
+                    {t("basePlanner.wizard.step1.summaryTitle", { th: townHallLevel })}
                   </span>
                   <span className="text-[10px] text-cyan-400 font-bold">
-                    Tổng: {totalObjectsCount} vật thể
+                    {t("basePlanner.wizard.step1.totalObjects", { count: totalObjectsCount })}
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div className="p-2 rounded-lg bg-[#0e1f2d]">
-                    <div className="text-[10px] text-slate-400">Công trình</div>
+                    <div className="text-[10px] text-slate-400">{t("basePlanner.wizard.step1.buildings")}</div>
                     <div className="font-bold text-white">{reqs.buildings}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-[#0e1f2d]">
-                    <div className="text-[10px] text-slate-400">Bẫy</div>
+                    <div className="text-[10px] text-slate-400">{t("basePlanner.wizard.step1.traps")}</div>
                     <div className="font-bold text-amber-400">{reqs.traps}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-[#0e1f2d]">
-                    <div className="text-[10px] text-slate-400">Tường</div>
+                    <div className="text-[10px] text-slate-400">{t("basePlanner.wizard.step1.walls")}</div>
                     <div className="font-bold text-cyan-400">{reqs.walls}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-[#0e1f2d]">
-                    <div className="text-[10px] text-slate-400">Tổng vật thể</div>
+                    <div className="text-[10px] text-slate-400">{t("basePlanner.wizard.step1.totalObjectsLabel")}</div>
                     <div className="font-black text-emerald-400">{totalObjectsCount}</div>
                   </div>
                 </div>
@@ -495,10 +497,10 @@ export function NewBlueprintWizardModal({
             <div className="flex flex-col gap-4 animate-in fade-in duration-150">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Bước 2: Chọn Cách Khởi Tạo
+                  {t("basePlanner.wizard.step2.title")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Chọn phương thức thiết lập bố cục ban đầu cho Town Hall {townHallLevel}.
+                  {t("basePlanner.wizard.step2.description", { th: townHallLevel })}
                 </p>
               </div>
 
@@ -518,13 +520,13 @@ export function NewBlueprintWizardModal({
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <strong className="text-xs font-black text-white">Tạo tự động</strong>
+                      <strong className="text-xs font-black text-white">{t("basePlanner.wizard.step2.auto.title")}</strong>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                        100% Đầy đủ
+                        {t("basePlanner.wizard.step2.auto.badge")}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Thuật toán thông minh tự động bố trí đầy đủ 100% công trình, bẫy và toàn bộ {reqs.walls} tường theo mục đích chiến thuật.
+                      {t("basePlanner.wizard.step2.auto.description", { walls: reqs.walls })}
                     </p>
                   </div>
                 </button>
@@ -555,17 +557,17 @@ export function NewBlueprintWizardModal({
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <strong className="text-xs font-black text-white">Dùng bố cục mẫu</strong>
+                      <strong className="text-xs font-black text-white">{t("basePlanner.wizard.step2.template.title")}</strong>
                       {!templateAvailable && (
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-medium">
-                          Chưa có bố cục mẫu cho TH này
+                          {t("basePlanner.wizard.step2.template.unavailableBadge")}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
                       {templateAvailable
-                        ? `Sử dụng bố cục tiêu chuẩn cân xứng đạt chuẩn đầy đủ công trình cho Town Hall ${townHallLevel}.`
-                        : `Hiện tại bố cục mẫu có sẵn từ TH9 trở lên. Vui lòng chọn Tạo tự động hoặc Bản đồ trống cho TH${townHallLevel}.`}
+                        ? t("basePlanner.wizard.step2.template.descriptionAvailable", { th: townHallLevel })
+                        : t("basePlanner.wizard.step2.template.descriptionUnavailable", { th: townHallLevel })}
                     </p>
                   </div>
                 </button>
@@ -585,13 +587,13 @@ export function NewBlueprintWizardModal({
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <strong className="text-xs font-black text-white">Bản đồ trống</strong>
+                      <strong className="text-xs font-black text-white">{t("basePlanner.wizard.step2.blank.title")}</strong>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                        Bản nháp
+                        {t("basePlanner.wizard.step2.blank.badge")}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Khởi tạo lưới trống 44×44. Bản đồ được lưu ở trạng thái Bản nháp cho đến khi bạn hoàn tất đặt các công trình từ kho dự trữ.
+                      {t("basePlanner.wizard.step2.blank.description")}
                     </p>
                   </div>
                 </button>
@@ -604,10 +606,10 @@ export function NewBlueprintWizardModal({
             <div className="flex flex-col gap-4 animate-in fade-in duration-150">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Bước 3: Chọn Loại Base & Mục Đích
+                  {t("basePlanner.wizard.step3.title")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Xác định phong cách chiến thuật để tối ưu hóa vị trí Town Hall và các kho chứa.
+                  {t("basePlanner.wizard.step3.description")}
                 </p>
               </div>
 
@@ -615,58 +617,22 @@ export function NewBlueprintWizardModal({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {(
                   [
-                    {
-                      id: "war",
-                      label: "Chiến tranh",
-                      subLabel: "War",
-                      desc: "Town Hall & Phòng thủ chủ chốt đặt sâu ở lõi để chống 3 sao.",
-                      icon: Swords,
-                      color: "from-red-500/20 to-rose-600/20 border-rose-500/40 text-rose-300",
-                    },
-                    {
-                      id: "trophy",
-                      label: "Đẩy cúp",
-                      subLabel: "Trophy",
-                      desc: "Tập trung bảo vệ Town Hall và đạt tỷ lệ thủ 1-2 sao tối ưu.",
-                      icon: Trophy,
-                      color: "from-amber-500/20 to-yellow-600/20 border-amber-500/40 text-amber-300",
-                    },
-                    {
-                      id: "farming",
-                      label: "Giữ tài nguyên",
-                      subLabel: "Farming",
-                      desc: "Phân tán các kho Vàng, Dầu và Dầu đen vào từng ngăn riêng biệt.",
-                      icon: Wheat,
-                      color: "from-emerald-500/20 to-green-600/20 border-emerald-500/40 text-emerald-300",
-                    },
-                    {
-                      id: "hybrid",
-                      label: "Cân bằng",
-                      subLabel: "Hybrid",
-                      desc: "Bảo vệ hài hòa giữa Town Hall và các kho dự trữ tài nguyên chính.",
-                      icon: Scale,
-                      color: "from-blue-500/20 to-cyan-600/20 border-blue-500/40 text-blue-300",
-                    },
-                    {
-                      id: "progress",
-                      label: "Tiến độ",
-                      subLabel: "Progress",
-                      desc: "Gom cụm công trình theo nhóm để dễ theo dõi nâng cấp hàng ngày.",
-                      icon: Hammer,
-                      color: "from-purple-500/20 to-indigo-600/20 border-purple-500/40 text-purple-300",
-                    },
-                    {
-                      id: "showcase",
-                      label: "Trang trí",
-                      subLabel: "Showcase",
-                      desc: "Tạo hình tường nghệ thuật đối xứng hoặc biểu tượng đẹp mắt.",
-                      icon: Palette,
-                      color: "from-pink-500/20 to-fuchsia-600/20 border-pink-500/40 text-pink-300",
-                    },
+                    { id: "war", icon: Swords, color: "from-red-500/20 to-rose-600/20 border-rose-500/40 text-rose-300" },
+                    { id: "trophy", icon: Trophy, color: "from-amber-500/20 to-yellow-600/20 border-amber-500/40 text-amber-300" },
+                    { id: "farming", icon: Wheat, color: "from-emerald-500/20 to-green-600/20 border-emerald-500/40 text-emerald-300" },
+                    { id: "hybrid", icon: Scale, color: "from-blue-500/20 to-cyan-600/20 border-blue-500/40 text-blue-300" },
+                    { id: "progress", icon: Hammer, color: "from-purple-500/20 to-indigo-600/20 border-purple-500/40 text-purple-300" },
+                    { id: "showcase", icon: Palette, color: "from-pink-500/20 to-fuchsia-600/20 border-pink-500/40 text-pink-300" },
                   ] as const
                 ).map((item) => {
                   const Icon = item.icon;
                   const isSelected = purpose === item.id;
+                  const purposeCopy = t(
+                    `basePlanner.wizard.step3.purposes.${item.id}.label` as const
+                  );
+                  const purposeDesc = t(
+                    `basePlanner.wizard.step3.purposes.${item.id}.desc` as const
+                  );
                   return (
                     <button
                       key={item.id}
@@ -681,12 +647,12 @@ export function NewBlueprintWizardModal({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Icon className="w-4 h-4" />
-                          <span className="text-xs font-black">{item.label}</span>
+                          <span className="text-xs font-black">{purposeCopy}</span>
                         </div>
                         {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
                       </div>
                       <span className="text-[10px] text-slate-400 line-clamp-2 leading-tight">
-                        {item.desc}
+                        {purposeDesc}
                       </span>
                     </button>
                   );
@@ -697,19 +663,19 @@ export function NewBlueprintWizardModal({
               {purpose === "showcase" && (
                 <div className="p-3 rounded-xl bg-[#09141e] border border-pink-500/30 flex flex-col gap-2">
                   <label className="text-[11px] font-black uppercase tracking-wider text-pink-400">
-                    Chọn Kiểu Mẫu Nghệ Thuật (Showcase Pattern):
+                    {t("basePlanner.wizard.step3.patternLabel")}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {(
                       [
-                        { id: "diamond", name: "Kim cương" },
-                        { id: "shield", name: "Khiên" },
-                        { id: "heart", name: "Trái tim" },
-                        { id: "spiral", name: "Xoắn ốc" },
-                        { id: "symmetric-axial", name: "Đối xứng" },
-                        { id: "crest", name: "Vương miện" },
-                        { id: "radial", name: "Tỏa tròn" },
-                        { id: "letter", name: "Chữ cái" },
+                        { id: "diamond", key: "diamond" },
+                        { id: "shield", key: "shield" },
+                        { id: "heart", key: "heart" },
+                        { id: "spiral", key: "spiral" },
+                        { id: "symmetric-axial", key: "symmetricAxial" },
+                        { id: "crest", key: "crest" },
+                        { id: "radial", key: "radial" },
+                        { id: "letter", key: "letter" },
                       ] as const
                     ).map((p) => {
                       const isSelected = pattern === p.id;
@@ -724,7 +690,7 @@ export function NewBlueprintWizardModal({
                               : "bg-[#0b1824] border-[#1d3042] text-slate-400 hover:text-white"
                           }`}
                         >
-                          {p.name}
+                          {t(`basePlanner.wizard.step3.patterns.${p.key}` as const)}
                         </button>
                       );
                     })}
@@ -738,18 +704,18 @@ export function NewBlueprintWizardModal({
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center p-3 rounded-xl bg-[#08121a] border border-[#1c2e3e]">
                     <div className="sm:col-span-8 flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">Xem trước cấu trúc tự động</span>
+                        <span className="text-xs font-bold text-white">{t("basePlanner.wizard.step3.previewTitle")}</span>
                         {isGenerating ? (
                           <span className="text-[10px] text-cyan-400 flex items-center gap-1 animate-pulse">
-                            <RefreshCw className="w-3 h-3 animate-spin" /> Đang tính toán...
+                            <RefreshCw className="w-3 h-3 animate-spin" /> {t("basePlanner.wizard.step3.calculating")}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-emerald-400 font-medium">Sẵn sàng</span>
+                          <span className="text-[10px] text-emerald-400 font-medium">{t("basePlanner.wizard.step3.ready")}</span>
                         )}
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed">
                         {STRATEGY_PROFILES[purpose]?.description ||
-                          "Bố trí đối xứng nhiều ngăn với tường bảo vệ khép kín."}
+                          t("basePlanner.wizard.step3.defaultDescription")}
                       </p>
                     </div>
 
@@ -768,10 +734,10 @@ export function NewBlueprintWizardModal({
                     <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs flex flex-col gap-2">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                        <span className="font-bold">Lỗi khởi tạo bố cục tự động:</span>
+                        <span className="font-bold">{t("basePlanner.wizard.step3.errorTitle")}</span>
                       </div>
                       <p className="text-[11px] text-rose-300 pl-6">
-                        {generationError} Vui lòng thực hiện một trong các hành động khắc phục bên dưới:
+                        {generationError} {t("basePlanner.wizard.step3.errorHint")}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 pl-6 pt-1">
                         <button
@@ -780,7 +746,7 @@ export function NewBlueprintWizardModal({
                           className="px-2.5 py-1 rounded-lg bg-rose-900/80 hover:bg-rose-800 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                         >
                           <Dice5 className="w-3.5 h-3.5" />
-                          <span>Tạo lại ngẫu nhiên</span>
+                          <span>{t("basePlanner.wizard.step3.regenerate")}</span>
                         </button>
                         {templateAvailable && (
                           <button
@@ -789,7 +755,7 @@ export function NewBlueprintWizardModal({
                             className="px-2.5 py-1 rounded-lg bg-cyan-900/80 hover:bg-cyan-800 text-cyan-200 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                           >
                             <LayoutTemplate className="w-3.5 h-3.5" />
-                            <span>Chuyển sang Bố cục mẫu</span>
+                            <span>{t("basePlanner.wizard.step3.switchToTemplate")}</span>
                           </button>
                         )}
                         <button
@@ -798,7 +764,7 @@ export function NewBlueprintWizardModal({
                           className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                         >
                           <Square className="w-3.5 h-3.5" />
-                          <span>Tạo Bản đồ trống</span>
+                          <span>{t("basePlanner.wizard.step3.switchToBlank")}</span>
                         </button>
                       </div>
                     </div>
@@ -812,9 +778,9 @@ export function NewBlueprintWizardModal({
                       className="w-full px-3 py-2 flex items-center justify-between text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
                     >
                       <span className="font-bold flex items-center gap-1.5">
-                        <span>Tùy chọn nâng cao</span>
+                        <span>{t("basePlanner.wizard.step3.advancedToggle")}</span>
                         <span className="text-[10px] text-slate-500 font-normal">
-                          (Tùy chỉnh seed thuật toán)
+                          {t("basePlanner.wizard.step3.advancedHint")}
                         </span>
                       </span>
                       {showAdvancedSeed ? (
@@ -828,7 +794,7 @@ export function NewBlueprintWizardModal({
                       <div className="p-3 border-t border-[#182a3c] flex flex-col gap-2 bg-[#060e17]">
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-medium text-slate-400">
-                            Seed thuật toán ngẫu nhiên:
+                            {t("basePlanner.wizard.step3.seedLabel")}
                           </label>
                           <button
                             type="button"
@@ -836,7 +802,7 @@ export function NewBlueprintWizardModal({
                             className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
                           >
                             <Dice5 className="w-3.5 h-3.5" />
-                            <span>Đổi seed ngẫu nhiên</span>
+                            <span>{t("basePlanner.wizard.step3.seedRandomize")}</span>
                           </button>
                         </div>
                         <input
@@ -844,10 +810,10 @@ export function NewBlueprintWizardModal({
                           value={seed}
                           onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
                           className="px-3 py-1.5 bg-[#0b1622] border border-[#233b52] rounded-lg text-xs font-mono text-cyan-300 outline-none w-full"
-                          placeholder="Nhập số seed hoặc bấm đổi seed"
+                          placeholder={t("basePlanner.wizard.step3.seedPlaceholder")}
                         />
                         <p className="text-[10px] text-slate-500">
-                          Cùng một số seed sẽ tái tạo chính xác kiểu xếp công trình và phân bố tường.
+                          {t("basePlanner.wizard.step3.seedHint")}
                         </p>
                       </div>
                     )}
@@ -862,17 +828,17 @@ export function NewBlueprintWizardModal({
             <div className="flex flex-col gap-4 animate-in fade-in duration-150">
               <div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Bước 4: Đặt Tên Bản Thiết Kế
+                  {t("basePlanner.wizard.step4.title")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Tên đã được tự động điền trực tiếp để đảm bảo không trùng lặp trong bộ nhớ lưu.
+                  {t("basePlanner.wizard.step4.description")}
                 </p>
               </div>
 
               {/* Name Input Container */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-300">
-                  Tên bản thiết kế:
+                  {t("basePlanner.wizard.step4.nameLabel")}
                 </label>
                 <input
                   type="text"
@@ -882,7 +848,7 @@ export function NewBlueprintWizardModal({
                     setHasManuallyEditedName(true);
                     setCreationError(null);
                   }}
-                  placeholder="Nhập tên bản thiết kế..."
+                  placeholder={t("basePlanner.wizard.step4.namePlaceholder")}
                   className={`w-full px-4 py-2.5 bg-[#0a1723] border rounded-xl text-xs font-bold text-white outline-none transition-all ${
                     isNameDuplicate
                       ? "border-rose-500 focus:border-rose-400 ring-1 ring-rose-500/30"
@@ -897,7 +863,7 @@ export function NewBlueprintWizardModal({
                   <div className="text-[11px] text-amber-400/90 flex items-center justify-between gap-2 pt-0.5">
                     <span className="flex items-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Vui lòng nhập tên bản thiết kế.</span>
+                      <span>{t("basePlanner.wizard.step4.nameEmpty")}</span>
                     </span>
                     {suggestedName && (
                       <button
@@ -909,7 +875,7 @@ export function NewBlueprintWizardModal({
                         }}
                         className="text-cyan-400 hover:text-cyan-300 font-bold text-[11px] cursor-pointer"
                       >
-                        Dùng tên gợi ý
+                        {t("basePlanner.wizard.step4.useSuggested")}
                       </button>
                     )}
                   </div>
@@ -917,7 +883,7 @@ export function NewBlueprintWizardModal({
                   <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-150">
                     <div className="flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>Tên này đã được sử dụng. Vui lòng chọn tên khác.</span>
+                      <span>{t("basePlanner.wizard.step4.nameDuplicate")}</span>
                     </div>
                     {suggestedName && (
                       <button
@@ -929,7 +895,7 @@ export function NewBlueprintWizardModal({
                         }}
                         className="px-2.5 py-1 rounded-lg bg-rose-900/60 hover:bg-rose-800/80 text-[11px] font-bold text-rose-100 transition-colors shrink-0 cursor-pointer"
                       >
-                        Dùng tên gợi ý
+                        {t("basePlanner.wizard.step4.useSuggested")}
                       </button>
                     )}
                   </div>
@@ -939,31 +905,31 @@ export function NewBlueprintWizardModal({
               {/* Summary Card */}
               <div className="p-4 rounded-xl bg-[#091520] border border-[#1e3347] flex flex-col gap-2.5 text-xs">
                 <strong className="text-slate-300 text-[11px] font-black uppercase tracking-wider">
-                  Tóm tắt cấu hình bản thiết kế:
+                  {t("basePlanner.wizard.step4.summaryTitle")}
                 </strong>
                 <div className="grid grid-cols-2 gap-2 text-slate-300">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Town Hall:</span>
+                    <span className="text-slate-400">{t("basePlanner.wizard.step4.townHallLabel")}</span>
                     <span className="font-bold text-amber-400">TH{townHallLevel}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Mục đích:</span>
+                    <span className="text-slate-400">{t("basePlanner.wizard.step4.purposeLabel")}</span>
                     <span className="font-bold text-white">
                       {PURPOSE_LABELS[purpose] || purpose}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Khởi tạo:</span>
+                    <span className="text-slate-400">{t("basePlanner.wizard.step4.creationLabel")}</span>
                     <span className="font-bold text-cyan-400">
-                      {creationMethod === "auto" && "Tạo tự động (100% full)"}
-                      {creationMethod === "template" && "Bố cục mẫu chuẩn"}
-                      {creationMethod === "blank" && "Bản đồ trống (Bản nháp)"}
+                      {creationMethod === "auto" && t("basePlanner.wizard.step4.creationAuto")}
+                      {creationMethod === "template" && t("basePlanner.wizard.step4.creationTemplate")}
+                      {creationMethod === "blank" && t("basePlanner.wizard.step4.creationBlank")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Tổng vật thể:</span>
+                    <span className="text-slate-400">{t("basePlanner.wizard.step4.totalObjectsLabel")}</span>
                     <span className="font-bold text-emerald-400">
-                      {creationMethod === "blank" ? "0 (Chưa đặt)" : `${totalObjectsCount} vật thể`}
+                      {creationMethod === "blank" ? t("basePlanner.wizard.step4.totalObjectsBlank") : t("basePlanner.wizard.step4.totalObjectsValue", { count: totalObjectsCount })}
                     </span>
                   </div>
                 </div>
@@ -989,7 +955,7 @@ export function NewBlueprintWizardModal({
                 className="px-3.5 py-1.5 rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>Quay lại</span>
+                <span>{t("basePlanner.wizard.footer.back")}</span>
               </button>
             ) : (
               <button
@@ -997,7 +963,7 @@ export function NewBlueprintWizardModal({
                 onClick={handleRequestClose}
                 className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white text-xs font-medium transition-colors cursor-pointer"
               >
-                Hủy bỏ
+                {t("basePlanner.wizard.footer.cancel")}
               </button>
             )}
           </div>
@@ -1014,7 +980,7 @@ export function NewBlueprintWizardModal({
                     : "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 shadow-amber-500/20"
                 }`}
               >
-                <span>Tiếp tục</span>
+                <span>{t("basePlanner.wizard.footer.next")}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
@@ -1029,7 +995,7 @@ export function NewBlueprintWizardModal({
                 }`}
               >
                 <Check className="w-4 h-4" />
-                <span>Tạo và lưu</span>
+                <span>{t("basePlanner.wizard.footer.createAndSave")}</span>
               </button>
             )}
           </div>
@@ -1046,11 +1012,11 @@ export function NewBlueprintWizardModal({
               <div className="flex items-center gap-2 text-amber-400">
                 <AlertTriangle className="w-5 h-5 shrink-0" />
                 <h4 id="cancel-confirm-title" className="text-sm font-bold text-white">
-                  Hủy tạo bản thiết kế?
+                  {t("basePlanner.wizard.cancelConfirm.title")}
                 </h4>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Các lựa chọn hiện tại của bạn sẽ không được lưu lại.
+                {t("basePlanner.wizard.cancelConfirm.description")}
               </p>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
@@ -1058,7 +1024,7 @@ export function NewBlueprintWizardModal({
                   onClick={() => setShowCancelConfirm(false)}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer"
                 >
-                  Tiếp tục tạo
+                  {t("basePlanner.wizard.cancelConfirm.continue")}
                 </button>
                 <button
                   type="button"
@@ -1068,7 +1034,7 @@ export function NewBlueprintWizardModal({
                   }}
                   className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer"
                 >
-                  Hủy bỏ
+                  {t("basePlanner.wizard.cancelConfirm.confirm")}
                 </button>
               </div>
             </div>

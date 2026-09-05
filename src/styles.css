@@ -34,19 +34,23 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
 }
 .app{width:100%;max-width:min(1240px,calc(100% - 24px));margin:0 auto;padding-bottom:30px;overflow-x:clip;box-sizing:border-box}
 .app.base-planner-full{width:100%!important;max-width:100%!important;padding-left:16px;padding-right:16px;margin:0 auto}
-.topbar{height:80px;display:flex;align-items:center;gap:15px;border-bottom:1px solid #ffffff15;position:sticky;top:0;z-index:30;background:#10151eed;backdrop-filter:blur(16px)}
-.brand{display:flex;align-items:center;gap:10px;min-width:270px}
-.crest{width:44px;height:46px;min-width:44px;display:grid;place-items:center;color:#241806;background:linear-gradient(#fff0a4,var(--gold));clip-path:polygon(50% 0,95% 18%,87% 79%,50% 100%,13% 79%,5% 18%)}
-.crest svg{width:23px}
-.brand>div{display:grid}
-.brand small{font-size:9px;letter-spacing:.17em;color:var(--gold);font-weight:900}
-.brand strong{font-size:14px;color:#f0f0f0}
-.searchbox{height:44px;flex:1;display:flex;align-items:center;border:1px solid #3c4c5e;background:#151b24;border-radius:11px;overflow:hidden}
-.searchbox>svg{width:17px;margin:0 11px;color:#a0b0be}
+.topbar{height:72px;display:flex;align-items:center;gap:15px;border-bottom:1px solid #ffffff12;position:sticky;top:0;z-index:30;background:#10151eed;backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:11px;min-width:220px}
+.crest{width:38px;height:38px;min-width:38px;display:grid;place-items:center;color:var(--gold);border-radius:11px;background:linear-gradient(160deg,#1c2531,#12181f);border:1px solid #ffffff14}
+.crest svg{width:19px}
+.brand>div{display:grid;line-height:1.25}
+.brand small{font-size:10px;color:#7c8a97;font-weight:600}
+.brand strong{font-size:15px;color:#f0f0f0;font-weight:800;letter-spacing:-.01em}
+.searchbox{height:42px;flex:1;display:flex;align-items:center;border:1px solid #2c3947;background:#141a23;border-radius:10px;overflow:hidden;transition:border-color .15s}
+.searchbox:focus-within{border-color:#4c5f70}
+.searchbox>svg{width:16px;margin:0 11px;color:#7c8a97}
 .searchbox input{min-width:0;flex:1;height:100%;border:0;outline:0;background:none;color:#f0f0f0}
-.searchbox button{align-self:stretch;min-height:44px;padding:0 18px;border:0;background:linear-gradient(#f0c054,#d99b32);color:#1e1406;font-weight:900;cursor:pointer}
-.searchbox button:disabled{opacity:.65}
-.icon-button{min-width:44px;min-height:44px;border:1px solid #3c4c5e;border-radius:11px;background:#17202c;color:#b8c7d4;display:grid;place-items:center;cursor:pointer}
+.searchbox input::placeholder{color:#5c6b78}
+.searchbox button{align-self:stretch;min-height:42px;padding:0 16px;border:0;background:var(--gold);color:#1e1406;font-weight:800;font-size:13px;cursor:pointer;transition:background-color .15s}
+.searchbox button:hover:not(:disabled){background:#f3ce78}
+.searchbox button:disabled{opacity:.6}
+.icon-button{min-width:42px;min-height:42px;border:1px solid #2c3947;border-radius:10px;background:#141a23;color:#8fa0ac;display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s}
+.icon-button:hover:not(:disabled){border-color:#4c5f70;color:#d5e0e8}
 .icon-button svg{width:18px}
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}

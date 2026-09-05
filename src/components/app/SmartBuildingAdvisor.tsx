@@ -24,6 +24,7 @@ import {
   type BuildingCategoryFilter,
   type RecommendedBuilding
 } from "../../utils/smartBuildingAdvisor";
+import { useTranslation } from "../../i18n";
 
 interface SmartBuildingAdvisorProps {
   player: Player | null;
@@ -40,6 +41,7 @@ export function SmartBuildingAdvisor({
   goldPassDiscount,
   onSelectItemDetail
 }: SmartBuildingAdvisorProps) {
+  const { t } = useTranslation();
   const [criterion, setCriterion] = useState<UpgradePriorityCriterion>("defense-impact");
   const [categoryFilter, setCategoryFilter] = useState<BuildingCategoryFilter>("all");
 
@@ -62,26 +64,26 @@ export function SmartBuildingAdvisor({
   }[] = [
     {
       id: "defense-impact",
-      label: "Ảnh hưởng phòng thủ",
-      sublabel: "Ưu tiên vũ khí sát thương lớn nhất để giữ sao và chống 3 sao",
+      label: t("smartBuildingAdvisor.criteria.defenseImpact.label"),
+      sublabel: t("smartBuildingAdvisor.criteria.defenseImpact.sublabel"),
       icon: <Shield className="w-4 h-4 text-rose-400" />
     },
     {
       id: "lowest-time",
-      label: "Thời gian thấp nhất",
-      sublabel: "Hoàn thành sớm nhất để nhanh chóng giải phóng thợ xây",
+      label: t("smartBuildingAdvisor.criteria.lowestTime.label"),
+      sublabel: t("smartBuildingAdvisor.criteria.lowestTime.sublabel"),
       icon: <Clock className="w-4 h-4 text-emerald-400" />
     },
     {
       id: "lowest-cost",
-      label: "Tài nguyên thấp nhất",
-      sublabel: "Tiết kiệm chi phí nhất, nâng ngay mà không cần farm nhiều",
+      label: t("smartBuildingAdvisor.criteria.lowestCost.label"),
+      sublabel: t("smartBuildingAdvisor.criteria.lowestCost.sublabel"),
       icon: <img src="/resources/gold.png" className="w-4 h-4 object-contain inline-block" alt="Cost" />
     },
     {
       id: "balanced",
-      label: "Chiến lược cân bằng",
-      sublabel: "Tỷ suất hiệu quả (ROI) tối ưu giữa phòng thủ, giá và thời gian",
+      label: t("smartBuildingAdvisor.criteria.balanced.label"),
+      sublabel: t("smartBuildingAdvisor.criteria.balanced.sublabel"),
       icon: <Sparkles className="w-4 h-4 text-cyan-400" />
     }
   ];
@@ -97,17 +99,17 @@ export function SmartBuildingAdvisor({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base md:text-lg font-extrabold text-amber-300 tracking-wide">
-                Gợi Ý Nâng Cấp Thông Minh
+                {t("smartBuildingAdvisor.title")}
               </h3>
               <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
                 TH{effectiveTownHall}
               </span>
               <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-800/80 border border-slate-700 text-slate-300">
-                Top 3 công trình ưu tiên
+                {t("smartBuildingAdvisor.top3Badge")}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Phân tích thuật toán dựa trên thông số công trình, chi phí thực tế và tác động chiến thuật tại Town Hall {effectiveTownHall}.
+              {t("smartBuildingAdvisor.description", { th: effectiveTownHall })}
             </p>
           </div>
         </div>
@@ -116,21 +118,18 @@ export function SmartBuildingAdvisor({
         <div className="flex items-center gap-2 self-start md:self-auto">
           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 hidden md:flex">
             <Filter className="w-3 h-3 text-slate-400" />
-            Lọc:
+            {t("smartBuildingAdvisor.filterLabel")}
           </span>
           <div className="relative w-36">
             <select
               className="w-full appearance-none bg-[#070d14] border border-[#ffffff12] text-white text-xs font-semibold rounded-lg pl-3 pr-7 py-1.5 outline-none focus:border-amber-500/50 cursor-pointer"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as any)}
+              onChange={(e) => setCategoryFilter(e.target.value as BuildingCategoryFilter)}
             >
-              <option value="all">Tất cả</option>
-              <option value="defense">Phòng thủ</option>
-              <option value="hero">Anh hùng</option>
-              <option value="army">Quân đội</option>
-              <option value="resource">Tài nguyên</option>
-              <option value="building">Xây dựng</option>
-              <option value="trap">Bẫy</option>
+              <option value="all">{t("common.all")}</option>
+              <option value="defense">{t("common.defense")}</option>
+              <option value="building">{t("common.building")}</option>
+              <option value="trap">{t("common.trap")}</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -247,10 +246,10 @@ export function SmartBuildingAdvisor({
                     <div className="flex items-center justify-between text-sm mb-1.5 flex-wrap gap-1">
                       <span className="text-slate-300 flex items-center gap-1.5 font-medium whitespace-nowrap">
                         <Shield className="w-4 h-4 text-cyan-400" />
-                        Ảnh hưởng
+                        {t("smartBuildingAdvisor.impactLabel")}
                       </span>
                       <span className="font-bold text-cyan-300 whitespace-nowrap">
-                        <AnimatedCounter value={rec.defenseImpact.score} />/100 · Hạng {rec.defenseImpact.tier}
+                        <AnimatedCounter value={rec.defenseImpact.score} />/100 · {t("smartBuildingAdvisor.tierLabel", { tier: rec.defenseImpact.tier })}
                       </span>
                     </div>
                     <AnimatedProgressBar
@@ -275,7 +274,7 @@ export function SmartBuildingAdvisor({
                   <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-[#ffffff10]">
                     <div className="min-w-0">
                       <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                        <img src="/resources/gold.png" className="w-3.5 h-3.5 object-contain inline-block shrink-0" alt="Cost" /> Chi phí
+                        <img src="/resources/gold.png" className="w-3.5 h-3.5 object-contain inline-block shrink-0" alt="Cost" /> {t("smartBuildingAdvisor.costLabel")}
                       </span>
                       <strong className="text-amber-300 font-bold text-sm truncate block" title={nextCostStr}>
                         {nextCostStr}
@@ -283,7 +282,7 @@ export function SmartBuildingAdvisor({
                     </div>
                     <div className="min-w-0">
                       <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Thời gian
+                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> {t("smartBuildingAdvisor.timeLabel")}
                       </span>
                       <strong
                         className="text-emerald-300 font-bold text-sm truncate block"
@@ -308,10 +307,10 @@ export function SmartBuildingAdvisor({
         <div className="flex flex-col items-center justify-center p-6 text-center bg-[#0e1925] border border-[#ffffff12] rounded-xl">
           <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-2" />
           <h4 className="text-sm font-bold text-slate-200">
-            Tất cả công trình phù hợp đã đạt cấp tối đa tại TH{effectiveTownHall}!
+            {t("smartBuildingAdvisor.allMaxed", { th: effectiveTownHall })}
           </h4>
           <p className="text-xs text-slate-400 max-w-md mt-1">
-            Không còn công trình nào thuộc bộ lọc này cần nâng cấp. Bạn có thể chọn danh mục khác hoặc chuẩn bị nâng cấp Town Hall tiếp theo.
+            {t("smartBuildingAdvisor.noneInFilter")}
           </p>
         </div>
       )}

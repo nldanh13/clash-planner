@@ -13,6 +13,7 @@ import {
   Sparkles,
   Layers
 } from "lucide-react";
+import { useTranslation } from "../i18n";
 
 interface ManifestCategory {
   name: string;
@@ -46,6 +47,7 @@ interface AssetsManifest {
 }
 
 export function AdminPanel() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<"repository" | "gallery" | "scraper">("repository");
@@ -95,8 +97,8 @@ export function AdminPanel() {
 
   const handleSyncImages = async (force: boolean) => {
     const actionText = force
-      ? "Làm mới toàn bộ kho ảnh (tải lại toàn bộ từ mạng)?"
-      : "Quét bổ sung các ảnh còn thiếu? (Những ảnh đã có sẵn sẽ được bỏ qua, hoàn thành trong vài giây và không bị treo máy)";
+      ? t("admin.confirmRefreshAll")
+      : t("admin.confirmIncrementalSync");
 
     if (!window.confirm(actionText)) return;
 
@@ -112,23 +114,23 @@ export function AdminPanel() {
         body: JSON.stringify({ force })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi đồng bộ kho ảnh");
+      if (!res.ok) throw new Error(data.error || t("admin.syncImagesError"));
 
       setSyncResult({
         type: "success",
-        message: `✅ ${data.message}`,
+        message: t("admin.syncSuccess", { message: data.message }),
         output: data.output
       });
       await fetchAssetsStatus();
     } catch (err: any) {
-      setSyncResult({ type: "error", message: `❌ Lỗi: ${err.message}` });
+      setSyncResult({ type: "error", message: t("admin.errorPrefix", { message: err.message }) });
     } finally {
       setSyncingImages(false);
     }
   };
 
   const handleUpdateScraper = async () => {
-    if (!window.confirm("Quá trình quét cập nhật dữ liệu Clash of Clans có thể mất 15-30 giây. Tiếp tục?")) return;
+    if (!window.confirm(t("admin.confirmScraperUpdate"))) return;
     setUpdatingScraper(true);
     setScraperResult(null);
     try {
@@ -140,16 +142,16 @@ export function AdminPanel() {
         }
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lỗi cập nhật dữ liệu");
+      if (!res.ok) throw new Error(data.error || t("admin.scraperUpdateError"));
 
       setScraperResult({
         type: "success",
-        message: "✅ Đã cập nhật dữ liệu và đồng bộ kho ảnh thành công! Tải lại trang (F5) để áp dụng.",
+        message: t("admin.scraperSuccess"),
         output: data.output
       });
       await fetchAssetsStatus();
     } catch (err: any) {
-      setScraperResult({ type: "error", message: `❌ Lỗi: ${err.message}` });
+      setScraperResult({ type: "error", message: t("admin.errorPrefix", { message: err.message }) });
     } finally {
       setUpdatingScraper(false);
     }
@@ -159,15 +161,15 @@ export function AdminPanel() {
     return (
       <div style={{ maxWidth: "420px", margin: "50px auto", padding: "24px", background: "#101b25", borderRadius: "12px", border: "1px solid #2a3a4a", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
         <h2 style={{ fontSize: "17px", color: "var(--gold)", marginBottom: "16px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <Lock size={20} /> Xác thực Quản trị viên
+          <Lock size={20} /> {t("admin.login.title")}
         </h2>
         <p style={{ fontSize: "13px", color: "#9fb0bb", marginBottom: "16px", lineHeight: "1.5" }}>
-          Khu vực quản lý kho lưu trữ hình ảnh Offline (Git Repository) và cơ sở dữ liệu Clash Planner.
+          {t("admin.login.description")}
         </p>
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <input
             type="password"
-            placeholder="Nhập mật khẩu Admin..."
+            placeholder={t("admin.login.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={{ padding: "11px 14px", borderRadius: "8px", border: "1px solid #35495a", background: "#08131c", color: "#fff", outline: "none", fontSize: "14px" }}
@@ -177,7 +179,7 @@ export function AdminPanel() {
             type="submit"
             style={{ padding: "11px", borderRadius: "8px", background: "linear-gradient(#ffd678, #e8a73a)", color: "#1e1406", fontWeight: "bold", border: "none", cursor: "pointer", fontSize: "14px" }}
           >
-            Đăng nhập vào Hệ thống
+            {t("admin.login.submit")}
           </button>
         </form>
       </div>
@@ -197,10 +199,10 @@ export function AdminPanel() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "14px", marginBottom: "20px", borderBottom: "1px solid #243545", paddingBottom: "16px" }}>
         <div>
           <h2 style={{ fontSize: "20px", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-            <ShieldCheck size={24} color="var(--gold)" /> Quản trị Kho Dữ liệu & Hình ảnh (Clash Planner)
+            <ShieldCheck size={24} color="var(--gold)" /> {t("admin.header.title")}
           </h2>
           <p style={{ fontSize: "13px", color: "#9fb0bb", margin: "4px 0 0 0" }}>
-            Kho ảnh độc lập lưu trữ tại <code style={{ color: "#7cd3ff", background: "#08131c", padding: "2px 6px", borderRadius: "4px" }}>public/</code> — cam kết có sẵn trên Git để khi clone về máy vẫn có đủ 100% hình ảnh.
+            {t("admin.header.descriptionPrefix")} <code style={{ color: "#7cd3ff", background: "#08131c", padding: "2px 6px", borderRadius: "4px" }}>public/</code> {t("admin.header.descriptionSuffix")}
           </p>
         </div>
 
@@ -208,10 +210,10 @@ export function AdminPanel() {
           <button
             onClick={fetchAssetsStatus}
             disabled={loadingManifest}
-            aria-label="Tải lại bảng kê kho"
+            aria-label={t("admin.header.refreshManifest")}
             style={{ display: "flex", alignItems: "center", gap: "6px", background: "#1a2936", border: "1px solid #35495a", color: "#7cd3ff", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}
           >
-            <RefreshCw size={14} className={loadingManifest ? "spin" : ""} /> {loadingManifest ? "Đang kiểm tra..." : "Kiểm tra kho"}
+            <RefreshCw size={14} className={loadingManifest ? "spin" : ""} /> {loadingManifest ? t("admin.header.checking") : t("admin.header.checkRepo")}
           </button>
         </div>
       </div>
@@ -234,7 +236,7 @@ export function AdminPanel() {
             cursor: "pointer"
           }}
         >
-          <FolderGit2 size={16} /> Kho ảnh trên Git & Đồng bộ
+          <FolderGit2 size={16} /> {t("admin.tabs.repository")}
         </button>
 
         <button
@@ -253,7 +255,7 @@ export function AdminPanel() {
             cursor: "pointer"
           }}
         >
-          <ImageIcon size={16} /> Thư viện duyệt ảnh ({manifest ? `${manifest.summary.totalLocal}/${manifest.summary.totalItems}` : "..."})
+          <ImageIcon size={16} /> {manifest ? t("admin.tabs.galleryCount", { available: manifest.summary.totalLocal, total: manifest.summary.totalItems }) : t("admin.tabs.galleryLoading")}
         </button>
 
         <button
@@ -272,7 +274,7 @@ export function AdminPanel() {
             cursor: "pointer"
           }}
         >
-          <Database size={16} /> Cập nhật Dữ liệu Scraper
+          <Database size={16} /> {t("admin.tabs.scraper")}
         </button>
       </div>
 
@@ -285,11 +287,11 @@ export function AdminPanel() {
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                 <CheckCircle2 size={18} color="#2ecc71" />
                 <span style={{ fontSize: "15px", fontWeight: "bold", color: "#fff" }}>
-                  Trạng thái Kho lưu trữ Offline: {manifest ? `${manifest.summary.totalLocal}/${manifest.summary.totalItems} ảnh (${manifest.summary.coveragePercent}%)` : "Đang kiểm tra..."}
+                  {t("admin.repository.statusLabel")} {manifest ? t("admin.repository.statusValue", { available: manifest.summary.totalLocal, total: manifest.summary.totalItems, percent: manifest.summary.coveragePercent }) : t("admin.repository.checking")}
                 </span>
               </div>
               <p style={{ fontSize: "13px", color: "#9fb0bb", margin: 0, lineHeight: 1.5 }}>
-                Tất cả hình ảnh được lưu trữ cục bộ trong thư mục <code style={{ color: "#ffd678" }}>public/</code>. Khi bạn clone repository Git về máy tính hoặc chạy offline, web app sẽ hiển thị đầy đủ hình ảnh chất lượng cao mà không cần mạng.
+                {t("admin.repository.descriptionPrefix")} <code style={{ color: "#ffd678" }}>public/</code>{t("admin.repository.descriptionSuffix")}
               </p>
             </div>
 
@@ -297,14 +299,14 @@ export function AdminPanel() {
               <div style={{ fontSize: "28px", fontWeight: "bold", color: manifest?.summary.coveragePercent === 100 ? "#2ecc71" : "var(--gold)" }}>
                 {manifest ? `${manifest.summary.coveragePercent}%` : "--"}
               </div>
-              <div style={{ fontSize: "11px", color: "#7cd3ff" }}>ĐỘ PHỦ ẢNH OFFLINE</div>
+              <div style={{ fontSize: "11px", color: "#7cd3ff" }}>{t("admin.repository.coverageLabel")}</div>
             </div>
           </div>
 
           {/* Categories Grid */}
           <div>
             <h3 style={{ fontSize: "14px", color: "var(--gold)", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Layers size={16} /> Thống kê theo danh mục trong kho
+              <Layers size={16} /> {t("admin.repository.categoriesTitle")}
             </h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px" }}>
               {manifest?.summary.categories &&
@@ -321,7 +323,7 @@ export function AdminPanel() {
                           {cat.local} / {cat.total}
                         </div>
                         <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "10px", background: isFull ? "rgba(46, 204, 113, 0.15)" : "rgba(255, 214, 120, 0.15)", color: isFull ? "#2ecc71" : "#ffd678" }}>
-                          {isFull ? "Đầy đủ" : "Thiếu"}
+                          {isFull ? t("admin.repository.full") : t("admin.repository.missing")}
                         </span>
                       </div>
                     </div>
@@ -333,10 +335,10 @@ export function AdminPanel() {
           {/* Sync Controls */}
           <div style={{ padding: "18px", background: "#0d1720", borderRadius: "10px", border: "1px solid #35495a" }}>
             <h3 style={{ fontSize: "15px", color: "#fff", margin: "0 0 8px 0", display: "flex", alignItems: "center", gap: "8px" }}>
-              <HardDrive size={18} color="var(--gold)" /> Cơ chế Cập nhật Thông minh (Không đứng máy / No-Hang)
+              <HardDrive size={18} color="var(--gold)" /> {t("admin.repository.smartUpdateTitle")}
             </h3>
             <p style={{ fontSize: "13px", color: "#9fb0bb", margin: "0 0 16px 0", lineHeight: 1.5 }}>
-              Hệ thống sử dụng cơ chế <strong style={{ color: "#fff" }}>kiểm tra gia tăng (Incremental)</strong>: chỉ tải những ảnh chưa có trong thư mục cục bộ. Những ảnh đã tồn tại sẽ được giữ nguyên, giúp quá trình hoàn tất chỉ trong 1-2 giây và không bao giờ bị đứng hay treo máy.
+              {t("admin.repository.smartUpdateDescriptionPrefix")} <strong style={{ color: "#fff" }}>{t("admin.repository.smartUpdateBold")}</strong>{t("admin.repository.smartUpdateDescriptionSuffix")}
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "14px" }}>
@@ -359,7 +361,7 @@ export function AdminPanel() {
                 }}
               >
                 {syncingImages ? <LoaderCircle className="spin" size={16} /> : <Sparkles size={16} />}
-                {syncingImages ? "Đang đồng bộ..." : "Cập nhật ảnh còn thiếu (Gia tăng)"}
+                {syncingImages ? t("admin.repository.syncing") : t("admin.repository.syncIncremental")}
               </button>
 
               <button
@@ -378,7 +380,7 @@ export function AdminPanel() {
                   cursor: syncingImages ? "not-allowed" : "pointer"
                 }}
               >
-                <RefreshCw size={15} /> Tải lại toàn bộ ảnh (--force)
+                <RefreshCw size={15} /> {t("admin.repository.syncForce")}
               </button>
             </div>
 
@@ -407,7 +409,7 @@ export function AdminPanel() {
               <Search size={16} color="#7cd3ff" />
               <input
                 type="text"
-                placeholder="Tìm ảnh theo tên hoặc id..."
+                placeholder={t("admin.gallery.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ background: "transparent", border: "none", color: "#fff", outline: "none", fontSize: "13px", width: "100%" }}
@@ -417,14 +419,14 @@ export function AdminPanel() {
             {/* Category Filter Pills */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {[
-                { id: "all", label: "Tất cả" },
-                { id: "town-halls", label: "Town Hall" },
-                { id: "buildings", label: "Công trình" },
-                { id: "heroes", label: "Tướng" },
-                { id: "troops", label: "Quân & Xe" },
-                { id: "spells", label: "Phép" },
-                { id: "equipment", label: "Trang bị" },
-                { id: "pets", label: "Thú cưng" }
+                { id: "all", label: t("admin.gallery.filters.all") },
+                { id: "town-halls", label: t("admin.gallery.filters.townHalls") },
+                { id: "buildings", label: t("admin.gallery.filters.buildings") },
+                { id: "heroes", label: t("admin.gallery.filters.heroes") },
+                { id: "troops", label: t("admin.gallery.filters.troops") },
+                { id: "spells", label: t("admin.gallery.filters.spells") },
+                { id: "equipment", label: t("admin.gallery.filters.equipment") },
+                { id: "pets", label: t("admin.gallery.filters.pets") }
               ].map((c) => (
                 <button
                   key={c.id}
@@ -446,7 +448,7 @@ export function AdminPanel() {
           </div>
 
           <div style={{ fontSize: "12px", color: "#9fb0bb" }}>
-            Hiển thị {filteredItems.length} mục trong kho offline:
+            {t("admin.gallery.showingCount", { count: filteredItems.length })}
           </div>
 
           {/* Grid Gallery */}
@@ -491,7 +493,7 @@ export function AdminPanel() {
                   <span>{Math.round(item.sizeBytes / 1024)} KB</span>
                 </div>
                 <span style={{ fontSize: "10px", color: "#2ecc71", display: "flex", alignItems: "center", gap: "2px" }}>
-                  <CheckCircle2 size={10} /> Sẵn sàng
+                  <CheckCircle2 size={10} /> {t("admin.gallery.ready")}
                 </span>
               </div>
             ))}
@@ -503,10 +505,10 @@ export function AdminPanel() {
       {activeTab === "scraper" && (
         <div style={{ padding: "18px", background: "#0d1720", borderRadius: "10px", border: "1px solid #35495a", display: "flex", flexDirection: "column", gap: "14px" }}>
           <h3 style={{ fontSize: "15px", color: "#fff", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Database size={18} color="var(--gold)" /> Quét Cập nhật Dữ liệu Mới & Cấp độ Clash of Clans
+            <Database size={18} color="var(--gold)" /> {t("admin.scraper.title")}
           </h3>
           <p style={{ fontSize: "13px", color: "#9fb0bb", margin: 0, lineHeight: 1.5 }}>
-            Tự động chạy scraper trên máy chủ để cập nhật danh mục công trình, cấp độ, thông số Town Hall 1–18 từ War Report API và đồng bộ vào kho lưu trữ cục bộ.
+            {t("admin.scraper.description")}
           </p>
 
           <div>
@@ -529,7 +531,7 @@ export function AdminPanel() {
               }}
             >
               {updatingScraper ? <LoaderCircle className="spin" size={16} /> : <Database size={16} />}
-              {updatingScraper ? "Đang quét dữ liệu, vui lòng đợi..." : "Bắt đầu Quét & Cập nhật Dữ liệu"}
+              {updatingScraper ? t("admin.scraper.scanning") : t("admin.scraper.start")}
             </button>
           </div>
 

@@ -26,7 +26,7 @@ import {
 import { DECORATIONS_BY_ID } from "./decorationCatalog";
 import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decorationUtils";
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
-import { getCachedImage, preloadAllBaseImages } from "./imageMapper";
+import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -513,8 +513,7 @@ export function CanvasGridBoard({
       ctx.fillRect(px + 2, py + 3, pw - 4, ph - 4);
 
       // Building Image / Box
-      const imgKey = b.buildingId === "town-hall" ? `town-hall-${b.level || 1}` : b.buildingId;
-      const img = getCachedImage(imgKey) || getCachedImage(b.buildingId);
+      const img = getLeveledBuildingImage(b.buildingId, b.level, () => setRedrawCounter((c) => c + 1));
 
       if (img && !isInvalid) {
         // We can draw a subtle backing if it's a bit too transparent, but usually it's fine.
@@ -871,6 +870,7 @@ export function CanvasGridBoard({
     heatmapData,
     hoverCoord,
     occupancyMatrix,
+    redrawCounter,
     selectedDefId,
     selectedPlacedBuilding,
     selectedPlacedId,

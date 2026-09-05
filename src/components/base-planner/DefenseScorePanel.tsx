@@ -16,6 +16,7 @@ import { AnimatedCounter, AnimatedProgressBar } from "../ui/AnimatedFeedback";
 import { DeploymentZonePanel } from "./DeploymentZonePanel";
 import type { AutoFixResult } from "./deploymentAutoFix";
 import type { BasePurpose, DefenseScoreResult, PlacedBuilding } from "./types";
+import { useTranslation } from "../../i18n";
 
 interface DefenseScorePanelProps {
   defenseScore: DefenseScoreResult;
@@ -34,6 +35,7 @@ interface DefenseScorePanelProps {
 }
 
 export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: DefenseScorePanelProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<"breakdown" | "warnings" | "deployment">("breakdown");
 
@@ -62,7 +64,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
               <h3 className="font-extrabold text-sm sm:text-base text-white tracking-wide">
-                Điểm bố trí tham khảo
+                {t("basePlanner.defenseScore.title")}
               </h3>
               <span
                 className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider font-mono shadow-sm"
@@ -87,7 +89,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
               <span className="text-xs text-slate-400 font-bold ml-1">/100</span>
             </div>
             <span className="text-[9.5px] text-emerald-400 font-black uppercase tracking-wider block">
-              ● Live Engine
+              {t("basePlanner.defenseScore.liveEngine")}
             </span>
           </div>
 
@@ -95,7 +97,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
-              title={isExpanded ? "Thu gọn bảng đánh giá" : "Mở rộng bảng đánh giá"}
+              title={isExpanded ? t("basePlanner.defenseScore.collapseTitle") : t("basePlanner.defenseScore.expandTitle")}
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -103,7 +105,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
-                title="Đóng bảng đánh giá"
+                title={t("basePlanner.defenseScore.closeTitle")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -125,7 +127,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
               }`}
             >
               <Award className="w-3.5 h-3.5 text-cyan-400" />
-              <span>5 Tiêu chí Đánh giá</span>
+              <span>{t("basePlanner.defenseScore.tabs.breakdown")}</span>
             </button>
 
             <button
@@ -137,7 +139,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Cảnh báo &amp; Khắc phục</span>
+              <span>{t("basePlanner.defenseScore.tabs.warnings")}</span>
               {warnings.length > 0 && (
                 <span
                   className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-full font-mono ml-1 ${
@@ -161,7 +163,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
                 }`}
               >
                 <Target className="w-3.5 h-3.5 text-sky-400" />
-                <span>Vùng triển khai</span>
+                <span>{t("basePlanner.defenseScore.tabs.deployment")}</span>
                 {defenseScore.deployment.internalHoleCount > 0 && (
                   <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-full font-mono ml-1 bg-rose-500/30 text-rose-300 border border-rose-500/50">
                     {defenseScore.deployment.internalHoleCount}
@@ -185,10 +187,10 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
 
                 const scoreLabel =
                   percent >= 80
-                    ? "Tối ưu"
+                    ? t("basePlanner.defenseScore.scoreLabels.optimal")
                     : percent >= 55
-                    ? "Khá"
-                    : "Cần cải thiện";
+                    ? t("basePlanner.defenseScore.scoreLabels.good")
+                    : t("basePlanner.defenseScore.scoreLabels.needsImprovement");
 
                 const badgeColor =
                   percent >= 80
@@ -235,7 +237,7 @@ export function DefenseScorePanel({ defenseScore, onClose, deploymentContext }: 
                 <div className="p-4 text-center text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-500/40 rounded-xl flex items-center justify-center gap-2.5">
                   <ShieldCheck className="w-5 h-5" />
                   <span className="font-semibold">
-                    Bố cục phòng thủ hoàn hảo! Không phát hiện điểm mù hoặc cụm hỏa lực nguy hiểm nào.
+                    {t("basePlanner.defenseScore.noWarnings")}
                   </span>
                 </div>
               ) : (

@@ -1,4 +1,4 @@
-import { imageCache, preloadImage, getCachedImage } from "./imageCache";
+import { imageCache, preloadImage, getCachedImage, hasFailed } from "./imageCache";
 import { BUILDINGS_CATALOG } from "./constants";
 import { PlacedBuilding } from "./types";
 
@@ -27,17 +27,41 @@ export function getBuildingImagePath(buildingId: string, level?: number): string
   return `/buildings/${buildingId}.png`;
 }
 
-// Same logic but for rendering leveled if we add it in the future
-export function getBuildingLeveledImagePath(buildingId: string, level?: number): string[] | null {
-  const base = getBuildingImagePath(buildingId, level);
-  if (!base) return null;
-  if (buildingId === "town-hall" || base.includes("/heroes/")) {
-    return [base];
+/**
+ * Resolves the image to draw for a placed building at its actual level, preferring
+ * per-level art (`cannon-9.png`) but falling back to the flat catalog art
+ * (`cannon.png`) whenever the specific level hasn't been drawn/downloaded yet —
+ * many higher levels and newer defenses (monolith, spell-tower, ...) don't have
+ * dedicated art in `public/buildings` yet.
+ *
+ * The leveled image is fetched lazily and cached under its own key; `onLoaded`
+ * fires once it arrives so the caller can trigger a redraw to swap the fallback
+ * art for the real one.
+ */
+export function getLeveledBuildingImage(
+  buildingId: string,
+  level: number | undefined,
+  onLoaded?: () => void
+): HTMLImageElement | undefined {
+  if (buildingId === "town-hall") {
+    const thLevel = Math.max(1, Math.min(18, level ?? 1));
+    return getCachedImage(`town-hall-${thLevel}`);
   }
-  if (level) {
-    return [`/buildings/${buildingId}-${level}.png`, base];
+
+  const base = getCachedImage(buildingId);
+  if (!level) return base;
+
+  const leveledKey = `${buildingId}::L${level}`;
+  const leveled = getCachedImage(leveledKey);
+  if (leveled) return leveled;
+
+  if (!hasFailed(leveledKey)) {
+    preloadImage(leveledKey, `/buildings/${buildingId}-${level}.png`)
+      .then(() => onLoaded?.())
+      .catch(() => {});
   }
-  return [base];
+
+  return base;
 }
 
 // Preload all base buildings to avoid flickering on first draw
@@ -52,7 +76,7 @@ export function preloadAllBaseImages(triggerRedraw?: () => void) {
   };
 
   // Preload town halls
-  for (let i = 1; i <= 17; i++) {
+  for (let i = 1; i <= 18; i++) {
     preloadImage(`town-hall-${i}`, `/town-halls/th-${i}.png`).then(handleLoad).catch(() => {});
   }
   for (const def of BUILDINGS_CATALOG) {

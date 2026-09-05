@@ -71,6 +71,7 @@ import { CheckpointModal } from "./CheckpointModal";
 import { CatalogUpdateReportModal } from "./CatalogUpdateReportModal";
 import { LibraryImportModal } from "./LibraryImportModal";
 import type { ValidationIssue } from "./LayoutValidator";
+import { useTranslation } from "../../i18n";
 
 interface BlueprintManagerModalProps {
   isOpen: boolean;
@@ -107,6 +108,7 @@ export function BlueprintManagerModal({
   onSelectLayout,
   onOpenNewWizard,
 }: BlueprintManagerModalProps) {
+  const { t } = useTranslation();
   // Tabs: "active" (Danh sách bản thiết kế) | "trash" (Thùng rác)
   const [currentTab, setCurrentTab] = useState<"active" | "trash">("active");
 
@@ -360,30 +362,30 @@ export function BlueprintManagerModal({
         const next = updated.find((l) => l.id === nextActiveId);
         if (next) onSelectLayout(next);
       }
-      showToast(`Đã chuyển "${target?.name || "Bản thiết kế"}" vào thùng rác.`);
+      showToast(t("basePlanner.manager.toasts.movedToTrashNamed", { name: target?.name || t("basePlanner.manager.defaultLayoutName") }));
     } else {
-      showToast(`Đã chuyển vào thùng rác.`);
+      showToast(t("basePlanner.manager.toasts.movedToTrash"));
     }
   };
 
   const handleRestoreFromTrash = (layoutId: string) => {
     restoreFromTrash(layoutId);
     reloadData();
-    showToast("Đã khôi phục bản thiết kế.");
+    showToast(t("basePlanner.manager.toasts.restored"));
   };
 
   const handlePermanentDelete = (layoutId: string) => {
     permanentlyDeleteLayout(layoutId);
     reloadData();
     setPermanentDeleteId(null);
-    showToast("Đã xóa vĩnh viễn.");
+    showToast(t("basePlanner.manager.toasts.permanentlyDeleted"));
   };
 
   const handleEmptyTrash = () => {
     emptyTrash();
     reloadData();
     setIsEmptyTrashConfirmOpen(false);
-    showToast("Đã dọn sạch thùng rác.");
+    showToast(t("basePlanner.manager.toasts.trashEmptied"));
   };
 
   const handleStartRename = (layout: LayoutProject) => {
@@ -396,12 +398,12 @@ export function BlueprintManagerModal({
   const handleConfirmRename = (layoutId: string) => {
     const clean = normalizeLayoutName(renameValue);
     if (!clean) {
-      setRenameError("Vui lòng nhập tên bản thiết kế.");
+      setRenameError(t("basePlanner.manager.errors.nameEmpty"));
       return;
     }
 
     if (isLayoutNameDuplicate(clean, layouts, layoutId)) {
-      setRenameError("Tên này đã tồn tại trong danh sách.");
+      setRenameError(t("basePlanner.manager.errors.nameDuplicate"));
       return;
     }
 
@@ -410,9 +412,9 @@ export function BlueprintManagerModal({
       reloadData();
       setRenamingId(null);
       setRenameError(null);
-      showToast("Đã đổi tên thành công.");
+      showToast(t("basePlanner.manager.toasts.renamed"));
     } else {
-      setRenameError(res.error || "Đổi tên thất bại.");
+      setRenameError(res.error || t("basePlanner.manager.errors.renameFailed"));
     }
   };
 
@@ -430,7 +432,7 @@ export function BlueprintManagerModal({
       URL.revokeObjectURL(url);
       setMenuOpenId(null);
     } catch {
-      alert("Xuất dữ liệu thất bại.");
+      alert(t("basePlanner.manager.errors.exportFailed"));
     }
   };
 
@@ -447,9 +449,9 @@ export function BlueprintManagerModal({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setIsLibraryMenuOpen(false);
-      showToast("Đã xuất toàn bộ thư viện.");
+      showToast(t("basePlanner.manager.toasts.libraryExported"));
     } catch {
-      alert("Xuất thư viện thất bại.");
+      alert(t("basePlanner.manager.errors.exportLibraryFailed"));
     }
   };
 
@@ -468,9 +470,9 @@ export function BlueprintManagerModal({
       const saved = saveLayout(imported);
       reloadData();
       onSelectLayout(saved);
-      showToast(`Đã nhập thành công: ${saved.name}`);
+      showToast(t("basePlanner.manager.toasts.importedNamed", { name: saved.name }));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Tệp JSON không đúng định dạng.";
+      const msg = err instanceof Error ? err.message : t("basePlanner.manager.errors.invalidJsonFile");
       alert(msg);
     } finally {
       if (fileInputRef.current) {
@@ -484,9 +486,9 @@ export function BlueprintManagerModal({
       const { updatedLayout, report } = updateLayoutToCurrentCatalog(layout.id);
       reloadData();
       setCatalogReport({ layout: updatedLayout, report });
-      showToast("Đã cập nhật bản thiết kế theo catalog mới!");
+      showToast(t("basePlanner.manager.toasts.catalogUpdated"));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Cập nhật catalog thất bại.";
+      const msg = err instanceof Error ? err.message : t("basePlanner.manager.errors.catalogUpdateFailed");
       alert(msg);
     }
   };
@@ -498,10 +500,10 @@ export function BlueprintManagerModal({
       if (activeLayout?.id === layout.id) {
         onSelectLayout(res.updatedLayout);
       }
-      showToast(`Đã tự động bổ sung ${res.addedCount} vật thể vào bản đồ.`);
+      showToast(t("basePlanner.manager.toasts.supplemented", { count: res.addedCount }));
       setSupplementConfirmLayout(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Bổ sung vật thể thất bại.";
+      const msg = err instanceof Error ? err.message : t("basePlanner.manager.errors.supplementFailed");
       alert(msg);
     }
   };
@@ -601,11 +603,11 @@ export function BlueprintManagerModal({
                   id="manager-title"
                   className="text-xs sm:text-base font-black text-white tracking-wide uppercase truncate"
                 >
-                  Quản Lý Bản Thiết Kế
+                  {t("basePlanner.manager.header.title")}
                 </h2>
               </div>
               <p className="text-[11px] text-slate-400 truncate hidden sm:block">
-                Quản lý kho layout, phân loại theo Town Hall và mục đích chiến thuật.
+                {t("basePlanner.manager.header.subtitle")}
               </p>
             </div>
           </div>
@@ -622,11 +624,11 @@ export function BlueprintManagerModal({
                 onOpenNewWizard();
               }}
               className="p-2 sm:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
-              title="Xem và chọn bố cục mẫu từ kho"
-              aria-label="Kho bố cục mẫu"
+              title={t("basePlanner.manager.header.presetsTitle")}
+              aria-label={t("basePlanner.manager.header.presetsLabel")}
             >
               <Layers className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline">Kho bố cục mẫu</span>
+              <span className="hidden sm:inline">{t("basePlanner.manager.header.presetsLabel")}</span>
             </button>
 
             {/* Nhập JSON */}
@@ -634,11 +636,11 @@ export function BlueprintManagerModal({
               type="button"
               onClick={handleImportSingleClick}
               className="p-2 sm:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
-              title="Nhập bản thiết kế từ file JSON"
-              aria-label="Nhập JSON"
+              title={t("basePlanner.manager.header.importTitle")}
+              aria-label={t("basePlanner.manager.header.importLabel")}
             >
               <FileUp className="w-4 h-4 text-cyan-400" />
-              <span className="hidden sm:inline">Nhập JSON</span>
+              <span className="hidden sm:inline">{t("basePlanner.manager.header.importLabel")}</span>
             </button>
 
             {/* Tùy chọn Sao lưu & Xuất */}
@@ -647,12 +649,12 @@ export function BlueprintManagerModal({
                 type="button"
                 onClick={() => setIsLibraryMenuOpen(!isLibraryMenuOpen)}
                 className="p-2 sm:px-2.5 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold flex items-center gap-1.5 border border-[#233b52] cursor-pointer transition-colors"
-                title="Tùy chọn sao lưu và xuất dữ liệu"
+                title={t("basePlanner.manager.header.backupMenuTitle")}
                 aria-expanded={isLibraryMenuOpen}
-                aria-label="Tùy chọn sao lưu và xuất dữ liệu"
+                aria-label={t("basePlanner.manager.header.backupMenuTitle")}
               >
                 <Download className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">Sao lưu</span>
+                <span className="hidden sm:inline">{t("basePlanner.manager.header.backupLabel")}</span>
               </button>
 
               {isLibraryMenuOpen && (
@@ -663,18 +665,18 @@ export function BlueprintManagerModal({
                       setIsLibraryMenuOpen(false);
                     }}
                     className="w-full text-left px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold text-slate-300 hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                    aria-label="Nạp tệp sao lưu thư viện"
+                    aria-label={t("basePlanner.manager.header.loadLibraryAria")}
                   >
                     <FileUp className="w-4 h-4 text-cyan-400" />
-                    <span>Nạp thư viện (.json)</span>
+                    <span>{t("basePlanner.manager.header.loadLibraryLabel")}</span>
                   </button>
                   <button
                     onClick={handleExportAllLibrary}
                     className="w-full text-left px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold text-slate-300 hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                    aria-label="Xuất toàn bộ thư viện ra file JSON"
+                    aria-label={t("basePlanner.manager.header.exportAllAria")}
                   >
                     <Download className="w-4 h-4 text-emerald-400" />
-                    <span>Xuất tất cả (.json)</span>
+                    <span>{t("basePlanner.manager.header.exportAllLabel")}</span>
                   </button>
                 </div>
               )}
@@ -688,12 +690,12 @@ export function BlueprintManagerModal({
                   onOpenNewWizard();
                 }}
                 className="px-2.5 sm:px-4 py-2 min-h-[38px] sm:min-h-[40px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer transition-all shrink-0"
-                title="Tạo bản thiết kế mới"
-                aria-label="Tạo bản thiết kế mới"
+                title={t("basePlanner.manager.header.newLayoutTitle")}
+                aria-label={t("basePlanner.manager.header.newLayoutLabel")}
               >
                 <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Tạo bản thiết kế mới</span>
-                <span className="sm:hidden">Tạo mới</span>
+                <span className="hidden sm:inline">{t("basePlanner.manager.header.newLayoutLabel")}</span>
+                <span className="sm:hidden">{t("basePlanner.manager.header.newLayoutShort")}</span>
               </button>
             )}
 
@@ -702,8 +704,8 @@ export function BlueprintManagerModal({
               type="button"
               onClick={onClose}
               className="p-2 min-h-[38px] sm:min-h-[40px] min-w-[38px] sm:min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              title="Đóng Quản lý bản thiết kế"
-              aria-label="Đóng Quản lý bản thiết kế"
+              title={t("basePlanner.manager.header.closeTitle")}
+              aria-label={t("basePlanner.manager.header.closeTitle")}
             >
               <X className="w-5 h-5" />
             </button>
@@ -723,7 +725,7 @@ export function BlueprintManagerModal({
               }`}
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              <span>Bản thiết kế</span>
+              <span>{t("basePlanner.manager.tabs.active")}</span>
               <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
                 {layouts.length}
               </span>
@@ -739,7 +741,7 @@ export function BlueprintManagerModal({
               }`}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Thùng rác</span>
+              <span>{t("basePlanner.manager.tabs.trash")}</span>
               {trashLayouts.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-rose-500/30 text-[10px] text-rose-300 font-black">
                   {trashLayouts.length}
@@ -759,8 +761,8 @@ export function BlueprintManagerModal({
                     ? "bg-[#142636] text-amber-400 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Dạng lưới"
-                aria-label="Chuyển sang dạng lưới"
+                title={t("basePlanner.manager.viewMode.gridTitle")}
+                aria-label={t("basePlanner.manager.viewMode.gridAria")}
               >
                 <Grid className="w-4 h-4" />
               </button>
@@ -772,8 +774,8 @@ export function BlueprintManagerModal({
                     ? "bg-[#142636] text-amber-400 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Dạng danh sách"
-                aria-label="Chuyển sang dạng danh sách"
+                title={t("basePlanner.manager.viewMode.listTitle")}
+                aria-label={t("basePlanner.manager.viewMode.listAria")}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -792,15 +794,15 @@ export function BlueprintManagerModal({
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm theo tên, TH11, Chiến tranh, v.v..."
+                  placeholder={t("basePlanner.manager.search.placeholder")}
                   className="w-full pl-9 pr-8 py-2 min-h-[40px] bg-[#060e16] border border-[#1b2e40] rounded-xl text-xs text-white placeholder-slate-500 focus:border-amber-400 outline-none transition-colors"
-                  aria-label="Tìm kiếm bản thiết kế"
+                  aria-label={t("basePlanner.manager.search.aria")}
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white cursor-pointer"
-                    aria-label="Xóa từ khóa tìm kiếm"
+                    aria-label={t("basePlanner.manager.search.clearAria")}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -819,10 +821,10 @@ export function BlueprintManagerModal({
                     ? "bg-amber-500/15 border-amber-500/50 text-amber-300"
                     : "bg-[#0a1622] border-[#1b2f42] text-slate-300 hover:bg-[#132536]"
                 }`}
-                aria-label="Mở bộ lọc nâng cao"
+                aria-label={t("basePlanner.manager.search.filterAria")}
               >
                 <Filter className="w-3.5 h-3.5" />
-                <span>Bộ lọc</span>
+                <span>{t("basePlanner.manager.search.filterLabel")}</span>
                 {activeFilterCount > 0 && (
                   <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center">
                     {activeFilterCount}
@@ -834,13 +836,13 @@ export function BlueprintManagerModal({
             {/* Quick Filter Chips */}
             <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
               {[
-                { id: "all", label: "Tất cả" },
-                { id: "recent", label: "Gần đây" },
-                { id: "active", label: "Đang dùng" },
-                { id: "pinned", label: "Đã ghim" },
-                { id: "draft", label: "Bản nháp" },
-                { id: "warning", label: "Có cảnh báo" },
-                { id: "needs-update", label: "Cần cập nhật" },
+                { id: "all", label: t("basePlanner.manager.quickFilters.all") },
+                { id: "recent", label: t("basePlanner.manager.quickFilters.recent") },
+                { id: "active", label: t("basePlanner.manager.quickFilters.active") },
+                { id: "pinned", label: t("basePlanner.manager.quickFilters.pinned") },
+                { id: "draft", label: t("basePlanner.manager.quickFilters.draft") },
+                { id: "warning", label: t("basePlanner.manager.quickFilters.warning") },
+                { id: "needs-update", label: t("basePlanner.manager.quickFilters.needsUpdate") },
               ].map((chip) => (
                 <button
                   key={chip.id}
@@ -867,7 +869,7 @@ export function BlueprintManagerModal({
                   }}
                   className="px-2 py-1 text-slate-400 hover:text-rose-300 font-bold whitespace-nowrap underline cursor-pointer ml-auto"
                 >
-                  Xóa lọc
+                  {t("basePlanner.manager.emptyState.clearFiltersShort")}
                 </button>
               )}
             </div>
@@ -886,10 +888,10 @@ export function BlueprintManagerModal({
                     <FolderOpen className="w-10 h-10" />
                   </div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-200 mb-1">
-                    Chưa có bản thiết kế nào
+                    {t("basePlanner.manager.emptyState.noLayoutsTitle")}
                   </h3>
                   <p className="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
-                    Khởi tạo bản thiết kế đầu tiên của bạn hoặc nhập file JSON từ máy tính.
+                    {t("basePlanner.manager.emptyState.noLayoutsHint")}
                   </p>
 
                   <div className="flex items-center justify-center">
@@ -900,20 +902,20 @@ export function BlueprintManagerModal({
                         onOpenNewWizard();
                       }}
                       className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-2"
-                      title="Tạo bản thiết kế đầu tiên"
-                      aria-label="Tạo bản thiết kế đầu tiên"
+                      title={t("basePlanner.manager.emptyState.createFirstTitle")}
+                      aria-label={t("basePlanner.manager.emptyState.createFirstTitle")}
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Tạo bản thiết kế đầu tiên</span>
+                      <span>{t("basePlanner.manager.emptyState.createFirstTitle")}</span>
                     </button>
                   </div>
                 </div>
               ) : filteredLayouts.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <Search className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-300">Không tìm thấy bản thiết kế phù hợp</p>
+                  <p className="text-xs font-bold text-slate-300">{t("basePlanner.manager.emptyState.noMatchTitle")}</p>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Thử thay đổi từ khóa hoặc điều chỉnh tiêu chí trong bộ lọc.
+                    {t("basePlanner.manager.emptyState.noMatchHint")}
                   </p>
                   <button
                     onClick={() => {
@@ -923,7 +925,7 @@ export function BlueprintManagerModal({
                     }}
                     className="mt-3 px-3 py-1.5 rounded-lg bg-[#142636] hover:bg-[#1d354b] text-slate-300 text-xs font-bold transition-colors cursor-pointer"
                   >
-                    Xóa tất cả bộ lọc
+                    {t("basePlanner.manager.emptyState.clearFilters")}
                   </button>
                 </div>
               ) : (
@@ -956,7 +958,7 @@ export function BlueprintManagerModal({
                           <div
                             onClick={() => handleOpenLayout(layout)}
                             className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 cursor-pointer relative overflow-hidden rounded-xl group-hover:scale-[1.02] transition-transform"
-                            title="Bấm để mở bản thiết kế"
+                            title={t("basePlanner.manager.card.openTitle")}
                           >
                             <BlueprintThumbnail
                               buildings={layout.buildings}
@@ -964,7 +966,7 @@ export function BlueprintManagerModal({
                             />
                             {isActive && (
                               <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px] shadow-sm">
-                                Đang dùng
+                                {t("basePlanner.manager.card.activeBadge")}
                               </div>
                             )}
                           </div>
@@ -988,7 +990,7 @@ export function BlueprintManagerModal({
 
                                   {/* Method Badge */}
                                   <span className="px-1.5 py-0.5 rounded-md bg-[#132434] text-slate-400 text-[10px] font-medium border border-[#1c354c]">
-                                    {METHOD_LABELS[layout.creationMethod] || "Tự tạo"}
+                                    {METHOD_LABELS[layout.creationMethod] || t("basePlanner.manager.card.selfMade")}
                                   </span>
                                 </div>
 
@@ -1001,8 +1003,8 @@ export function BlueprintManagerModal({
                                       ? "text-amber-400 hover:text-amber-300"
                                       : "text-slate-500 hover:text-slate-300"
                                   }`}
-                                  title={layout.isPinned ? "Bỏ ghim bản thiết kế" : "Ghim bản thiết kế lên đầu"}
-                                  aria-label={layout.isPinned ? "Bỏ ghim bản thiết kế" : "Ghim bản thiết kế lên đầu"}
+                                  title={layout.isPinned ? t("basePlanner.manager.card.unpinTitle") : t("basePlanner.manager.card.pinTitle")}
+                                  aria-label={layout.isPinned ? t("basePlanner.manager.card.unpinTitle") : t("basePlanner.manager.card.pinTitle")}
                                 >
                                   {layout.isPinned ? (
                                     <Pin className="w-3.5 h-3.5 fill-amber-400" />
@@ -1024,7 +1026,7 @@ export function BlueprintManagerModal({
                                 }}
                                 className="text-xs sm:text-sm font-bold text-white truncate max-w-full cursor-pointer hover:text-amber-300 focus:text-amber-300 focus:outline-none transition-colors"
                                 title={layout.name}
-                                aria-label={`Bản thiết kế: ${layout.name}`}
+                                aria-label={t("basePlanner.manager.card.nameAria", { name: layout.name })}
                               >
                                 {layout.name}
                               </h4>
@@ -1041,7 +1043,7 @@ export function BlueprintManagerModal({
 
                               {/* Placed count */}
                               <span className="text-slate-400 font-medium">
-                                Đã đặt:{" "}
+                                {t("basePlanner.manager.card.placedLabel")}{" "}
                                 <strong
                                   className={
                                     stats.placedCount >= stats.requiredTotal
@@ -1054,7 +1056,7 @@ export function BlueprintManagerModal({
                                 /{stats.requiredTotal}
                                 {stats.missingCount > 0 && (
                                   <span className="text-rose-400 ml-1">
-                                    (thiếu {stats.missingCount})
+                                    {t("basePlanner.manager.card.missingSuffix", { count: stats.missingCount })}
                                   </span>
                                 )}
                               </span>
@@ -1067,7 +1069,7 @@ export function BlueprintManagerModal({
                           {/* Updated time info */}
                           <div
                             className="text-[10px] text-slate-500 flex items-center gap-1 truncate"
-                            title={`Cập nhật lúc: ${new Date(layout.updatedAt).toLocaleString("vi-VN")}`}
+                            title={t("basePlanner.manager.card.updatedAtTitle", { time: new Date(layout.updatedAt).toLocaleString("vi-VN") })}
                           >
                             <Clock className="w-3 h-3 shrink-0" />
                             <span className="truncate">
@@ -1083,11 +1085,11 @@ export function BlueprintManagerModal({
                                 type="button"
                                 onClick={() => handleUpdateCatalog(layout)}
                                 className="px-2 py-1 min-h-[32px] rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                                title="Cập nhật bản thiết kế theo Town Hall catalog hiện hành"
-                                aria-label="Cập nhật bản thiết kế"
+                                title={t("basePlanner.manager.card.updateCatalogTitle")}
+                                aria-label={t("basePlanner.manager.card.updateCatalogAria")}
                               >
                                 <RefreshCw className="w-3 h-3" />
-                                <span>Cập nhật</span>
+                                <span>{t("basePlanner.manager.card.updateCatalogLabel")}</span>
                               </button>
                             )}
 
@@ -1097,12 +1099,12 @@ export function BlueprintManagerModal({
                                 type="button"
                                 onClick={() => setSupplementConfirmLayout(layout)}
                                 className="px-2 py-1 min-h-[32px] rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                                title={`Tự động đặt ${stats.missingCount} công trình/bẫy/tường còn thiếu`}
-                                aria-label="Tự động bổ sung vật thể còn thiếu"
+                                title={t("basePlanner.manager.card.autoSupplementTitle", { count: stats.missingCount })}
+                                aria-label={t("basePlanner.manager.card.autoSupplementAria")}
                               >
                                 <Sparkles className="w-3 h-3 text-amber-400" />
-                                <span className="hidden sm:inline">Tự động bổ sung</span>
-                                <span className="sm:hidden">Bổ sung</span>
+                                <span className="hidden sm:inline">{t("basePlanner.manager.card.autoSupplementLabel")}</span>
+                                <span className="sm:hidden">{t("basePlanner.manager.card.autoSupplementShort")}</span>
                               </button>
                             )}
 
@@ -1117,20 +1119,20 @@ export function BlueprintManagerModal({
                               }`}
                               title={
                                 isActive
-                                  ? "Bản thiết kế đang mở trên bàn vẽ"
+                                  ? t("basePlanner.manager.card.openActiveTitle")
                                   : status === "draft"
-                                  ? "Tiếp tục chỉnh sửa bản nháp trên bàn vẽ"
-                                  : "Mở bản thiết kế trên bàn vẽ"
+                                  ? t("basePlanner.manager.card.openDraftTitle")
+                                  : t("basePlanner.manager.card.openTitleDefault")
                               }
                               aria-label={
                                 isActive
-                                  ? "Bản thiết kế đang mở"
+                                  ? t("basePlanner.manager.card.openActiveAria")
                                   : status === "draft"
-                                  ? "Tiếp tục chỉnh sửa"
-                                  : "Mở bản thiết kế"
+                                  ? t("basePlanner.manager.card.openDraftAria")
+                                  : t("basePlanner.manager.card.openAriaDefault")
                               }
                             >
-                              {isActive ? "Đang mở" : status === "draft" ? "Tiếp tục sửa" : "Mở"}
+                              {isActive ? t("basePlanner.manager.card.openActiveLabel") : status === "draft" ? t("basePlanner.manager.card.openDraftLabel") : t("basePlanner.manager.card.openLabelDefault")}
                             </button>
 
                             {/* Three Dots Menu Button */}
@@ -1141,8 +1143,8 @@ export function BlueprintManagerModal({
                                   setMenuOpenId(menuOpenId === layout.id ? null : layout.id)
                                 }
                                 className="p-1.5 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                                title="Tùy chọn khác"
-                                aria-label="Tùy chọn khác"
+                                title={t("basePlanner.manager.card.moreOptionsTitle")}
+                                aria-label={t("basePlanner.manager.card.moreOptionsTitle")}
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
@@ -1154,11 +1156,11 @@ export function BlueprintManagerModal({
                                   <button
                                     onClick={() => handleStartRename(layout)}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                                    title="Đổi tên bản thiết kế"
-                                    aria-label="Đổi tên bản thiết kế"
+                                    title={t("basePlanner.manager.card.menu.renameTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.renameTitle")}
                                   >
                                     <Edit2 className="w-3.5 h-3.5 text-slate-400" />
-                                    <span>Đổi tên</span>
+                                    <span>{t("basePlanner.manager.card.menu.rename")}</span>
                                   </button>
 
                                   {/* Tạo biến thể */}
@@ -1168,11 +1170,11 @@ export function BlueprintManagerModal({
                                       setMenuOpenId(null);
                                     }}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                                    title="Tạo biến thể mới"
-                                    aria-label="Tạo biến thể mới"
+                                    title={t("basePlanner.manager.card.menu.createVariantTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.createVariantTitle")}
                                   >
                                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                                    <span>Tạo biến thể</span>
+                                    <span>{t("basePlanner.manager.card.menu.createVariant")}</span>
                                   </button>
 
                                   {/* Nhân bản */}
@@ -1182,22 +1184,22 @@ export function BlueprintManagerModal({
                                       setMenuOpenId(null);
                                     }}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                                    title="Nhân bản bản thiết kế"
-                                    aria-label="Nhân bản bản thiết kế"
+                                    title={t("basePlanner.manager.card.menu.duplicateTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.duplicateTitle")}
                                   >
                                     <Copy className="w-3.5 h-3.5 text-cyan-400" />
-                                    <span>Nhân bản</span>
+                                    <span>{t("basePlanner.manager.card.menu.duplicate")}</span>
                                   </button>
 
                                   {/* Xuất JSON */}
                                   <button
                                     onClick={() => handleExportJSON(layout)}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                                    title="Xuất file JSON"
-                                    aria-label="Xuất file JSON"
+                                    title={t("basePlanner.manager.card.menu.exportJsonTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.exportJsonTitle")}
                                   >
                                     <Download className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>Xuất JSON</span>
+                                    <span>{t("basePlanner.manager.card.menu.exportJson")}</span>
                                   </button>
 
                                   {/* Lịch sử Checkpoint */}
@@ -1207,11 +1209,11 @@ export function BlueprintManagerModal({
                                       setMenuOpenId(null);
                                     }}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-[#152a3d] hover:text-white flex items-center gap-2 cursor-pointer"
-                                    title="Xem lịch sử Checkpoint"
-                                    aria-label="Xem lịch sử Checkpoint"
+                                    title={t("basePlanner.manager.card.menu.checkpointsTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.checkpointsTitle")}
                                   >
                                     <History className="w-3.5 h-3.5 text-amber-400" />
-                                    <span>Lịch sử Checkpoint</span>
+                                    <span>{t("basePlanner.manager.card.menu.checkpoints")}</span>
                                   </button>
 
                                   <div className="h-px bg-[#182837] my-1" />
@@ -1223,11 +1225,11 @@ export function BlueprintManagerModal({
                                       setMenuOpenId(null);
                                     }}
                                     className="w-full text-left px-3 py-2 min-h-[36px] rounded-lg hover:bg-rose-500/20 text-rose-400 flex items-center gap-2 cursor-pointer"
-                                    title="Chuyển vào thùng rác"
-                                    aria-label="Chuyển vào thùng rác"
+                                    title={t("basePlanner.manager.card.menu.trashTitle")}
+                                    aria-label={t("basePlanner.manager.card.menu.trashTitle")}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Bỏ vào thùng rác</span>
+                                    <span>{t("basePlanner.manager.card.menu.trash")}</span>
                                   </button>
                                 </div>
                               )}
@@ -1249,7 +1251,7 @@ export function BlueprintManagerModal({
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 shrink-0" />
                   <span>
-                    Các bản thiết kế trong thùng rác sẽ tự động được xóa vĩnh viễn sau 30 ngày.
+                    {t("basePlanner.manager.trash.expiryNotice")}
                   </span>
                 </div>
                 {trashLayouts.length > 0 && (
@@ -1258,7 +1260,7 @@ export function BlueprintManagerModal({
                     onClick={() => setIsEmptyTrashConfirmOpen(true)}
                     className="px-3 py-1.5 min-h-[36px] rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 font-bold transition-colors cursor-pointer shrink-0"
                   >
-                    Dọn sạch thùng rác
+                    {t("basePlanner.manager.trash.emptyTrash")}
                   </button>
                 )}
               </div>
@@ -1266,9 +1268,9 @@ export function BlueprintManagerModal({
               {trashLayouts.length === 0 ? (
                 <div className="p-16 text-center text-slate-500">
                   <Trash2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p className="text-xs font-bold text-slate-400">Thùng rác trống</p>
+                  <p className="text-xs font-bold text-slate-400">{t("basePlanner.manager.trash.emptyTitle")}</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Các bản thiết kế bạn xóa sẽ xuất hiện ở đây trước khi bị xóa vĩnh viễn.
+                    {t("basePlanner.manager.trash.emptyHint")}
                   </p>
                 </div>
               ) : (
@@ -1297,7 +1299,7 @@ export function BlueprintManagerModal({
                               <h4
                                 className="text-xs font-bold text-slate-200 truncate max-w-full"
                                 title={tLayout.name}
-                                aria-label={`Bản thiết kế trong thùng rác: ${tLayout.name}`}
+                                aria-label={t("basePlanner.manager.trash.nameAria", { name: tLayout.name })}
                               >
                                 {tLayout.name}
                               </h4>
@@ -1306,7 +1308,8 @@ export function BlueprintManagerModal({
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-500 mt-0.5">
-                              Tự động xóa vĩnh viễn sau <strong className="text-amber-400">{daysRemaining} ngày</strong>
+                              {t("basePlanner.manager.trash.expiresInPrefix")}{" "}
+                              <strong className="text-amber-400">{t("basePlanner.manager.trash.expiresInValue", { days: daysRemaining })}</strong>
                             </p>
                           </div>
                         </div>
@@ -1316,21 +1319,21 @@ export function BlueprintManagerModal({
                             type="button"
                             onClick={() => handleRestoreFromTrash(tLayout.id)}
                             className="px-3 py-1.5 min-h-[36px] rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            title="Khôi phục bản thiết kế về kho chính"
-                            aria-label="Khôi phục bản thiết kế"
+                            title={t("basePlanner.manager.trash.restoreTitle")}
+                            aria-label={t("basePlanner.manager.trash.restoreAria")}
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Khôi phục</span>
+                            <span>{t("basePlanner.manager.trash.restore")}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setPermanentDeleteId(tLayout.id)}
                             className="px-3 py-1.5 min-h-[36px] rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            title="Xóa vĩnh viễn bản thiết kế khỏi hệ thống"
-                            aria-label="Xóa vĩnh viễn bản thiết kế"
+                            title={t("basePlanner.manager.trash.deleteTitle")}
+                            aria-label={t("basePlanner.manager.trash.deleteAria")}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Xóa vĩnh viễn</span>
+                            <span>{t("basePlanner.manager.trash.delete")}</span>
                           </button>
                         </div>
                       </div>
@@ -1346,7 +1349,7 @@ export function BlueprintManagerModal({
         {renamingId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-[#0b1723] border border-[#1f374e] rounded-2xl w-full max-w-sm p-4 shadow-2xl space-y-3">
-              <h3 className="text-sm font-bold text-white">Đổi tên bản thiết kế</h3>
+              <h3 className="text-sm font-bold text-white">{t("basePlanner.manager.renameModal.title")}</h3>
               <input
                 type="text"
                 value={renameValue}
@@ -1368,14 +1371,14 @@ export function BlueprintManagerModal({
                   onClick={() => setRenamingId(null)}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirmRename(renamingId)}
                   className="px-3 py-1.5 rounded-lg bg-amber-400 text-slate-950 text-xs font-black hover:bg-amber-300"
                 >
-                  Lưu tên
+                  {t("basePlanner.manager.renameModal.save")}
                 </button>
               </div>
             </div>
@@ -1388,14 +1391,14 @@ export function BlueprintManagerModal({
             <div className="bg-[#0b1723] border border-[#1f374e] rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
               <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
                 <AlertTriangle className="w-5 h-5" />
-                <span>Chuyển vào thùng rác?</span>
+                <span>{t("basePlanner.manager.trashConfirm.title")}</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Bản thiết kế này sẽ được đưa vào thùng rác và tự xóa vĩnh viễn sau 30 ngày. Bạn có thể khôi phục bất cứ lúc nào.
+                {t("basePlanner.manager.trashConfirm.description")}
               </p>
               {activeLayout?.id === trashingId && (
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
-                  ⚠️ Đây là bản thiết kế bạn đang mở. Hệ thống sẽ tự động chuyển sang bản thiết kế kế tiếp.
+                  {t("basePlanner.manager.trashConfirm.activeWarning")}
                 </div>
               )}
               <div className="flex justify-end gap-2 pt-2">
@@ -1404,14 +1407,14 @@ export function BlueprintManagerModal({
                   onClick={() => setTrashingId(null)}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleMoveToTrash(trashingId)}
                   className="px-4 py-1.5 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-400"
                 >
-                  Bỏ vào thùng rác
+                  {t("basePlanner.manager.trashConfirm.confirm")}
                 </button>
               </div>
             </div>
@@ -1424,10 +1427,10 @@ export function BlueprintManagerModal({
             <div className="bg-[#0b1723] border border-rose-500/40 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
               <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
                 <AlertTriangle className="w-5 h-5" />
-                <span>Xác nhận xóa vĩnh viễn?</span>
+                <span>{t("basePlanner.manager.deleteConfirm.title")}</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Hành động này <strong className="text-rose-400">không thể khôi phục</strong>. Dữ liệu bản thiết kế và mọi checkpoint sẽ bị xóa hoàn toàn khỏi thiết bị.
+                {t("basePlanner.manager.deleteConfirm.descriptionPrefix")} <strong className="text-rose-400">{t("basePlanner.manager.deleteConfirm.descriptionBold")}</strong>{t("basePlanner.manager.deleteConfirm.descriptionSuffix")}
               </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -1435,14 +1438,14 @@ export function BlueprintManagerModal({
                   onClick={() => setPermanentDeleteId(null)}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePermanentDelete(permanentDeleteId)}
                   className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black"
                 >
-                  Xóa vĩnh viễn
+                  {t("basePlanner.manager.deleteConfirm.confirm")}
                 </button>
               </div>
             </div>
@@ -1455,10 +1458,10 @@ export function BlueprintManagerModal({
             <div className="bg-[#0b1723] border border-rose-500/40 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
               <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
                 <AlertTriangle className="w-5 h-5" />
-                <span>Dọn sạch toàn bộ thùng rác?</span>
+                <span>{t("basePlanner.manager.emptyTrashConfirm.title")}</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Tất cả {trashLayouts.length} bản thiết kế trong thùng rác sẽ bị xóa vĩnh viễn ngay lập tức.
+                {t("basePlanner.manager.emptyTrashConfirm.description", { count: trashLayouts.length })}
               </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -1466,14 +1469,14 @@ export function BlueprintManagerModal({
                   onClick={() => setIsEmptyTrashConfirmOpen(false)}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={handleEmptyTrash}
                   className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black"
                 >
-                  Dọn sạch
+                  {t("basePlanner.manager.emptyTrashConfirm.confirm")}
                 </button>
               </div>
             </div>
@@ -1487,7 +1490,7 @@ export function BlueprintManagerModal({
               <div className="p-4 border-b border-[#182a3a] flex items-center justify-between bg-[#0e1d2c]">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-amber-400" />
-                  <h3 className="text-sm font-bold text-white">Bộ lọc bản thiết kế</h3>
+                  <h3 className="text-sm font-bold text-white">{t("basePlanner.manager.filterModal.title")}</h3>
                 </div>
                 <button
                   onClick={() => setIsFilterOpen(false)}
@@ -1500,7 +1503,7 @@ export function BlueprintManagerModal({
               <div className="no-scrollbar p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
                 {/* Town Hall Filter */}
                 <div>
-                  <label className="font-bold text-slate-200 block mb-1.5">Cấp Town Hall</label>
+                  <label className="font-bold text-slate-200 block mb-1.5">{t("basePlanner.manager.filterModal.townHallLabel")}</label>
                   <div className="grid grid-cols-6 gap-1.5">
                     {Array.from({ length: 18 }, (_, i) => i + 1).map((th) => {
                       const selected = draftFilters.townHalls.includes(th);
@@ -1531,7 +1534,7 @@ export function BlueprintManagerModal({
 
                 {/* Purpose Filter */}
                 <div>
-                  <label className="font-bold text-slate-200 block mb-1.5">Mục đích chiến thuật</label>
+                  <label className="font-bold text-slate-200 block mb-1.5">{t("basePlanner.manager.filterModal.purposeLabel")}</label>
                   <div className="grid grid-cols-2 gap-1.5">
                     {(Object.keys(PURPOSE_LABELS) as BasePurpose[]).map((p) => {
                       const selected = draftFilters.purposes.includes(p);
@@ -1562,7 +1565,7 @@ export function BlueprintManagerModal({
 
                 {/* Status Filter */}
                 <div>
-                  <label className="font-bold text-slate-200 block mb-1.5">Trạng thái</label>
+                  <label className="font-bold text-slate-200 block mb-1.5">{t("basePlanner.manager.filterModal.statusLabel")}</label>
                   <div className="grid grid-cols-2 gap-1.5">
                     {(Object.keys(STATUS_LABELS) as LayoutStatus[]).map((st) => {
                       const selected = draftFilters.statuses.includes(st);
@@ -1593,7 +1596,7 @@ export function BlueprintManagerModal({
 
                 {/* Pin Filter */}
                 <div className="flex items-center justify-between p-2 rounded-xl bg-[#07131e] border border-[#1b2f42]">
-                  <span className="font-bold">Chỉ hiển thị bản đã ghim</span>
+                  <span className="font-bold">{t("basePlanner.manager.filterModal.onlyPinnedLabel")}</span>
                   <input
                     type="checkbox"
                     checked={draftFilters.onlyPinned}
@@ -1606,7 +1609,7 @@ export function BlueprintManagerModal({
 
                 {/* Sort Option */}
                 <div>
-                  <label className="font-bold text-slate-200 block mb-1.5">Sắp xếp theo</label>
+                  <label className="font-bold text-slate-200 block mb-1.5">{t("basePlanner.manager.filterModal.sortByLabel")}</label>
                   <select
                     value={draftFilters.sortBy}
                     onChange={(e) =>
@@ -1614,12 +1617,12 @@ export function BlueprintManagerModal({
                     }
                     className="w-full px-3 py-2 bg-[#07131e] border border-[#1b2f42] rounded-xl text-xs text-white outline-none focus:border-amber-400 cursor-pointer"
                   >
-                    <option value="default">Mặc định (Đang dùng → Đã ghim → Mới cập nhật)</option>
-                    <option value="updated">Cập nhật gần nhất</option>
-                    <option value="created">Ngày tạo mới nhất</option>
-                    <option value="name">Tên (A-Z)</option>
-                    <option value="th-asc">Town Hall (Tăng dần)</option>
-                    <option value="th-desc">Town Hall (Giảm dần)</option>
+                    <option value="default">{t("basePlanner.manager.filterModal.sortOptions.default")}</option>
+                    <option value="updated">{t("basePlanner.manager.filterModal.sortOptions.updated")}</option>
+                    <option value="created">{t("basePlanner.manager.filterModal.sortOptions.created")}</option>
+                    <option value="name">{t("basePlanner.manager.filterModal.sortOptions.name")}</option>
+                    <option value="th-asc">{t("basePlanner.manager.filterModal.sortOptions.thAsc")}</option>
+                    <option value="th-desc">{t("basePlanner.manager.filterModal.sortOptions.thDesc")}</option>
                   </select>
                 </div>
               </div>
@@ -1630,7 +1633,7 @@ export function BlueprintManagerModal({
                   onClick={() => setDraftFilters(defaultFilters)}
                   className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
                 >
-                  Đặt lại
+                  {t("basePlanner.manager.filterModal.reset")}
                 </button>
                 <div className="flex gap-2">
                   <button
@@ -1638,7 +1641,7 @@ export function BlueprintManagerModal({
                     onClick={() => setIsFilterOpen(false)}
                     className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 cursor-pointer"
                   >
-                    Đóng
+                    {t("common.close")}
                   </button>
                   <button
                     type="button"
@@ -1648,7 +1651,7 @@ export function BlueprintManagerModal({
                     }}
                     className="px-4 py-1.5 rounded-xl bg-amber-400 text-slate-950 text-xs font-black hover:bg-amber-300 cursor-pointer"
                   >
-                    Áp dụng
+                    {t("basePlanner.manager.filterModal.apply")}
                   </button>
                 </div>
               </div>
@@ -1665,7 +1668,7 @@ export function BlueprintManagerModal({
             onRestored={(updated) => {
               reloadData();
               onSelectLayout(updated);
-              showToast("Đã khôi phục checkpoint thành công.");
+              showToast(t("basePlanner.manager.toasts.checkpointRestored"));
             }}
           />
         )}
@@ -1688,7 +1691,7 @@ export function BlueprintManagerModal({
             onClose={() => setIsLibraryImportOpen(false)}
             onImportComplete={() => {
               reloadData();
-              showToast("Đã nạp thư viện thành công.");
+              showToast(t("basePlanner.manager.toasts.libraryImported"));
             }}
           />
         )}
@@ -1702,17 +1705,17 @@ export function BlueprintManagerModal({
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Tự động bổ sung vật thể</h3>
-                  <p className="text-[11px] text-slate-400">Town Hall {supplementConfirmLayout.townHallLevel}</p>
+                  <h3 className="text-sm font-bold text-white">{t("basePlanner.manager.supplementConfirm.title")}</h3>
+                  <p className="text-[11px] text-slate-400">{t("basePlanner.manager.supplementConfirm.subtitle", { th: supplementConfirmLayout.townHallLevel })}</p>
                 </div>
               </div>
 
               <div className="text-xs text-slate-300 space-y-2 bg-[#060f18] p-3 rounded-xl border border-[#162738]">
                 <p>
-                  Bản thiết kế <strong className="text-amber-300">"{supplementConfirmLayout.name}"</strong> chưa đủ số lượng công trình, bẫy hoặc tường theo tiêu chuẩn Town Hall {supplementConfirmLayout.townHallLevel}.
+                  {t("basePlanner.manager.supplementConfirm.firstLinePrefix")} <strong className="text-amber-300">"{supplementConfirmLayout.name}"</strong> {t("basePlanner.manager.supplementConfirm.firstLineSuffix", { th: supplementConfirmLayout.townHallLevel })}
                 </p>
                 <p className="text-slate-400">
-                  Hệ thống sẽ tự động tìm các vị trí trống và hợp lệ xung quanh căn cứ để đặt các vật thể còn thiếu. Trước khi thực hiện, một <strong>Checkpoint sao lưu tự động</strong> sẽ được tạo để bạn có thể hoàn tác bất cứ lúc nào.
+                  {t("basePlanner.manager.supplementConfirm.descriptionSecondPrefix")} <strong>{t("basePlanner.manager.supplementConfirm.descriptionBold")}</strong> {t("basePlanner.manager.supplementConfirm.descriptionSecondSuffix")}
                 </p>
               </div>
 
@@ -1722,7 +1725,7 @@ export function BlueprintManagerModal({
                   onClick={() => setSupplementConfirmLayout(null)}
                   className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors cursor-pointer"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -1730,7 +1733,7 @@ export function BlueprintManagerModal({
                   className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black transition-colors cursor-pointer flex items-center gap-1.5 shadow-md shadow-amber-500/20"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Bổ sung ngay</span>
+                  <span>{t("basePlanner.manager.supplementConfirm.confirm")}</span>
                 </button>
               </div>
             </div>

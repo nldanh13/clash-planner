@@ -1,5 +1,4 @@
-import { preloadAllBaseImages } from "./imageMapper";
-import { getCachedImage } from "./imageMapper";
+import { preloadAllBaseImages, getLeveledBuildingImage } from "./imageMapper";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize, Trash2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
@@ -285,8 +284,7 @@ export function IsometricGridBoard({
       drawDiamond([lift(top), lift(right), lift(bottom), lift(left)], roofColor, strokeColor, strokeWidth);
 
         // Draw image on roof
-        const imgKey = b.buildingId === "town-hall" ? `town-hall-${b.level || 1}` : b.buildingId;
-        const img = getCachedImage(imgKey) || getCachedImage(b.buildingId);
+        const img = getLeveledBuildingImage(b.buildingId, b.level, () => setRedrawCounter((c) => c + 1));
         if (img && def.category !== "wall" && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
           try {
             const minX = lift(left).x;

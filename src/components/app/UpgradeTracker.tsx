@@ -9,6 +9,7 @@ import { type Playstyle, type StyleFocus, readStoredChoice, readStoredNumber, cu
 import { useUpgradeTracker, plannerItems } from "../../hooks/useUpgradeTracker";
 import { clampInteger } from "../../utils/villageImport";
 import { SmartBuildingAdvisor } from "./SmartBuildingAdvisor";
+import { useTranslation } from "../../i18n";
 
 const playstyleValues: Playstyle[] = ["rush", "balanced", "defense", "rush-hall"];
 const styleFocusValues: StyleFocus[] = ["ground", "air", "both"];
@@ -23,6 +24,7 @@ interface UpgradeTrackerProps {
 }
 
 export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTownHall, setManualLevels }: UpgradeTrackerProps) {
+  const { t } = useTranslation();
   const [calcMode, setCalcMode] = useState<"suggest" | "town-hall" | "single">("suggest");
   const [plannerKind, setPlannerKind] = useState<UpgradeItem["kind"] | "all">("all");
   const [plannerItemId, setPlannerItemId] = useState("barbarian-king");
@@ -85,18 +87,18 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
     <section className="panel planner-panel">
       <div className="section-head">
         <div>
-          <p>CÔNG CỤ NÂNG CẤP CHIẾN THUẬT</p>
-          <h2>Upgrade Tracker</h2>
+          <p>{t("upgradeTracker.eyebrow")}</p>
+          <h2>{t("upgradeTracker.title")}</h2>
         </div>
-        <span className="road-current">{plannerItems.length} mục dữ liệu · bỏ qua Wall</span>
+        <span className="road-current">{t("upgradeTracker.itemCount", { count: plannerItems.length })}</span>
       </div>
 
       {/* 3 Main Modes Switcher */}
       <div className="flex p-1 bg-[#09141d] rounded-xl border border-[#ffffff12] mb-5 relative z-0 overflow-x-auto min-w-0" role="tablist">
         {[
-          { id: "suggest", label: "Gợi ý cho tôi", icon: <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4" /> },
-          { id: "town-hall", label: "Theo Town Hall", icon: <Castle className="w-3.5 h-3.5 md:w-4 md:h-4" /> },
-          { id: "single", label: "Tra cứu chi tiết", icon: <Target className="w-3.5 h-3.5 md:w-4 md:h-4" /> }
+          { id: "suggest", label: t("upgradeTracker.modes.suggest"), icon: <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4" /> },
+          { id: "town-hall", label: t("upgradeTracker.modes.townHall"), icon: <Castle className="w-3.5 h-3.5 md:w-4 md:h-4" /> },
+          { id: "single", label: t("upgradeTracker.modes.single"), icon: <Target className="w-3.5 h-3.5 md:w-4 md:h-4" /> }
         ].map((tab) => {
           const isActive = calcMode === tab.id;
           return (
@@ -124,7 +126,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
       </div>
 
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[#ffffff12] bg-[#0c1620] mb-2 overflow-x-auto min-w-0 w-full">
-        <strong className="text-xs text-amber-400 whitespace-nowrap">🎟️ Vé Vàng (Gold Pass):</strong>
+        <strong className="text-xs text-amber-400 whitespace-nowrap">{t("upgradeTracker.goldPass.label")}</strong>
         <div className="relative w-32 shrink-0">
           <select
             className="w-full appearance-none bg-[#142636] border border-[#ffffff12] text-amber-400 text-xs font-bold rounded-md pl-3 pr-7 py-1.5 outline-none focus:border-amber-500/50 cursor-pointer"
@@ -135,14 +137,14 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               localStorage.setItem("coc-goldpass", pct.toString());
             }}
           >
-            <option value={0}>Không có</option>
-            <option value={10}>Giảm 10%</option>
-            <option value={15}>Giảm 15%</option>
-            <option value={20}>Giảm 20%</option>
+            <option value={0}>{t("upgradeTracker.goldPass.none")}</option>
+            <option value={10}>{t("upgradeTracker.goldPass.discount", { percent: 10 })}</option>
+            <option value={15}>{t("upgradeTracker.goldPass.discount", { percent: 15 })}</option>
+            <option value={20}>{t("upgradeTracker.goldPass.discount", { percent: 20 })}</option>
           </select>
           <ChevronDown className="w-3.5 h-3.5 text-amber-400/70 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
-        <p className="text-[10px] text-slate-400 ml-auto hidden md:block">Tự động áp dụng giảm chi phí & thời gian</p>
+        <p className="text-[10px] text-slate-400 ml-auto hidden md:block">{t("upgradeTracker.goldPass.autoApply")}</p>
       </div>
 
       {/* MODE 1: GỢI Ý CHO TÔI (SUGGEST) - Gọn gàng, tập trung xếp hạng ưu tiên */}
@@ -159,50 +161,50 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
             {/* Configuration Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lối chơi</label>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{t("upgradeTracker.suggest.playstyleLabel")}</label>
               <div className="relative">
                 <select
                   className="w-full appearance-none bg-[#101b25] border border-[#ffffff10] text-white text-sm font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-amber-500/50 cursor-pointer"
                   value={playstyle}
                   onChange={(e) => setPlaystyle(e.target.value as Playstyle)}
                 >
-                  <option value="rush">Tấn công</option>
-                  <option value="balanced">Cân bằng</option>
-                  <option value="defense">Phòng thủ</option>
-                  <option value="rush-hall">Rush Hall</option>
+                  <option value="rush">{t("upgradeTracker.suggest.playstyleRush")}</option>
+                  <option value="balanced">{t("upgradeTracker.suggest.playstyleBalanced")}</option>
+                  <option value="defense">{t("upgradeTracker.suggest.playstyleDefense")}</option>
+                  <option value="rush-hall">{t("upgradeTracker.suggest.playstyleRushHall")}</option>
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
               <p className="text-[10px] text-slate-500 mt-1.5 px-1">{playstyleHint[playstyle]}</p>
             </div>
-            
+
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mục tiêu tấn công</label>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{t("upgradeTracker.suggest.attackFocusLabel")}</label>
               <div className="relative">
                 <select
                   className="w-full appearance-none bg-[#101b25] border border-[#ffffff10] text-white text-sm font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-amber-500/50 cursor-pointer"
                   value={attackFocus}
                   onChange={(e) => setAttackFocus(e.target.value as StyleFocus)}
                 >
-                  <option value="ground">Trên bộ</option>
-                  <option value="air">Trên không</option>
-                  <option value="both">Cả hai</option>
+                  <option value="ground">{t("upgradeTracker.suggest.focusGround")}</option>
+                  <option value="air">{t("upgradeTracker.suggest.focusAir")}</option>
+                  <option value="both">{t("upgradeTracker.suggest.focusBoth")}</option>
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mối lo phòng thủ</label>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{t("upgradeTracker.suggest.defenseFocusLabel")}</label>
               <div className="relative">
                 <select
                   className="w-full appearance-none bg-[#101b25] border border-[#ffffff10] text-white text-sm font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-amber-500/50 cursor-pointer"
                   value={defenseFocusPick}
                   onChange={(e) => setDefenseFocusPick(e.target.value as StyleFocus)}
                 >
-                  <option value="ground">Chống bộ</option>
-                  <option value="air">Chống bay</option>
-                  <option value="both">Cả hai</option>
+                  <option value="ground">{t("upgradeTracker.suggest.defenseFocusGround")}</option>
+                  <option value="air">{t("upgradeTracker.suggest.defenseFocusAir")}</option>
+                  <option value="both">{t("upgradeTracker.suggest.focusBoth")}</option>
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -212,7 +214,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
           {!player && (
             <div className="mb-6 p-4 rounded-xl border border-dashed border-[#415565] bg-[#101d27]">
               <div className="flex items-center justify-between mb-2">
-                <small className="text-slate-300 font-semibold">Chưa kết nối tài khoản — giả định Town Hall</small>
+                <small className="text-slate-300 font-semibold">{t("upgradeTracker.suggest.noAccountNote")}</small>
                 <strong className="text-amber-400 font-black text-lg">TH{guestTownHall}</strong>
               </div>
               <input
@@ -230,17 +232,17 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
           {/* Quick Metrics for Current TH */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Sparkles className="w-4 h-4 text-amber-400"/> Mục tiêu hiện tại</small>
-              <strong className="text-xl font-black text-white block">Town Hall {effectiveTownHall}</strong>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Sparkles className="w-4 h-4 text-amber-400"/> {t("upgradeTracker.suggest.currentTargetLabel")}</small>
+              <strong className="text-xl font-black text-white block">{t("upgradeTracker.suggest.currentTownHall", { th: effectiveTownHall })}</strong>
             </div>
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Wrench className="w-4 h-4 text-cyan-400"/> Cần nâng ở TH{effectiveTownHall}</small>
-              <strong className="text-xl font-black text-white block">{suggestTotals.count} mục</strong>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Wrench className="w-4 h-4 text-cyan-400"/> {t("upgradeTracker.suggest.neededAtTH", { th: effectiveTownHall })}</small>
+              <strong className="text-xl font-black text-white block">{t("upgradeTracker.suggest.itemsCount", { count: suggestTotals.count })}</strong>
             </div>
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/resources/gold.png" className="w-4 h-4 object-contain inline-block" alt="Cost" /> Tổng chi phí</small>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/resources/gold.png" className="w-4 h-4 object-contain inline-block" alt="Cost" /> {t("upgradeTracker.suggest.totalCost")}</small>
               <div className="mt-1"><CostBadges costs={suggestTotals.costs} /></div>
-              {suggestTotals.hasEstimated && <span className="text-xs text-rose-400 mt-1 block flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Có số liệu ước tính</span>}
+              {suggestTotals.hasEstimated && <span className="text-xs text-rose-400 mt-1 block flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> {t("upgradeTracker.suggest.hasEstimated")}</span>}
             </div>
           </div>
 
@@ -257,12 +259,12 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
           {suggestPhases.length > 0 && (
             <div className="mb-8 min-w-0 w-full">
               <div className="mb-4">
-                <h2 className="text-lg md:text-xl font-black text-white mb-1">Lộ Trình Giai Đoạn</h2>
-                <p className="text-sm text-slate-400">Các giai đoạn nâng cấp khuyến nghị cho TH{effectiveTownHall}</p>
+                <h2 className="text-lg md:text-xl font-black text-white mb-1">{t("upgradeTracker.suggest.phaseTitle")}</h2>
+                <p className="text-sm text-slate-400">{t("upgradeTracker.suggest.phaseSubtitle", { th: effectiveTownHall })}</p>
               </div>
               <div className="flex overflow-x-auto gap-3 pb-2 snap-x w-full">
                 {suggestPhases.map((phase, idx) => (
-                  <article 
+                  <article
                     key={phase.name}
                     className="flex-shrink-0 w-[180px] md:w-auto md:min-w-[160px] snap-start relative flex items-center gap-3 p-3 rounded-xl border border-[#ffffff10] bg-[#101b25] hover:bg-[#142636] transition-colors"
                   >
@@ -284,15 +286,15 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
 
           {/* Top Priority Upgrade Recommendations */}
           <div className="mt-8 mb-6 min-w-0 w-full">
-            <h2 className="text-xl md:text-2xl font-black text-white mb-1">Top Ưu Tiên Nâng Cấp ({suggestTop.length} mục)</h2>
-            <p className="text-sm text-slate-400 mb-4">Danh sách sắp xếp theo điểm số chiến lược dựa trên phong cách của bạn</p>
+            <h2 className="text-xl md:text-2xl font-black text-white mb-1">{t("upgradeTracker.suggest.topPriorityTitle", { count: suggestTop.length })}</h2>
+            <p className="text-sm text-slate-400 mb-4">{t("upgradeTracker.suggest.topPrioritySubtitle")}</p>
 
             {suggestTop.length > 0 ? (
               <div className="flex flex-col bg-[#0c1620] border border-[#ffffff10] rounded-xl overflow-hidden w-full">
                 {suggestTop.map((row, idx) => {
                   const isTop3 = idx < 3;
                   const isMid = idx >= 3 && idx < 8;
-                  
+
                   return (
                     <article
                       key={row.item.id}
@@ -301,8 +303,8 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                     >
                       <div className="flex items-center gap-3 flex-1">
                         <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-lg font-black text-xs ${
-                          isTop3 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
-                          : isMid ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" 
+                          isTop3 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                          : isMid ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
                           : "bg-slate-800 text-slate-400"
                         }`}>
                           #{idx + 1}
@@ -336,7 +338,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               </div>
             ) : (
               <p className="p-8 text-center text-slate-400 bg-[#0c1620] rounded-xl border border-[#ffffff10]">
-                Tất cả mục đã đạt cấp tối đa cho phép ở TH{effectiveTownHall}!
+                {t("upgradeTracker.suggest.allMaxed", { th: effectiveTownHall })}
               </p>
             )}
           </div>
@@ -356,7 +358,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
             {/* Controls: Target Town Hall and Builder Count */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="tracker-builder">
-              <small>Tính tới Town Hall</small>
+              <small>{t("upgradeTracker.townHall.targetLabel")}</small>
               <input
                 type="range"
                 min="1"
@@ -368,7 +370,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               <strong>TH{maxTownHall}</strong>
             </label>
             <label className="tracker-builder">
-              <small>Số thợ xây để ước tính</small>
+              <small>{t("upgradeTracker.townHall.builderCountLabel")}</small>
               <input
                 type="range"
                 min="1"
@@ -377,24 +379,24 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 value={builderCount}
                 onChange={e => setBuilderCount(clampInteger(e.target.valueAsNumber, 1, 6, 5))}
               />
-              <strong>{builderCount} thợ xây</strong>
+              <strong>{builderCount} {t("upgradeTracker.townHall.buildersSuffix")}</strong>
             </label>
           </div>
 
           {/* Overview Summaries */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/town-halls/th-1.png" className="w-4 h-4 object-contain inline-block" alt="TH" /> Mục tiêu</small>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/town-halls/th-1.png" className="w-4 h-4 object-contain inline-block" alt="TH" /> {t("upgradeTracker.townHall.targetStat")}</small>
               <strong className="text-xl font-black text-white block">TH{maxTownHall}</strong>
             </div>
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Wrench className="w-4 h-4 text-cyan-400"/> Việc còn lại</small>
-              <strong className="text-xl font-black text-white block">{townHallTotals.count} mục</strong>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><Wrench className="w-4 h-4 text-cyan-400"/> {t("upgradeTracker.townHall.remainingStat")}</small>
+              <strong className="text-xl font-black text-white block">{t("upgradeTracker.suggest.itemsCount", { count: townHallTotals.count })}</strong>
             </div>
             <div className="p-4 rounded-xl border border-[#ffffff10] bg-[#101b25]">
-              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/resources/gold.png" className="w-4 h-4 object-contain inline-block" alt="Cost" /> Tổng chi phí</small>
+              <small className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1.5"><img src="/resources/gold.png" className="w-4 h-4 object-contain inline-block" alt="Cost" /> {t("upgradeTracker.townHall.totalCostStat")}</small>
               <div className="mt-1"><CostBadges costs={townHallTotals.costs} /></div>
-              {townHallTotals.hasEstimated && <span className="text-xs text-rose-400 mt-1 block flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> Có số liệu ước tính</span>}
+              {townHallTotals.hasEstimated && <span className="text-xs text-rose-400 mt-1 block flex items-center gap-1"><AlertTriangle className="w-3 h-3"/> {t("upgradeTracker.suggest.hasEstimated")}</span>}
             </div>
           </div>
 
@@ -406,10 +408,10 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 return (
                   <div key={lane} className="flex flex-col p-3 rounded-lg bg-[#0c1620] border border-[#ffffff08]">
                     <small className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1">
-                      <img src="/resources/builder.png" className="w-3.5 h-3.5 object-contain inline-block" alt="Builder" /> Thợ xây (Builder)
+                      <img src="/resources/builder.png" className="w-3.5 h-3.5 object-contain inline-block" alt="Builder" /> {t("upgradeTracker.townHall.builderLane")}
                     </small>
                     <strong className="text-lg font-bold text-white mb-0.5" title={fmtTimeExact(totalHours / builderCount)}>{fmtTime(totalHours / builderCount)}</strong>
-                    <span className="text-xs text-slate-500" title={fmtTimeExact(totalHours)}>Tổng: {fmtTime(totalHours, true)} / {builderCount} thợ</span>
+                    <span className="text-xs text-slate-500" title={fmtTimeExact(totalHours)}>{t("upgradeTracker.townHall.builderTotal", { total: fmtTime(totalHours, true), count: builderCount })}</span>
                   </div>
                 );
               }
@@ -419,7 +421,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                     {lane === "Laboratory" ? <FlaskConical className="w-3.5 h-3.5 text-rose-400"/> : lane === "Blacksmith" ? <img src="/resources/builder.png" className="w-3.5 h-3.5 object-contain inline-block" alt="Blacksmith" /> : <PawPrint className="w-3.5 h-3.5 text-amber-400"/>} {lane}
                   </small>
                   <strong className="text-lg font-bold text-white mb-0.5" title={fmtTimeExact(totalHours)}>{fmtTime(totalHours)}</strong>
-                  <span className="text-xs text-slate-500">Hàng chờ riêng</span>
+                  <span className="text-xs text-slate-500">{t("upgradeTracker.townHall.ownQueue")}</span>
                 </div>
               );
             })}
@@ -438,7 +440,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
           <div className="flex items-center gap-2 flex-wrap pt-2">
             <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
               <Filter className="w-3.5 h-3.5 text-amber-400" />
-              Lọc danh mục:
+              {t("upgradeTracker.townHall.filterLabel")}
             </span>
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -446,7 +448,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${thCategoryFilter === "all" ? "bg-amber-400 text-slate-950" : "bg-[#142636] text-slate-300 hover:bg-[#1f374e]"}`}
                 onClick={() => setThCategoryFilter("all")}
               >
-                Tất cả ({townHallRows.length})
+                {t("upgradeTracker.townHall.filterAll", { count: townHallRows.length })}
               </button>
               {townHallGroups.map(group => (
                 <button
@@ -468,19 +470,19 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b border-[#ffffff10] bg-[#101b25]">
                   <div>
                     <h2 className="text-lg font-black text-white">{itemKindLabel[group.kind]}</h2>
-                    <p className="text-xs text-slate-400 mt-1">Cấp hiện tại so với cấp tối đa cho phép ở TH{maxTownHall}.</p>
+                    <p className="text-xs text-slate-400 mt-1">{t("upgradeTracker.townHall.currentVsMax", { th: maxTownHall })}</p>
                   </div>
-                  <span className="text-sm font-semibold text-cyan-400 mt-3 md:mt-0">{group.rows.length} mục · {fmtCost(group.costs)} · {fmtTime(group.totalHours)}</span>
+                  <span className="text-sm font-semibold text-cyan-400 mt-3 md:mt-0">{t("upgradeTracker.townHall.groupSummary", { count: group.rows.length, cost: fmtCost(group.costs), time: fmtTime(group.totalHours) })}</span>
                 </div>
                 <div className="flex flex-col w-full overflow-x-auto">
                   <div className="min-w-[600px] w-full">
                     {/* Table Header */}
                     <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr] gap-4 p-3 bg-[#ffffff05] border-b border-[#ffffff10] text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <span>Mục</span>
-                      <span>Cấp</span>
-                      <span>Chi phí</span>
-                      <span>Thời gian</span>
-                      <span>Điều kiện</span>
+                      <span>{t("upgradeTracker.townHall.tableItem")}</span>
+                      <span>{t("upgradeTracker.townHall.tableLevel")}</span>
+                      <span>{t("upgradeTracker.townHall.tableCost")}</span>
+                      <span>{t("upgradeTracker.townHall.tableTime")}</span>
+                      <span>{t("upgradeTracker.townHall.tableCondition")}</span>
                     </div>
                     {/* Table Rows */}
                     {group.rows.map(row => (
@@ -505,7 +507,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                         <span className="text-sm text-slate-300">{fmtTime(row.plan.totalHours)}</span>
                         <span className="text-xs text-slate-400">
                           TH{row.plan.requiredTownHall}
-                          {row.plan.requires.length > 0 && <span className="block text-rose-300/80 mt-0.5">Yêu cầu: {row.plan.requires.join(", ")}</span>}
+                          {row.plan.requires.length > 0 && <span className="block text-rose-300/80 mt-0.5">{t("upgradeTracker.townHall.requires", { list: row.plan.requires.join(", ") })}</span>}
                         </span>
                       </div>
                     ))}
@@ -514,7 +516,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               </section>
             ))}
             {!filteredTownHallGroups.length && (
-              <p className="p-8 text-center text-slate-400 bg-[#0c1620] rounded-xl border border-[#ffffff10]">Không có mục nào cần nâng trong danh mục này để tới TH{maxTownHall}.</p>
+              <p className="p-8 text-center text-slate-400 bg-[#0c1620] rounded-xl border border-[#ffffff10]">{t("upgradeTracker.townHall.noneToUpgrade", { th: maxTownHall })}</p>
             )}
           </div>
         </motion.div>
@@ -532,16 +534,16 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
           >
             <aside className="planner-controls">
             <label>
-              <small>Lọc loại nâng cấp</small>
+              <small>{t("upgradeTracker.single.filterKindLabel")}</small>
               <select value={plannerKind} onChange={e => setPlannerKind(e.target.value as UpgradeItem["kind"] | "all")}>
-                <option value="all">Tất cả</option>
+                <option value="all">{t("common.all")}</option>
                 {Object.entries(itemKindLabel).filter(([kind]) => kind !== "wall").map(([kind, label]) => (
                   <option key={kind} value={kind}>{label}</option>
                 ))}
               </select>
             </label>
             <label>
-              <small>Chọn mục nâng cấp</small>
+              <small>{t("upgradeTracker.single.selectItemLabel")}</small>
               <select
                 value={plannerItemId}
                 onChange={e => {
@@ -563,7 +565,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
             </label>
             {!plannerItem.apiTracked && (
               <label>
-                <small>Cấp hiện tại nhập tay</small>
+                <small>{t("upgradeTracker.single.manualLevelLabel")}</small>
                 <input
                   type="number"
                   min="0"
@@ -576,11 +578,11 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
             )}
             {plannerItem.apiTracked && !player && (
               <p className="no-data">
-                Mục này lấy cấp từ dữ liệu API (hero/quân/phép) — cần kết nối tài khoản mới có cấp hiện tại, tạm coi là cấp 0.
+                {t("upgradeTracker.single.apiTrackedNote")}
               </p>
             )}
             <label>
-              <small>Mục tiêu level</small>
+              <small>{t("upgradeTracker.single.targetLevelLabel")}</small>
               <input
                 type="number"
                 min={currentPlannerLevel}
@@ -591,7 +593,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               />
             </label>
             <label>
-              <small>Số thợ xây để ước tính</small>
+              <small>{t("upgradeTracker.single.builderCountLabel")}</small>
               <input
                 type="range"
                 min="1"
@@ -600,10 +602,10 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 value={builderCount}
                 onChange={e => setBuilderCount(clampInteger(e.target.valueAsNumber, 1, 6, 5))}
               />
-              <strong>{builderCount} thợ xây</strong>
+              <strong>{builderCount} {t("upgradeTracker.townHall.buildersSuffix")}</strong>
             </label>
             <div className="source-box">
-              <strong>Nguồn dữ liệu</strong>
+              <strong>{t("upgradeTracker.single.dataSourceLabel")}</strong>
               {upgradeSources.map(source => <p key={source}>{source}</p>)}
             </div>
           </aside>
@@ -619,24 +621,24 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
 
             <div className="planner-summary">
               <article>
-                <small><img src="/resources/exp.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Progress" /> Tiến độ</small>
+                <small><img src="/resources/exp.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Progress" /> {t("upgradeTracker.single.progressLabel")}</small>
                 <strong>Lv {currentPlannerLevel} → Lv {safeTargetLevel}</strong>
-                <span>{plan.steps.length} cấp cần nâng × {plannerItem.quantity} · Tối đa Lv {maxPlannerLevel}</span>
+                <span>{t("upgradeTracker.single.levelsToUpgrade", { count: plan.steps.length, quantity: plannerItem.quantity, max: maxPlannerLevel })}</span>
               </article>
               <article>
-                <small><img src="/town-halls/th-1.png" className="w-3.5 h-3.5 inline-block object-contain" alt="TH" /> Town Hall cần đạt</small>
+                <small><img src="/town-halls/th-1.png" className="w-3.5 h-3.5 inline-block object-contain" alt="TH" /> {t("upgradeTracker.single.townHallNeededLabel")}</small>
                 <strong>TH{plan.requiredTownHall}</strong>
-                <span>{plannerItem.id === "town-hall" ? "Theo cấp TH mục tiêu" : "Theo điều kiện từng level"}</span>
+                <span>{plannerItem.id === "town-hall" ? t("upgradeTracker.single.byTownHallTarget") : t("upgradeTracker.single.byPerLevelCondition")}</span>
               </article>
               <article>
-                <small><img src="/resources/gold.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Cost" /> Tổng chi phí</small>
+                <small><img src="/resources/gold.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Cost" /> {t("upgradeTracker.single.totalCostLabel")}</small>
                 <strong><CostBadges costs={plan.costs} /></strong>
                 <span>{dataStatusLabel[plannerItem.dataStatus]} · {plannerItem.source}</span>
               </article>
               <article>
-                <small><img src="/resources/time.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Time" /> Thời gian</small>
+                <small><img src="/resources/time.png" className="w-3.5 h-3.5 inline-block object-contain" alt="Time" /> {t("upgradeTracker.single.timeLabel")}</small>
                 <strong title={fmtTimeExact(plan.totalHours)}>{fmtTime(plan.totalHours)}</strong>
-                <span>{plannerItem.lane === "Builder" ? `${fmtTime(plan.totalHours / builderCount)} nếu chia ${builderCount} thợ xây` : "Lab/Blacksmith/Pet House chạy 1 hàng chờ riêng"}</span>
+                <span>{plannerItem.lane === "Builder" ? t("upgradeTracker.single.splitAmongBuilders", { time: fmtTime(plan.totalHours / builderCount), count: builderCount }) : t("upgradeTracker.single.singleQueueNote")}</span>
               </article>
             </div>
 
@@ -644,7 +646,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
               <div className="requires-box">
                 <AlertTriangle />
                 <div>
-                  <strong>Cần chuẩn bị trước</strong>
+                  <strong>{t("upgradeTracker.single.prepareTitle")}</strong>
                   <p>{plan.requires.join(" · ")}</p>
                 </div>
               </div>
@@ -657,8 +659,8 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 </div>
                 <div className="level-progress-labels">
                   <span>Lv {currentPlannerLevel}</span>
-                  <span>Mục tiêu Lv {safeTargetLevel}</span>
-                  <span>Tối đa Lv {maxPlannerLevel}</span>
+                  <span>{t("upgradeTracker.single.targetLevelBadge", { level: safeTargetLevel })}</span>
+                  <span>{t("upgradeTracker.single.maxLevelBadge", { level: maxPlannerLevel })}</span>
                 </div>
               </div>
             ) : (
@@ -666,7 +668,7 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                 {plannerItem.levels.map(level => {
                   const state = level.level <= currentPlannerLevel ? "done" : level.level <= safeTargetLevel ? "target" : "future";
                   return (
-                    <span key={level.level} className={state} title={`${plannerItem.name} level ${level.level}`}>
+                    <span key={level.level} className={state} title={`${plannerItem.name} cấp ${level.level}`}>
                       {level.level}
                     </span>
                   );
@@ -676,16 +678,16 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
 
             <div className="upgrade-table">
               <div className="upgrade-row head">
-                <span>Cấp</span>
-                <span>Điều kiện</span>
-                <span>Chi phí</span>
-                <span>Thời gian</span>
-                <span>Ghi chú</span>
+                <span>{t("upgradeTracker.single.tableLevel")}</span>
+                <span>{t("upgradeTracker.single.tableCondition")}</span>
+                <span>{t("upgradeTracker.single.tableCost")}</span>
+                <span>{t("upgradeTracker.single.tableTime")}</span>
+                <span>{t("upgradeTracker.single.tableNote")}</span>
               </div>
               {plan.steps.length ? (
                 (showAllLevels ? plan.steps : plan.steps.slice(0, LEVEL_TABLE_PREVIEW)).map(step => (
                   <div className="upgrade-row" key={step.level}>
-                    <span><b>{currentPlannerLevel + 1 === step.level ? "Tiếp theo" : "Level"} {step.level}</b></span>
+                    <span><b>{currentPlannerLevel + 1 === step.level ? t("upgradeTracker.single.nextLevel") : t("upgradeTracker.single.levelPrefix")} {step.level}</b></span>
                     <span>TH{step.townHall}</span>
                     <span className="flex items-center gap-1.5">
                       {step.resource ? <img src={resourceIcon[step.resource]} alt={step.resource} className="w-3.5 h-3.5 object-contain inline-block" /> : null}
@@ -693,19 +695,19 @@ export function UpgradeTracker({ player, manualLevels, guestTownHall, setGuestTo
                     </span>
                     <span>{fmtTime(step.timeHours * plannerItem.quantity)}</span>
                     <span>
-                      {dataStatusLabel[plannerItem.dataStatus]}. {plannerItem.quantity > 1 ? `Áp dụng cho ${plannerItem.quantity} mục. ` : ""}
-                      {step.requires?.join(", ") || "Không có điều kiện phụ"}
+                      {dataStatusLabel[plannerItem.dataStatus]}. {plannerItem.quantity > 1 ? t("upgradeTracker.single.appliesTo", { quantity: plannerItem.quantity }) : ""}
+                      {step.requires?.join(", ") || t("upgradeTracker.single.noSubCondition")}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="no-data">Mục này đã đạt hoặc vượt level mục tiêu.</p>
+                <p className="no-data">{t("upgradeTracker.single.alreadyMaxed")}</p>
               )}
             </div>
 
             {plan.steps.length > LEVEL_TABLE_PREVIEW && (
               <button className="show-more-levels" onClick={() => setShowAllLevels(x => !x)}>
-                {showAllLevels ? "Thu gọn danh sách" : `Xem thêm ${plan.steps.length - LEVEL_TABLE_PREVIEW} cấp nữa (tổng ${plan.steps.length} cấp còn lại)`}
+                {showAllLevels ? t("upgradeTracker.single.collapseList") : t("upgradeTracker.single.showMore", { count: plan.steps.length - LEVEL_TABLE_PREVIEW, total: plan.steps.length })}
               </button>
             )}
           </div>
