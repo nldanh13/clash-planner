@@ -207,6 +207,13 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
   }
   .topbar-nav {
     order: 3;
+    /* The base rule sets `flex: 1` (flex-basis: 0%), which — once a
+       flex-basis other than auto is set — makes the flex algorithm ignore
+       `width` entirely for main-axis sizing. So `width: 100%` alone never
+       forced this onto its own row; it just shrank into whatever space was
+       left on the first line and got clipped. `flex-basis: 100%` is what
+       actually forces the wrap. */
+    flex: 1 1 100%;
     width: 100%;
     margin-left: 0;
     height: 42px;
