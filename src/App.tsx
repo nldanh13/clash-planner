@@ -143,7 +143,7 @@ export default function App() {
   return (
     <main className={`app ${tab === "base-planner" ? "base-planner-full" : ""}`}>
       <header className="topbar">
-        <div className="brand"><span className="crest"><ShieldCheck /></span><div><small>CLASH PATH</small><strong>Roadmap đồng bộ War Report</strong></div></div>
+        <div className="brand"><span className="crest"><ShieldCheck /></span><div><strong>Clash Path</strong><small>Đồng bộ từ War Report</small></div></div>
         <form className="searchbox" onSubmit={e => { e.preventDefault(); loadPlayer() }}>
           <Search /><input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập Player Tag, ví dụ #R0CV8RVU2" aria-label="Player Tag" /><button disabled={loading}>{loading ? <LoaderCircle className="spin" /> : "Tải tài khoản"}</button>
         </form>
