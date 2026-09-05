@@ -12,9 +12,6 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { upgradeItems } from "../../upgradeData";
-import { targetForTownHall } from "../../utils/upgradeLogic";
-import { getBuildingImagePath, preloadImage, getCachedImage } from "./imageMapper";
 import { BUILDINGS_BY_ID, CELL_SIZE_PX, GRID_SIZE, MAP_BORDER } from "./constants";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { buildOccupancyMatrix, canPlaceBuildingFast, getBuildingAtCell } from "./gridMatrix";
@@ -90,7 +87,6 @@ export function CanvasGridBoard({
   stampPreviewCoords = null,
 }: CanvasGridBoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const drawBoardRef = useRef<() => void>();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
