@@ -20,8 +20,9 @@ import { manualKey } from "./utils/upgradeLogic";
 import { PWAInstallButton } from "./components/PWAInstallButton";
 import { UserMenu } from "./components/UserMenu";
 import { useCloudSync } from "./hooks/useCloudSync";
+import { HomeTab } from "./components/app/HomeTab";
 
-export type Tab = "overview" | "planner" | "roadmap" | "base-planner" | "admin";
+export type Tab = "home" | "overview" | "planner" | "roadmap" | "base-planner" | "admin";
 
 const plannerItems = upgradeItems.filter(item => item.kind !== "wall");
 const byUnlock = (a: any, b: any) => a.unlockTownHall - b.unlockTownHall || a.name.localeCompare(b.name);
@@ -35,8 +36,8 @@ const rosterEquipment = upgradeItems.filter(i => i.kind === "equipment")
 
 export default function App() {
   useCloudSync();
-  const [tab, setTab] = useState<Tab>("overview");
-  const [prevTab, setPrevTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("home");
+  const [prevTab, setPrevTab] = useState<Tab>("home");
   const [guestTownHall, setGuestTownHall] = useState(() => {
     const saved = Number(localStorage.getItem("coc-guest-townhall"));
     return Number.isFinite(saved) && saved >= 1 && saved <= 18 ? saved : 8;
@@ -171,11 +172,12 @@ export default function App() {
         </div>
       </div>}
 
-      {player && tab !== "base-planner" && (
+      {player && tab !== "base-planner" && tab !== "home" && (
         <PlayerProfile player={player} syncedAt={syncedAt} homeHeroes={homeHeroes} homeTroops={homeTroops} homeSpells={homeSpells} equipment={equipment} progress={progress} />
       )}
 
       <nav className="tabs">
+        <button className={tab === "home" ? "active" : ""} onClick={() => handleTabChange("home")}>Trang chủ</button>
         <button className={tab === "overview" ? "active" : ""} onClick={() => handleTabChange("overview")}>Hồ sơ người chơi</button>
         <button className={tab === "planner" ? "active" : ""} onClick={() => handleTabChange("planner")}>Upgrade Tracker</button>
         <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>Roadmap TH1–18</button>
@@ -183,6 +185,8 @@ export default function App() {
           Base Planner (Lưới 44x44)
         </button>
       </nav>
+
+      {tab === "home" && <HomeTab onNavigate={handleTabChange} />}
 
       {tab === "overview" && (!player ? <EmptyPlayerState loading={loading} /> : <>
         <section className="panel army-panel">
