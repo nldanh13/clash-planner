@@ -72,6 +72,27 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
   cursor: pointer;
   user-select: none;
 }
+/* Hamburger trigger: hidden on desktop, where the tabs fit inline; shown in
+   its place once the mobile breakpoint hides .topbar-nav below. */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border: 1px solid #2c3947;
+  border-radius: 10px;
+  background: #141a23;
+  color: #c7d5e0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.hamburger-btn:hover {
+  border-color: #4c5f70;
+  color: #fff;
+}
 .topbar-nav {
   display: flex;
   align-items: center;
@@ -190,11 +211,8 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
 
 @media (max-width: 860px) {
   .topbar {
-    height: auto;
-    min-height: 54px;
-    flex-wrap: wrap;
-    padding: 8px 4px 0;
-    gap: 8px 12px;
+    padding: 0 4px;
+    gap: 10px;
   }
   .brand strong {
     font-size: 13px;
@@ -205,31 +223,120 @@ button:active:not(:disabled), .icon-button:active, .tabs button:active {
   .topbar-actions {
     margin-left: auto;
   }
+  /* The 5-tab row doesn't fit next to the brand and avatar on a phone-width
+     screen at any reasonable font size, and wrapping/scrolling it in place
+     (the previous approach) always left tabs looking clipped or squeezed.
+     Below the breakpoint it moves into the MobileNavDrawer instead, opened
+     via the hamburger button that takes its place here. */
   .topbar-nav {
-    order: 3;
-    /* The base rule sets `flex: 1` (flex-basis: 0%), which — once a
-       flex-basis other than auto is set — makes the flex algorithm ignore
-       `width` entirely for main-axis sizing. So `width: 100%` alone never
-       forced this onto its own row; it just shrank into whatever space was
-       left on the first line and got clipped. `flex-basis: 100%` is what
-       actually forces the wrap. */
-    flex: 1 1 100%;
-    width: 100%;
-    margin-left: 0;
-    height: 42px;
-    border-top: 1px solid #ffffff0d;
-    padding: 0;
-    /* Fades the row's edges so a horizontally-scrollable nav visibly hints
-       there's more to swipe to, instead of cutting tabs off with no cue. */
-    mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+    display: none;
   }
-  .topbar-nav button {
-    height: 42px;
-    padding: 0 10px;
-    font-size: 11.5px;
+  .hamburger-btn {
+    display: inline-flex;
   }
 }
+
+/* Mobile Nav Drawer */
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(6, 10, 16, 0.6);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.15s ease-out;
+}
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 201;
+  width: min(78vw, 300px);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #111923;
+  border-right: 1px solid #273849;
+  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.5);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: slideInLeft 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.mobile-nav-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #213141;
+}
+.mobile-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+}
+.mobile-nav-brand strong {
+  font-size: 14px;
+  color: #f0f0f0;
+  font-weight: 800;
+}
+.mobile-nav-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8495a3;
+  cursor: pointer;
+}
+.mobile-nav-close-btn:hover {
+  background: #ffffff0d;
+  color: #fff;
+}
+.mobile-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+.mobile-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #a0b0be;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.mobile-nav-item:hover {
+  background: #ffffff0a;
+  color: #e2edf5;
+}
+.mobile-nav-item.active {
+  background: linear-gradient(90deg, rgba(255, 200, 87, 0.14), transparent);
+  color: var(--gold);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }

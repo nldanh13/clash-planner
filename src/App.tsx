@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { AlertTriangle, ClipboardPaste, Info, LoaderCircle, RefreshCw, Search, ShieldCheck, Database } from "lucide-react";
+import { AlertTriangle, ClipboardPaste, Info, LoaderCircle, Menu, RefreshCw, Search, ShieldCheck, Database } from "lucide-react";
 import { usePlayer } from "./hooks/usePlayer";
 
 import { AdminPanel } from "./components/AdminPanel";
@@ -22,6 +22,7 @@ import { UserMenu } from "./components/UserMenu";
 import { PlayerSearchModal, saveRecentSearch } from "./components/PlayerSearchModal";
 import { useCloudSync } from "./hooks/useCloudSync";
 import { HomeTab } from "./components/app/HomeTab";
+import { MobileNavDrawer } from "./components/app/MobileNavDrawer";
 import { useTranslation } from "./i18n";
 
 export type Tab = "home" | "overview" | "planner" | "roadmap" | "base-planner" | "admin";
@@ -41,6 +42,7 @@ export default function App() {
   useCloudSync();
   const [tab, setTab] = useState<Tab>("home");
   const [prevTab, setPrevTab] = useState<Tab>("home");
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [guestTownHall, setGuestTownHall] = useState(() => {
     const saved = Number(localStorage.getItem("coc-guest-townhall"));
     return Number.isFinite(saved) && saved >= 1 && saved <= 18 ? saved : 8;
@@ -185,6 +187,16 @@ export default function App() {
     <main className="app">
       <div className="app-header-area">
         <header className="topbar">
+          <button
+            type="button"
+            className="hamburger-btn"
+            onClick={() => setIsMobileNavOpen(true)}
+            aria-label="Mở menu điều hướng"
+            aria-expanded={isMobileNavOpen}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
           <div className="brand" onClick={() => handleTabChange("home")} style={{ cursor: "pointer" }}>
             <span className="crest"><ShieldCheck /></span>
             <div>
@@ -218,6 +230,16 @@ export default function App() {
           </div>
         </header>
       </div>
+
+      <MobileNavDrawer
+        isOpen={isMobileNavOpen}
+        activeTab={tab}
+        onClose={() => setIsMobileNavOpen(false)}
+        onSelectTab={(nextTab) => {
+          handleTabChange(nextTab);
+          setIsMobileNavOpen(false);
+        }}
+      />
 
       {/* Player Search Modal */}
       <PlayerSearchModal
