@@ -355,13 +355,26 @@ export function IsometricGridBoard({
       if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
         const nw = img.naturalWidth;
         const nh = img.naturalHeight;
-        // Scale to the footprint's screen-space diagonal span rather than its
-        // (tiny, near-flat) height, so a 4x4 Town Hall draws visibly bigger
-        // than a 1x1 wall — then let the source image's own aspect ratio
-        // decide how tall the sprite stands, exactly as the artist drew it.
+        // Scale to the footprint's own screen-space span — a 4x4 Town Hall
+        // draws visibly bigger than a 1x1 wall — then let the source
+        // image's own aspect ratio decide how tall the sprite stands. These
+        // per-building crops do already encode each building's real
+        // silhouette (e.g. Bomb Tower and Hidden Tesla are tall/narrow at
+        // ~0.65 width:height, Army Camp is low/wide at ~1.2), so trust it.
         const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
-        const drawWidth = footprintSpan * 1.08;
-        const drawHeight = drawWidth * (nh / nw);
+        let drawWidth = footprintSpan;
+        let drawHeight = drawWidth * (nh / nw);
+        // Safety ceiling only, for any one pathologically tall/narrow crop —
+        // keeps it from towering across several rows of neighbors, without
+        // touching the vast majority of buildings whose real proportions
+        // are already well under this.
+        const oneTileHeightPx = DEFAULT_ISO_CONFIG.tileHeight * viewport.zoom;
+        const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.3;
+        if (drawHeight > maxHeight) {
+          const shrink = maxHeight / drawHeight;
+          drawWidth *= shrink;
+          drawHeight *= shrink;
+        }
         const centerX = (top.x + right.x + bottom.x + left.x) / 4;
         // Anchor the sprite's bottom edge near the diamond's front (south)
         // corner — where an isometric object visually "touches down" — not
