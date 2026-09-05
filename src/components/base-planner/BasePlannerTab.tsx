@@ -183,6 +183,19 @@ export function BasePlannerTab({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isFullscreen]);
 
+  // The fullscreen overlay is `position: fixed` over the whole viewport, but
+  // on mobile a touch-drag can still rubber-band the page underneath it
+  // (visible as a flash of background content sliding behind the overlay).
+  // Locking body scroll while it's open closes that gap.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFullscreen]);
+
   // Zen Mode (Full map viewing mode: hides top bar, tactical toolbar and building tray)
   const [isZenMode, setIsZenMode] = useState(false);
 
