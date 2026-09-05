@@ -60,6 +60,18 @@ export const vi = {
     invalidResponseData: "Dữ liệu phản hồi từ War Report không hợp lệ hoặc bị lỗi cấu trúc.",
     defaultPlayerName: "Người chơi",
   },
+  decorativeAutoArrange: {
+    notEnoughSpace: "Không đủ chỗ trống để đặt {count} công trình còn thiếu — hãy mở rộng khoảng trống hoặc thu nhỏ hình dạng tường đã vẽ.",
+    createsHoles: "Cách sắp xếp này tạo ra {count} lỗ thả quân nguy hiểm gần Town Hall — hãy kiểm tra tab Phân tích phòng thủ để khắc phục.",
+  },
+  strategyProfiles: {
+    war: "Tối ưu chống 3 sao, TH lệch tâm, Eagle đặt đối trọng, phân tán tháp hỏa lực chống giật sét và dồn dame.",
+    trophy: "Bảo vệ Town Hall tuyệt đối ở vị trí trung tâm, nhiều lớp tường đồng tâm và lưới hỏa lực 360 độ.",
+    farming: "Phân tán các kho Vàng, Dầu và Dark Elixir ra các khoang độc lập, phòng thủ splash bảo vệ kho.",
+    hybrid: "Cân bằng giữa giữ Cúp và bảo vệ kho tài nguyên, phù hợp cho leo Rank hàng ngày.",
+    progress: "Sắp xếp ngăn nắp theo danh mục và cấp độ công trình, tường xếp thành khối/hàng gọn gàng dễ nâng cấp.",
+    showcase: "Mô hình tạo hình hoa văn, hình học đối xứng chuẩn xác, tôn vinh thẩm mỹ và sự ấn tượng.",
+  },
   defenseScorer: {
     modelLimitTitle: "Giới hạn đánh giá",
     modelLimitMessage: "Đây là điểm tham khảo cơ bản. Thuật toán chưa xét cấp độ công trình, hướng thổi của Air Sweeper, chế độ Inferno/X-Bow, thiết kế khoang tường và thuật toán tìm đường (pathing) của lính.",

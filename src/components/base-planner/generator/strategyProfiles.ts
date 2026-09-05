@@ -1,4 +1,5 @@
 import type { BasePurpose, BaseScore } from "./types";
+import { vi } from "../../../i18n/locales/vi";
 
 export interface StrategyProfile {
   purpose: BasePurpose;
@@ -30,7 +31,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   war: {
     purpose: "war",
     name: "War Base (Clan War & CWL)",
-    description: "Tối ưu chống 3 sao, TH lệch tâm, Eagle đặt đối trọng, phân tán tháp hỏa lực chống giật sét và dồn dame.",
+    description: vi.strategyProfiles.war,
     townHallPlacement: "off-center",
     clanCastlePlacement: "dead-center",
     eaglePlacement: "opposite-th",
@@ -54,7 +55,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   trophy: {
     purpose: "trophy",
     name: "Trophy Push Base",
-    description: "Bảo vệ Town Hall tuyệt đối ở vị trí trung tâm, nhiều lớp tường đồng tâm và lưới hỏa lực 360 độ.",
+    description: vi.strategyProfiles.trophy,
     townHallPlacement: "center",
     clanCastlePlacement: "core",
     eaglePlacement: "core",
@@ -78,7 +79,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   farming: {
     purpose: "farming",
     name: "Farming Base (Bảo vệ tài nguyên)",
-    description: "Phân tán các kho Vàng, Dầu và Dark Elixir ra các khoang độc lập, phòng thủ splash bảo vệ kho.",
+    description: vi.strategyProfiles.farming,
     townHallPlacement: "semi-exposed",
     clanCastlePlacement: "core",
     eaglePlacement: "inner",
@@ -102,7 +103,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   hybrid: {
     purpose: "hybrid",
     name: "Hybrid Base (Cân bằng)",
-    description: "Cân bằng giữa giữ Cúp và bảo vệ kho tài nguyên, phù hợp cho leo Rank hàng ngày.",
+    description: vi.strategyProfiles.hybrid,
     townHallPlacement: "center",
     clanCastlePlacement: "core",
     eaglePlacement: "inner",
@@ -126,7 +127,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   progress: {
     purpose: "progress",
     name: "Progress Base (Quy hoạch nâng cấp)",
-    description: "Sắp xếp ngăn nắp theo danh mục và cấp độ công trình, tường xếp thành khối/hàng gọn gàng dễ nâng cấp.",
+    description: vi.strategyProfiles.progress,
     townHallPlacement: "center",
     clanCastlePlacement: "inner",
     eaglePlacement: "inner",
@@ -150,7 +151,7 @@ export const STRATEGY_PROFILES: Record<BasePurpose, StrategyProfile> = {
   showcase: {
     purpose: "showcase",
     name: "Showcase / Art Base (Nghệ thuật & Đối xứng)",
-    description: "Mô hình tạo hình hoa văn, hình học đối xứng chuẩn xác, tôn vinh thẩm mỹ và sự ấn tượng.",
+    description: vi.strategyProfiles.showcase,
     townHallPlacement: "center",
     clanCastlePlacement: "core",
     eaglePlacement: "core",

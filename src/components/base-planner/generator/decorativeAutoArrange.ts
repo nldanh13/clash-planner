@@ -14,6 +14,11 @@ import { computeDeploymentAnalysis } from "../deploymentZones";
 import { PlacementEngine } from "./placementEngine";
 import { PRNG } from "./prng";
 import type { PlacedBuilding } from "../types";
+import { vi } from "../../../i18n/locales/vi";
+
+function fmt(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
+}
 
 export interface AutoArrangeResult {
   buildings: PlacedBuilding[];
@@ -136,17 +141,13 @@ export function autoArrangeRemainingBuildings(
   const warnings: string[] = [];
 
   if (skippedCount > 0) {
-    warnings.push(
-      `Không đủ chỗ trống để đặt ${skippedCount} công trình còn thiếu — hãy mở rộng khoảng trống hoặc thu nhỏ hình dạng tường đã vẽ.`
-    );
+    warnings.push(fmt(vi.decorativeAutoArrange.notEnoughSpace, { count: skippedCount }));
   }
 
   if (newlyPlaced.length > 0) {
     const analysis = computeDeploymentAnalysis(finalBuildings);
     if (analysis.criticalHoleCount > 0) {
-      warnings.push(
-        `Cách sắp xếp này tạo ra ${analysis.criticalHoleCount} lỗ thả quân nguy hiểm gần Town Hall — hãy kiểm tra tab Phân tích phòng thủ để khắc phục.`
-      );
+      warnings.push(fmt(vi.decorativeAutoArrange.createsHoles, { count: analysis.criticalHoleCount }));
     }
   }
 
