@@ -410,33 +410,39 @@ export function IsometricGridBoard({
         // ~0.65 width:height, Army Camp is low/wide at ~1.2), so trust it.
         const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
         const bounds = getSpriteContentBounds(img);
-        const contentWidthFrac = Math.max(0.2, bounds.right - bounds.left);
+        // Floored at 0.85 (not the crop's real value, which for a few
+        // outliers like Army Camp runs as low as ~0.49): letting every
+        // crop's own idiosyncratic padding dictate its width blow-up made
+        // same-footprint buildings render at wildly different on-screen
+        // sizes next to each other (a padded crop like Wizard Tower could
+        // end up 2x the width of a tight one like Cannon) — which read as
+        // buildings "lấn át nhau" (crowding/overlapping each other) rather
+        // than a coherent board. Capping the correction to a modest ~18%
+        // keeps sizing consistent across a footprint while still closing
+        // most of a typical wall tile's real gap (wall crops run ~77-94%).
+        const contentWidthFrac = Math.max(0.85, bounds.right - bounds.left);
         // Fit the sprite's actual non-transparent content to the footprint
         // span, not its raw padded canvas — see getSpriteContentBounds for
-        // why crops can't be trusted to already be tight (a 1x1 wall crop
-        // can be 15-25% empty margin, which otherwise opens a visible gap
-        // between two "touching" wall tiles' real brick art).
-        let drawWidth = footprintSpan / contentWidthFrac;
+        // why crops can't be trusted to already be tight.
+        const drawWidth = footprintSpan / contentWidthFrac;
         let drawHeight = drawWidth * (nh / nw);
         // Safety ceiling for a pathologically tall/narrow crop, measured
         // against the sprite's real CONTENT height (not the padded canvas
-        // height, which the width fix above already deliberately inflates
-        // for a padded crop — capping the padded canvas here would silently
-        // undo that fix for exactly the buildings it matters most for). A
-        // survey of every building/trap's actual content aspect ratio
-        // (content-height / content-width) puts ordinary buildings at
-        // 0.7-1.2 and only a handful of true towers (Air Defense, Hidden
-        // Tesla, Inferno Tower) above that up to ~1.5 — 2.4 lets all the
-        // former stand at their real corrected size while still bounding
-        // the latter instead of crushing everything to a shared ceiling.
+        // height, which a padded crop would otherwise inflate) — and
+        // applied to HEIGHT ONLY, deliberately not rescaling drawWidth back
+        // down with it. Shrinking both together (the previous approach) is
+        // exactly what let a tall tower's aspect ratio dictate its WIDTH
+        // too, reintroducing the same inconsistent-sizing problem the fixed
+        // width floor above exists to prevent. A true tower crop (Air
+        // Defense, Inferno Tower) still gets a little vertical squash once
+        // it hits the ceiling, which is a much smaller visual defect than
+        // every building's width varying with its own crop's padding.
         const contentHeightFrac = Math.max(0.2, bounds.bottom - bounds.top);
         const contentHeightPx = drawHeight * contentHeightFrac;
         const oneTileHeightPx = DEFAULT_ISO_CONFIG.tileHeight * viewport.zoom;
-        const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 2.4;
+        const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.8;
         if (contentHeightPx > maxContentHeight) {
-          const shrink = maxContentHeight / contentHeightPx;
-          drawWidth *= shrink;
-          drawHeight *= shrink;
+          drawHeight *= maxContentHeight / contentHeightPx;
         }
         const centerX = (top.x + right.x + bottom.x + left.x) / 4;
         // Anchor the sprite's bottom edge near the diamond's front (south)
