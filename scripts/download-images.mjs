@@ -11,11 +11,16 @@
 // này cần có Internet — môi trường sandbox của Claude thì KHÔNG tải được
 // ảnh nhị phân trực tiếp nên phần này phải chạy trên máy bạn.
 //
-// Nguồn ảnh:
-//  - Công trình/phòng thủ/bẫy: coc.guide (trang dữ liệu lấy trực tiếp từ
-//    file game gốc, ảnh xác minh từng URL một, không suy đoán tên file).
-//  - Hero/quân/phép/trang bị/pet/máy công thành: assets.colinschmale.dev
-//    (CDN dùng cho ảnh trong log chiến tranh của công cụ War Report).
+// Nguồn ảnh — thử ClashKingAssets trước (độ phân giải cao hơn hẳn, ví dụ
+// icon Tướng ~172x171 so với ~108x107 của nguồn cũ), rớt xuống nguồn cũ nếu
+// ClashKingAssets không có đúng công trình/cấp độ đó:
+//  - Công trình/phòng thủ/bẫy: ClashKingAssets (GitHub, ảnh .webp trích trực
+//    tiếp từ file game, được sharp chuyển sang .png cho khớp quy ước file
+//    hiện có) → rớt xuống coc.guide (trang dữ liệu lấy trực tiếp từ file
+//    game gốc, ảnh xác minh từng URL một, không suy đoán tên file).
+//  - Hero/quân/phép/trang bị/pet/máy công thành: ClashKingAssets → rớt
+//    xuống assets.colinschmale.dev (CDN dùng cho ảnh trong log chiến tranh
+//    của công cụ War Report).
 //
 // Ảnh nào tải lỗi (404, đổi tên, mất mạng...) sẽ được liệt kê ở cuối, app
 // vẫn chạy bình thường và tự rớt xuống icon minh họa cho riêng mục đó.
@@ -23,6 +28,7 @@
 import { mkdir, writeFile, access, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIC = path.join(ROOT, "public");
@@ -54,6 +60,52 @@ const COC_GUIDE_BUILDING_ART = {
   "seeking-air-mine":"/static/imgs/trap/megaairtrap-7.png","skeleton-trap":"/static/imgs/trap/halloweenskels-3.png",
   "tornado-trap":"/static/imgs/trap/tornadotrap-1.png","giga-bomb":"/static/imgs/trap/gigabomb-3.png"
 };
+
+const CLASHKING_BASE = "https://raw.githubusercontent.com/ClashKingInc/ClashKingAssets/master/assets";
+
+// id -> tên thư mục trên ClashKingAssets. Không phải lúc nào cũng đơn giản
+// là đổi "-" thành "_" (repo có vài ngoại lệ: "builder's_hut" có dấu nháy
+// đơn, "x-bow" và "multi-archer_tower" vẫn giữ dấu gạch ngang ở giữa) nên
+// liệt kê tường minh, đã xác minh từng đường dẫn một trên repo thật.
+const CLASHKING_BUILDING_FOLDER = {
+  "army-camp": "army_camp", "barracks": "barracks", "dark-barracks": "dark_barracks",
+  "spell-factory": "spell_factory", "dark-spell-factory": "dark_spell_factory",
+  "laboratory": "laboratory", "clan-castle": "clan_castle", "blacksmith": "blacksmith",
+  "workshop": "workshop", "pet-house": "pet_house", "hero-hall": "hero_hall",
+  "gold-mine": "gold_mine", "elixir-collector": "elixir_collector",
+  "dark-elixir-drill": "dark_elixir_drill", "gold-storage": "gold_storage",
+  "elixir-storage": "elixir_storage", "dark-elixir-storage": "dark_elixir_storage",
+  "builder-hut": "builder's_hut", "cannon": "cannon", "archer-tower": "archer_tower",
+  "mortar": "mortar", "air-defense": "air_defense", "wizard-tower": "wizard_tower",
+  "air-sweeper": "air_sweeper", "hidden-tesla": "hidden_tesla", "bomb-tower": "bomb_tower",
+  "xbow": "x-bow", "inferno-tower": "inferno_tower", "eagle-artillery": "eagle_artillery",
+  "scattershot": "scattershot", "monolith": "monolith", "spell-tower": "spell_tower",
+  "multi-archer-tower": "multi-archer_tower", "ricochet-cannon": "ricochet_cannon",
+  "firespitter": "firespitter", "wall": "wall",
+  // Bẫy nằm ở assets/traps/home-village/ (thư mục riêng, xem CLASHKING_TRAP_IDS)
+  // thay vì assets/buildings/home-village/, nhưng tên thư mục con vẫn khớp
+  // kiểu đổi "-" thành "_" như bình thường nên không cần liệt kê riêng ở đây.
+  "bomb": "bomb", "spring-trap": "spring_trap", "air-bomb": "air_bomb",
+  "giant-bomb": "giant_bomb", "seeking-air-mine": "seeking_air_mine",
+  "skeleton-trap": "skeleton_trap", "tornado-trap": "tornado_trap", "giga-bomb": "giga_bomb",
+};
+const CLASHKING_TRAP_IDS = new Set([
+  "bomb", "spring-trap", "air-bomb", "giant-bomb", "seeking-air-mine", "skeleton-trap", "tornado-trap", "giga-bomb",
+]);
+
+// Vài id không đánh vần đầy đủ trên ClashKingAssets (viết tắt), phần còn lại
+// chỉ cần đổi "-" thành "_".
+const CLASHKING_ID_OVERRIDE = { "p-e-k-k-a": "pekka", "l-a-s-s-i": "lassi" };
+const clashKingSlug = (id) => CLASHKING_ID_OVERRIDE[id] || id.replace(/-/g, "_");
+
+async function headOk(url) {
+  try {
+    const res = await fetch(url, { method: "HEAD", headers: { "User-Agent": "Mozilla/5.0 (clash-path-local image sync)" } });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 // Danh sách item còn lại — giữ đồng bộ thủ công với src/upgradeData.ts.
 // Nếu bạn thêm hero/quân/phép/trang bị/pet/máy công thành mới, thêm dòng
@@ -93,46 +145,70 @@ const NON_BUILDING_JOBS = [];
 for (const item of MANIFEST) {
   if (item.id === "town-hall" || isBuildingKind(item.kind)) continue; // buildings are discovered dynamically, see discoverBuildingLevelJobs()
   const remoteFolder = item.kind === "hero" ? "heroes" : item.kind === "spell" ? "spells" : item.kind === "equipment" ? "heroes/equipment" : "troops";
-  const url = `${ASSETS}/${remoteFolder}/${encodeURIComponent(item.name)}.webp`;
-  NON_BUILDING_JOBS.push({ url, out: path.join(PUBLIC, localFolder(item.kind), `${item.id}.webp`) });
+  const fallbackUrl = `${ASSETS}/${remoteFolder}/${encodeURIComponent(item.name)}.webp`;
+
+  const slug = clashKingSlug(item.id);
+  const urls = [];
+  if (item.kind === "spell") urls.push({ url: `${CLASHKING_BASE}/spells/${slug}.webp` });
+  else if (item.kind === "equipment") urls.push({ url: `${CLASHKING_BASE}/equipment/${slug}.webp` });
+  else if (item.kind === "hero") urls.push({ url: `${CLASHKING_BASE}/heroes/${slug}/icon.webp` });
+  else if (item.kind === "pet") urls.push({ url: `${CLASHKING_BASE}/pets/${slug}/icon.webp` });
+  else urls.push({ url: `${CLASHKING_BASE}/troops/${slug}/icon.webp` }); // troop + siege
+  urls.push({ url: fallbackUrl });
+
+  NON_BUILDING_JOBS.push({ urls, out: path.join(PUBLIC, localFolder(item.kind), `${item.id}.webp`) });
 }
 
 /**
- * coc.guide numbers each building's per-level art 1..N, but N grows every time
- * Supercell adds a level — a max hardcoded here (as this file used to do, parsed
- * out of COC_GUIDE_BUILDING_ART's single reference URL) silently goes stale.
- * That's exactly why xbow, inferno-tower, eagle-artillery, scattershot and
- * monolith fell behind their real max level over time.
+ * Both sources number each building's per-level art 1..N, but N grows every
+ * time Supercell adds a level — a max hardcoded here (as this file used to
+ * do, parsed out of COC_GUIDE_BUILDING_ART's single reference URL) silently
+ * goes stale. That's exactly why xbow, inferno-tower, eagle-artillery,
+ * scattershot and monolith fell behind their real max level over time.
  *
  * Probe upward from level 1 instead of trusting a fixed number: keep going
- * while a level's art exists (already on disk, or a HEAD request to coc.guide
- * succeeds), stop once two levels in a row are missing. This makes the script
- * self-healing — it picks up new levels the next time it runs, no code change
- * needed here.
+ * while a level's art exists (already on disk, or a HEAD request succeeds
+ * against either source), stop once two levels in a row are missing from
+ * both. This makes the script self-healing — it picks up new levels the
+ * next time it runs, no code change needed here.
+ *
+ * Per level, ClashKingAssets (meaningfully higher resolution) is tried
+ * first; coc.guide is the fallback if that specific building/level isn't
+ * on ClashKingAssets. Picking the source per-level (not per-building) means
+ * one missing level on ClashKingAssets doesn't lose the better source for
+ * every other level of the same building.
  */
-async function discoverBuildingLevelJobs(item, baseRemote) {
+async function discoverBuildingLevelJobs(item, cocGuideBase) {
   const jobs = [];
+  const ckaFolder = CLASHKING_BUILDING_FOLDER[item.id];
+  const ckaCategory = CLASHKING_TRAP_IDS.has(item.id) ? "traps" : "buildings";
+
   let misses = 0;
   const MAX_LEVEL_CAP = 30; // sanity ceiling, well above any real in-game max
   for (let level = 1; level <= MAX_LEVEL_CAP && misses < 2; level++) {
-    const url = `https://coc.guide${baseRemote}-${level}.png`;
     const out = path.join(PUBLIC, "buildings", `${item.id}-${level}.png`);
     if (!FORCE && (await exists(out))) {
-      jobs.push({ url, out });
       misses = 0;
       continue;
     }
-    try {
-      const res = await fetch(url, { method: "HEAD", headers: { "User-Agent": "Mozilla/5.0 (clash-path-local image sync)" } });
-      if (res.ok) {
-        jobs.push({ url, out });
-        misses = 0;
-      } else {
-        misses++;
-      }
-    } catch {
-      misses++;
+
+    const ckaUrl = ckaFolder
+      ? `${CLASHKING_BASE}/${ckaCategory}/home-village/${ckaFolder}/level_${level}.webp`
+      : null;
+    if (ckaUrl && (await headOk(ckaUrl))) {
+      jobs.push({ url: ckaUrl, out, convert: "png" });
+      misses = 0;
+      continue;
     }
+
+    const cocUrl = cocGuideBase ? `https://coc.guide${cocGuideBase}-${level}.png` : null;
+    if (cocUrl && (await headOk(cocUrl))) {
+      jobs.push({ url: cocUrl, out });
+      misses = 0;
+      continue;
+    }
+
+    misses++;
   }
   return jobs;
 }
@@ -142,32 +218,56 @@ async function buildBuildingJobs() {
   for (const item of MANIFEST) {
     if (item.id === "town-hall" || !isBuildingKind(item.kind)) continue;
     const p = COC_GUIDE_BUILDING_ART[item.id];
-    if (!p) { console.warn(`(bỏ qua) chưa có URL coc.guide cho: ${item.id}`); continue; }
-    const match = p.match(/^(.*)-(\d+)\.png$/);
-    if (match) {
-      jobs.push(...(await discoverBuildingLevelJobs(item, match[1])));
-    }
-    jobs.push({ url: `https://coc.guide${p}`, out: path.join(PUBLIC, "buildings", `${item.id}.png`) });
+    const ckaFolder = CLASHKING_BUILDING_FOLDER[item.id];
+    if (!p && !ckaFolder) { console.warn(`(bỏ qua) chưa có nguồn ảnh cho: ${item.id}`); continue; }
+
+    const match = p?.match(/^(.*)-(\d+)\.png$/);
+    jobs.push(...(await discoverBuildingLevelJobs(item, match?.[1] || null)));
+
+    // Base (non-leveled) fallback file, used when a level isn't specified.
+    const baseOut = path.join(PUBLIC, "buildings", `${item.id}.png`);
+    const ckaCategory = CLASHKING_TRAP_IDS.has(item.id) ? "traps" : "buildings";
+    jobs.push({
+      urls: [
+        ...(ckaFolder ? [{ url: `${CLASHKING_BASE}/${ckaCategory}/home-village/${ckaFolder}/level_1.webp`, convert: "png" }] : []),
+        ...(p ? [{ url: `https://coc.guide${p}` }] : []),
+      ],
+      out: baseOut,
+    });
   }
   return jobs;
 }
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 
+// A job targets either a single { url, convert? } (building/trap levels,
+// resolved to one already-probed source at discovery time) or an ordered
+// { urls: [{ url, convert? }, ...] } to try in turn (non-building assets,
+// where ClashKingAssets vs. the fallback CDN is decided at download time
+// instead of via a separate HEAD probe pass).
 async function downloadOne(job) {
-  if (!FORCE && await exists(job.out)) return { job, status: "skip" };
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const res = await fetch(job.url, { headers: { "User-Agent": "Mozilla/5.0 (clash-path-local image sync)" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buf = Buffer.from(await res.arrayBuffer());
-      await mkdir(path.dirname(job.out), { recursive: true });
-      await writeFile(job.out, buf);
-      return { job, status: "ok", bytes: buf.length };
-    } catch (err) {
-      if (attempt === 2) return { job, status: "fail", error: String(err.message || err) };
+  if (!FORCE && (await exists(job.out))) return { job, status: "skip" };
+  const candidates = job.urls || [{ url: job.url, convert: job.convert }];
+
+  let lastError = "no candidate URL";
+  for (const { url, convert } of candidates) {
+    if (!url) continue;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (clash-path-local image sync)" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        let buf = Buffer.from(await res.arrayBuffer());
+        if (convert === "png") buf = await sharp(buf).png({ compressionLevel: 9 }).toBuffer();
+        await mkdir(path.dirname(job.out), { recursive: true });
+        await writeFile(job.out, buf);
+        return { job, status: "ok", bytes: buf.length, source: url };
+      } catch (err) {
+        lastError = String(err.message || err);
+        if (attempt < 2) continue;
+      }
     }
   }
+  return { job, status: "fail", error: lastError };
 }
 
 async function run() {

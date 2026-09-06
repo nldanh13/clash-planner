@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-05T15:20:38.585Z",
+  "updatedAt": "2026-09-06T10:22:30.787Z",
   "version": "1.0.0",
   "summary": {
     "totalItems": 179,
@@ -240,7 +240,7 @@
       "localPath": "/buildings/builder-hut.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 18416
+      "sizeBytes": 15079
     },
     {
       "id": "cannon",
@@ -251,7 +251,7 @@
       "localPath": "/buildings/cannon.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 25083
+      "sizeBytes": 6307
     },
     {
       "id": "archer-tower",
@@ -262,7 +262,7 @@
       "localPath": "/buildings/archer-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 32352
+      "sizeBytes": 22920
     },
     {
       "id": "mortar",
@@ -273,7 +273,7 @@
       "localPath": "/buildings/mortar.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 21361
+      "sizeBytes": 7732
     },
     {
       "id": "air-defense",
@@ -284,7 +284,7 @@
       "localPath": "/buildings/air-defense.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 28341
+      "sizeBytes": 9335
     },
     {
       "id": "wizard-tower",
@@ -295,7 +295,7 @@
       "localPath": "/buildings/wizard-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 26633
+      "sizeBytes": 18691
     },
     {
       "id": "air-sweeper",
@@ -306,7 +306,7 @@
       "localPath": "/buildings/air-sweeper.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 15343
+      "sizeBytes": 16338
     },
     {
       "id": "hidden-tesla",
@@ -317,7 +317,7 @@
       "localPath": "/buildings/hidden-tesla.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 21176
+      "sizeBytes": 14902
     },
     {
       "id": "bomb-tower",
@@ -328,7 +328,7 @@
       "localPath": "/buildings/bomb-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 17631
+      "sizeBytes": 22819
     },
     {
       "id": "xbow",
@@ -339,7 +339,7 @@
       "localPath": "/buildings/xbow.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 21883
+      "sizeBytes": 24933
     },
     {
       "id": "inferno-tower",
@@ -350,7 +350,7 @@
       "localPath": "/buildings/inferno-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 22054
+      "sizeBytes": 16515
     },
     {
       "id": "eagle-artillery",
@@ -361,7 +361,7 @@
       "localPath": "/buildings/eagle-artillery.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 44338
+      "sizeBytes": 44058
     },
     {
       "id": "scattershot",
@@ -372,7 +372,7 @@
       "localPath": "/buildings/scattershot.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 29761
+      "sizeBytes": 34506
     },
     {
       "id": "monolith",
@@ -383,7 +383,7 @@
       "localPath": "/buildings/monolith.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 34819
+      "sizeBytes": 40170
     },
     {
       "id": "spell-tower",
@@ -394,7 +394,7 @@
       "localPath": "/buildings/spell-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 17362
+      "sizeBytes": 25982
     },
     {
       "id": "multi-archer-tower",
@@ -405,7 +405,7 @@
       "localPath": "/buildings/multi-archer-tower.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 35823
+      "sizeBytes": 40748
     },
     {
       "id": "ricochet-cannon",
@@ -416,7 +416,7 @@
       "localPath": "/buildings/ricochet-cannon.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 34789
+      "sizeBytes": 38478
     },
     {
       "id": "firespitter",
@@ -427,7 +427,7 @@
       "localPath": "/buildings/firespitter.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 31475
+      "sizeBytes": 38270
     },
     {
       "id": "wall",
@@ -438,7 +438,7 @@
       "localPath": "/buildings/wall.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 7717
+      "sizeBytes": 7827
     },
     {
       "id": "gold-mine",
@@ -449,7 +449,7 @@
       "localPath": "/buildings/gold-mine.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 26505
+      "sizeBytes": 20227
     },
     {
       "id": "elixir-collector",
@@ -460,7 +460,7 @@
       "localPath": "/buildings/elixir-collector.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 27666
+      "sizeBytes": 19365
     },
     {
       "id": "dark-elixir-drill",
@@ -471,7 +471,7 @@
       "localPath": "/buildings/dark-elixir-drill.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 21599
+      "sizeBytes": 23107
     },
     {
       "id": "gold-storage",
@@ -482,7 +482,7 @@
       "localPath": "/buildings/gold-storage.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 36584
+      "sizeBytes": 23455
     },
     {
       "id": "elixir-storage",
@@ -493,7 +493,7 @@
       "localPath": "/buildings/elixir-storage.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 33967
+      "sizeBytes": 6161
     },
     {
       "id": "dark-elixir-storage",
@@ -504,7 +504,7 @@
       "localPath": "/buildings/dark-elixir-storage.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 35619
+      "sizeBytes": 14460
     },
     {
       "id": "barracks",
@@ -515,7 +515,7 @@
       "localPath": "/buildings/barracks.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 31410
+      "sizeBytes": 23109
     },
     {
       "id": "dark-barracks",
@@ -526,7 +526,7 @@
       "localPath": "/buildings/dark-barracks.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 33385
+      "sizeBytes": 32468
     },
     {
       "id": "spell-factory",
@@ -537,7 +537,7 @@
       "localPath": "/buildings/spell-factory.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 30325
+      "sizeBytes": 27709
     },
     {
       "id": "dark-spell-factory",
@@ -548,7 +548,7 @@
       "localPath": "/buildings/dark-spell-factory.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 16715
+      "sizeBytes": 18731
     },
     {
       "id": "laboratory",
@@ -559,7 +559,7 @@
       "localPath": "/buildings/laboratory.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 33172
+      "sizeBytes": 24749
     },
     {
       "id": "army-camp",
@@ -570,7 +570,7 @@
       "localPath": "/buildings/army-camp.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 15812
+      "sizeBytes": 12941
     },
     {
       "id": "clan-castle",
@@ -581,7 +581,7 @@
       "localPath": "/buildings/clan-castle.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 42570
+      "sizeBytes": 36426
     },
     {
       "id": "blacksmith",
@@ -592,7 +592,7 @@
       "localPath": "/buildings/blacksmith.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 27226
+      "sizeBytes": 32917
     },
     {
       "id": "workshop",
@@ -603,7 +603,7 @@
       "localPath": "/buildings/workshop.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 41433
+      "sizeBytes": 56010
     },
     {
       "id": "pet-house",
@@ -614,7 +614,7 @@
       "localPath": "/buildings/pet-house.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 26802
+      "sizeBytes": 35961
     },
     {
       "id": "hero-hall",
@@ -625,7 +625,7 @@
       "localPath": "/buildings/hero-hall.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 56942
+      "sizeBytes": 61108
     },
     {
       "id": "bomb",
@@ -636,7 +636,7 @@
       "localPath": "/buildings/bomb.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 6447
+      "sizeBytes": 3342
     },
     {
       "id": "spring-trap",
@@ -647,7 +647,7 @@
       "localPath": "/buildings/spring-trap.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 6383
+      "sizeBytes": 8837
     },
     {
       "id": "air-bomb",
@@ -658,7 +658,7 @@
       "localPath": "/buildings/air-bomb.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 4762
+      "sizeBytes": 14607
     },
     {
       "id": "giant-bomb",
@@ -669,7 +669,7 @@
       "localPath": "/buildings/giant-bomb.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 17159
+      "sizeBytes": 22018
     },
     {
       "id": "seeking-air-mine",
@@ -680,7 +680,7 @@
       "localPath": "/buildings/seeking-air-mine.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 13418
+      "sizeBytes": 13576
     },
     {
       "id": "skeleton-trap",
@@ -691,7 +691,7 @@
       "localPath": "/buildings/skeleton-trap.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 6870
+      "sizeBytes": 10389
     },
     {
       "id": "tornado-trap",
@@ -702,7 +702,7 @@
       "localPath": "/buildings/tornado-trap.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 6900
+      "sizeBytes": 10074
     },
     {
       "id": "giga-bomb",
@@ -713,7 +713,7 @@
       "localPath": "/buildings/giga-bomb.png",
       "format": "png",
       "available": true,
-      "sizeBytes": 12566
+      "sizeBytes": 14706
     },
     {
       "id": "barbarian-king",
@@ -724,7 +724,7 @@
       "localPath": "/heroes/barbarian-king.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3678
+      "sizeBytes": 9264
     },
     {
       "id": "archer-queen",
@@ -735,7 +735,7 @@
       "localPath": "/heroes/archer-queen.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4272
+      "sizeBytes": 10174
     },
     {
       "id": "minion-prince",
@@ -746,7 +746,7 @@
       "localPath": "/heroes/minion-prince.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5438
+      "sizeBytes": 11890
     },
     {
       "id": "grand-warden",
@@ -757,7 +757,7 @@
       "localPath": "/heroes/grand-warden.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3358
+      "sizeBytes": 9996
     },
     {
       "id": "royal-champion",
@@ -768,7 +768,7 @@
       "localPath": "/heroes/royal-champion.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3768
+      "sizeBytes": 9416
     },
     {
       "id": "dragon-duke",
@@ -779,7 +779,7 @@
       "localPath": "/heroes/dragon-duke.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3754
+      "sizeBytes": 11930
     },
     {
       "id": "barbarian",
@@ -790,7 +790,7 @@
       "localPath": "/troops/barbarian.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2998
+      "sizeBytes": 7918
     },
     {
       "id": "archer",
@@ -801,7 +801,7 @@
       "localPath": "/troops/archer.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3816
+      "sizeBytes": 9802
     },
     {
       "id": "giant",
@@ -812,7 +812,7 @@
       "localPath": "/troops/giant.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2956
+      "sizeBytes": 10884
     },
     {
       "id": "goblin",
@@ -823,7 +823,7 @@
       "localPath": "/troops/goblin.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4864
+      "sizeBytes": 11704
     },
     {
       "id": "wall-breaker",
@@ -834,7 +834,7 @@
       "localPath": "/troops/wall-breaker.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5416
+      "sizeBytes": 12666
     },
     {
       "id": "balloon",
@@ -845,7 +845,7 @@
       "localPath": "/troops/balloon.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4920
+      "sizeBytes": 12886
     },
     {
       "id": "wizard",
@@ -856,7 +856,7 @@
       "localPath": "/troops/wizard.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4000
+      "sizeBytes": 10136
     },
     {
       "id": "healer",
@@ -867,7 +867,7 @@
       "localPath": "/troops/healer.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3962
+      "sizeBytes": 10714
     },
     {
       "id": "dragon",
@@ -878,7 +878,7 @@
       "localPath": "/troops/dragon.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4238
+      "sizeBytes": 10188
     },
     {
       "id": "p-e-k-k-a",
@@ -889,7 +889,7 @@
       "localPath": "/troops/p-e-k-k-a.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4276
+      "sizeBytes": 11260
     },
     {
       "id": "baby-dragon",
@@ -900,7 +900,7 @@
       "localPath": "/troops/baby-dragon.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4482
+      "sizeBytes": 10444
     },
     {
       "id": "miner",
@@ -911,7 +911,7 @@
       "localPath": "/troops/miner.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3346
+      "sizeBytes": 8734
     },
     {
       "id": "electro-dragon",
@@ -922,7 +922,7 @@
       "localPath": "/troops/electro-dragon.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4700
+      "sizeBytes": 12126
     },
     {
       "id": "yeti",
@@ -933,7 +933,7 @@
       "localPath": "/troops/yeti.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2666
+      "sizeBytes": 8766
     },
     {
       "id": "dragon-rider",
@@ -944,7 +944,7 @@
       "localPath": "/troops/dragon-rider.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5350
+      "sizeBytes": 13458
     },
     {
       "id": "electro-titan",
@@ -955,7 +955,7 @@
       "localPath": "/troops/electro-titan.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4366
+      "sizeBytes": 12320
     },
     {
       "id": "root-rider",
@@ -966,7 +966,7 @@
       "localPath": "/troops/root-rider.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4172
+      "sizeBytes": 11904
     },
     {
       "id": "druid",
@@ -977,7 +977,7 @@
       "localPath": "/troops/druid.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3134
+      "sizeBytes": 11034
     },
     {
       "id": "furnace",
@@ -988,7 +988,7 @@
       "localPath": "/troops/furnace.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3178
+      "sizeBytes": 14602
     },
     {
       "id": "ruin-witch",
@@ -999,7 +999,7 @@
       "localPath": "/troops/ruin-witch.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2728
+      "sizeBytes": 10994
     },
     {
       "id": "thrower",
@@ -1010,7 +1010,7 @@
       "localPath": "/troops/thrower.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3216
+      "sizeBytes": 13662
     },
     {
       "id": "meteor-golem",
@@ -1021,7 +1021,7 @@
       "localPath": "/troops/meteor-golem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2500
+      "sizeBytes": 12490
     },
     {
       "id": "minion",
@@ -1032,7 +1032,7 @@
       "localPath": "/troops/minion.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4662
+      "sizeBytes": 11250
     },
     {
       "id": "hog-rider",
@@ -1043,7 +1043,7 @@
       "localPath": "/troops/hog-rider.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3230
+      "sizeBytes": 8590
     },
     {
       "id": "valkyrie",
@@ -1054,7 +1054,7 @@
       "localPath": "/troops/valkyrie.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4418
+      "sizeBytes": 11534
     },
     {
       "id": "golem",
@@ -1065,7 +1065,7 @@
       "localPath": "/troops/golem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3170
+      "sizeBytes": 10686
     },
     {
       "id": "witch",
@@ -1076,7 +1076,7 @@
       "localPath": "/troops/witch.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4206
+      "sizeBytes": 11024
     },
     {
       "id": "lava-hound",
@@ -1087,7 +1087,7 @@
       "localPath": "/troops/lava-hound.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4228
+      "sizeBytes": 11592
     },
     {
       "id": "bowler",
@@ -1098,7 +1098,7 @@
       "localPath": "/troops/bowler.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3374
+      "sizeBytes": 8470
     },
     {
       "id": "ice-golem",
@@ -1109,7 +1109,7 @@
       "localPath": "/troops/ice-golem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3474
+      "sizeBytes": 9320
     },
     {
       "id": "headhunter",
@@ -1120,7 +1120,7 @@
       "localPath": "/troops/headhunter.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4092
+      "sizeBytes": 10144
     },
     {
       "id": "apprentice-warden",
@@ -1131,7 +1131,7 @@
       "localPath": "/troops/apprentice-warden.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3394
+      "sizeBytes": 10090
     },
     {
       "id": "lightning-spell",
@@ -1142,7 +1142,7 @@
       "localPath": "/spells/lightning-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 8320
+      "sizeBytes": 20008
     },
     {
       "id": "healing-spell",
@@ -1153,7 +1153,7 @@
       "localPath": "/spells/healing-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5958
+      "sizeBytes": 13516
     },
     {
       "id": "rage-spell",
@@ -1164,7 +1164,7 @@
       "localPath": "/spells/rage-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5520
+      "sizeBytes": 12492
     },
     {
       "id": "jump-spell",
@@ -1175,7 +1175,7 @@
       "localPath": "/spells/jump-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4324
+      "sizeBytes": 12120
     },
     {
       "id": "freeze-spell",
@@ -1186,7 +1186,7 @@
       "localPath": "/spells/freeze-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 6442
+      "sizeBytes": 16264
     },
     {
       "id": "clone-spell",
@@ -1197,7 +1197,7 @@
       "localPath": "/spells/clone-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 6538
+      "sizeBytes": 14612
     },
     {
       "id": "invisibility-spell",
@@ -1208,7 +1208,7 @@
       "localPath": "/spells/invisibility-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3846
+      "sizeBytes": 10098
     },
     {
       "id": "recall-spell",
@@ -1219,7 +1219,7 @@
       "localPath": "/spells/recall-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5616
+      "sizeBytes": 13968
     },
     {
       "id": "revive-spell",
@@ -1230,7 +1230,7 @@
       "localPath": "/spells/revive-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3826
+      "sizeBytes": 11928
     },
     {
       "id": "poison-spell",
@@ -1241,7 +1241,7 @@
       "localPath": "/spells/poison-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5904
+      "sizeBytes": 14236
     },
     {
       "id": "earthquake-spell",
@@ -1252,7 +1252,7 @@
       "localPath": "/spells/earthquake-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3786
+      "sizeBytes": 9480
     },
     {
       "id": "haste-spell",
@@ -1263,7 +1263,7 @@
       "localPath": "/spells/haste-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4526
+      "sizeBytes": 11430
     },
     {
       "id": "skeleton-spell",
@@ -1274,7 +1274,7 @@
       "localPath": "/spells/skeleton-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 6810
+      "sizeBytes": 15838
     },
     {
       "id": "bat-spell",
@@ -1285,7 +1285,7 @@
       "localPath": "/spells/bat-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4246
+      "sizeBytes": 11606
     },
     {
       "id": "overgrowth-spell",
@@ -1296,7 +1296,7 @@
       "localPath": "/spells/overgrowth-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3466
+      "sizeBytes": 13010
     },
     {
       "id": "totem-spell",
@@ -1307,7 +1307,7 @@
       "localPath": "/spells/totem-spell.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3640
+      "sizeBytes": 15430
     },
     {
       "id": "wall-wrecker",
@@ -1318,7 +1318,7 @@
       "localPath": "/troops/wall-wrecker.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4050
+      "sizeBytes": 9312
     },
     {
       "id": "battle-blimp",
@@ -1329,7 +1329,7 @@
       "localPath": "/troops/battle-blimp.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4530
+      "sizeBytes": 10792
     },
     {
       "id": "stone-slammer",
@@ -1340,7 +1340,7 @@
       "localPath": "/troops/stone-slammer.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3676
+      "sizeBytes": 8964
     },
     {
       "id": "siege-barracks",
@@ -1351,7 +1351,7 @@
       "localPath": "/troops/siege-barracks.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3860
+      "sizeBytes": 10374
     },
     {
       "id": "log-launcher",
@@ -1362,7 +1362,7 @@
       "localPath": "/troops/log-launcher.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4194
+      "sizeBytes": 9362
     },
     {
       "id": "flame-flinger",
@@ -1373,7 +1373,7 @@
       "localPath": "/troops/flame-flinger.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4250
+      "sizeBytes": 9730
     },
     {
       "id": "battle-drill",
@@ -1384,7 +1384,7 @@
       "localPath": "/troops/battle-drill.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3776
+      "sizeBytes": 9720
     },
     {
       "id": "troop-launcher",
@@ -1395,7 +1395,7 @@
       "localPath": "/troops/troop-launcher.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3162
+      "sizeBytes": 11674
     },
     {
       "id": "sky-wagon",
@@ -1406,7 +1406,7 @@
       "localPath": "/troops/sky-wagon.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 6436
+      "sizeBytes": 10924
     },
     {
       "id": "giant-gauntlet",
@@ -1417,7 +1417,7 @@
       "localPath": "/equipment/giant-gauntlet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3936
+      "sizeBytes": 9558
     },
     {
       "id": "rage-vial",
@@ -1428,7 +1428,7 @@
       "localPath": "/equipment/rage-vial.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4870
+      "sizeBytes": 12414
     },
     {
       "id": "vampstache",
@@ -1439,7 +1439,7 @@
       "localPath": "/equipment/vampstache.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3958
+      "sizeBytes": 10002
     },
     {
       "id": "earthquake-boots",
@@ -1450,7 +1450,7 @@
       "localPath": "/equipment/earthquake-boots.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4092
+      "sizeBytes": 10020
     },
     {
       "id": "barbarian-puppet",
@@ -1461,7 +1461,7 @@
       "localPath": "/equipment/barbarian-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4360
+      "sizeBytes": 11806
     },
     {
       "id": "action-figure",
@@ -1472,7 +1472,7 @@
       "localPath": "/equipment/action-figure.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4098
+      "sizeBytes": 12542
     },
     {
       "id": "archer-puppet",
@@ -1483,7 +1483,7 @@
       "localPath": "/equipment/archer-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4906
+      "sizeBytes": 11880
     },
     {
       "id": "frozen-arrow",
@@ -1494,7 +1494,7 @@
       "localPath": "/equipment/frozen-arrow.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4376
+      "sizeBytes": 9130
     },
     {
       "id": "giant-arrow",
@@ -1505,7 +1505,7 @@
       "localPath": "/equipment/giant-arrow.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3046
+      "sizeBytes": 7150
     },
     {
       "id": "healer-puppet",
@@ -1516,7 +1516,7 @@
       "localPath": "/equipment/healer-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4394
+      "sizeBytes": 11078
     },
     {
       "id": "invisibility-vial",
@@ -1527,7 +1527,7 @@
       "localPath": "/equipment/invisibility-vial.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4812
+      "sizeBytes": 12978
     },
     {
       "id": "dark-crown",
@@ -1538,7 +1538,7 @@
       "localPath": "/equipment/dark-crown.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4688
+      "sizeBytes": 8914
     },
     {
       "id": "dark-orb",
@@ -1549,7 +1549,7 @@
       "localPath": "/equipment/dark-orb.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5320
+      "sizeBytes": 11788
     },
     {
       "id": "henchmen-puppet",
@@ -1560,7 +1560,7 @@
       "localPath": "/equipment/henchmen-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4692
+      "sizeBytes": 9690
     },
     {
       "id": "metal-pants",
@@ -1571,7 +1571,7 @@
       "localPath": "/equipment/metal-pants.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4134
+      "sizeBytes": 11646
     },
     {
       "id": "eternal-tome",
@@ -1582,7 +1582,7 @@
       "localPath": "/equipment/eternal-tome.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4652
+      "sizeBytes": 11630
     },
     {
       "id": "fireball",
@@ -1593,7 +1593,7 @@
       "localPath": "/equipment/fireball.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3928
+      "sizeBytes": 7920
     },
     {
       "id": "healing-tome",
@@ -1604,7 +1604,7 @@
       "localPath": "/equipment/healing-tome.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4498
+      "sizeBytes": 10970
     },
     {
       "id": "heroic-torch",
@@ -1615,7 +1615,7 @@
       "localPath": "/equipment/heroic-torch.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2992
+      "sizeBytes": 8664
     },
     {
       "id": "electro-boots",
@@ -1626,7 +1626,7 @@
       "localPath": "/equipment/electro-boots.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5078
+      "sizeBytes": 10926
     },
     {
       "id": "frost-flake",
@@ -1637,7 +1637,7 @@
       "localPath": "/equipment/frost-flake.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4704
+      "sizeBytes": 10024
     },
     {
       "id": "haste-vial",
@@ -1648,7 +1648,7 @@
       "localPath": "/equipment/haste-vial.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3850
+      "sizeBytes": 8586
     },
     {
       "id": "hog-rider-puppet",
@@ -1659,7 +1659,7 @@
       "localPath": "/equipment/hog-rider-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4122
+      "sizeBytes": 10736
     },
     {
       "id": "fire-heart",
@@ -1670,7 +1670,7 @@
       "localPath": "/equipment/fire-heart.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4220
+      "sizeBytes": 11794
     },
     {
       "id": "flame-blower",
@@ -1681,7 +1681,7 @@
       "localPath": "/equipment/flame-blower.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4590
+      "sizeBytes": 11822
     },
     {
       "id": "l-a-s-s-i",
@@ -1692,7 +1692,7 @@
       "localPath": "/pets/l-a-s-s-i.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3964
+      "sizeBytes": 22362
     },
     {
       "id": "electro-owl",
@@ -1703,7 +1703,7 @@
       "localPath": "/pets/electro-owl.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3614
+      "sizeBytes": 17010
     },
     {
       "id": "mighty-yak",
@@ -1714,7 +1714,7 @@
       "localPath": "/pets/mighty-yak.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2876
+      "sizeBytes": 16210
     },
     {
       "id": "unicorn",
@@ -1725,7 +1725,7 @@
       "localPath": "/pets/unicorn.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3864
+      "sizeBytes": 19316
     },
     {
       "id": "diggy",
@@ -1736,7 +1736,7 @@
       "localPath": "/pets/diggy.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3016
+      "sizeBytes": 21180
     },
     {
       "id": "frosty",
@@ -1747,7 +1747,7 @@
       "localPath": "/pets/frosty.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3898
+      "sizeBytes": 19532
     },
     {
       "id": "phoenix",
@@ -1758,7 +1758,7 @@
       "localPath": "/pets/phoenix.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3608
+      "sizeBytes": 19930
     },
     {
       "id": "poison-lizard",
@@ -1769,7 +1769,7 @@
       "localPath": "/pets/poison-lizard.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4370
+      "sizeBytes": 20818
     },
     {
       "id": "angry-jelly",
@@ -1780,7 +1780,7 @@
       "localPath": "/pets/angry-jelly.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3590
+      "sizeBytes": 22848
     },
     {
       "id": "spirit-fox",
@@ -1791,7 +1791,7 @@
       "localPath": "/pets/spirit-fox.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4106
+      "sizeBytes": 19484
     },
     {
       "id": "sneezy",
@@ -1802,7 +1802,7 @@
       "localPath": "/pets/sneezy.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3348
+      "sizeBytes": 21822
     },
     {
       "id": "greedy-raven",
@@ -1813,7 +1813,7 @@
       "localPath": "/pets/greedy-raven.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 2334
+      "sizeBytes": 16900
     },
     {
       "id": "spiky-ball",
@@ -1824,7 +1824,7 @@
       "localPath": "/equipment/spiky-ball.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4186
+      "sizeBytes": 27702
     },
     {
       "id": "stick-horse",
@@ -1835,7 +1835,7 @@
       "localPath": "/equipment/stick-horse.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3684
+      "sizeBytes": 10694
     },
     {
       "id": "snake-bracelet",
@@ -1846,7 +1846,7 @@
       "localPath": "/equipment/snake-bracelet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5090
+      "sizeBytes": 12272
     },
     {
       "id": "magic-mirror",
@@ -1857,7 +1857,7 @@
       "localPath": "/equipment/magic-mirror.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4022
+      "sizeBytes": 27586
     },
     {
       "id": "monolith-arrow",
@@ -1868,7 +1868,7 @@
       "localPath": "/equipment/monolith-arrow.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3798
+      "sizeBytes": 8800
     },
     {
       "id": "meteor-staff",
@@ -1879,7 +1879,7 @@
       "localPath": "/equipment/meteor-staff.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3074
+      "sizeBytes": 8878
     },
     {
       "id": "noble-iron",
@@ -1890,7 +1890,7 @@
       "localPath": "/equipment/noble-iron.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3508
+      "sizeBytes": 9948
     },
     {
       "id": "rage-gem",
@@ -1901,7 +1901,7 @@
       "localPath": "/equipment/rage-gem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4678
+      "sizeBytes": 11440
     },
     {
       "id": "life-gem",
@@ -1912,7 +1912,7 @@
       "localPath": "/equipment/life-gem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4504
+      "sizeBytes": 12040
     },
     {
       "id": "lavaloon-puppet",
@@ -1923,7 +1923,7 @@
       "localPath": "/equipment/lavaloon-puppet.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4086
+      "sizeBytes": 11452
     },
     {
       "id": "electro-fangs",
@@ -1934,7 +1934,7 @@
       "localPath": "/equipment/electro-fangs.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4326
+      "sizeBytes": 11546
     },
     {
       "id": "revenge-deck",
@@ -1956,7 +1956,7 @@
       "localPath": "/equipment/rocket-backpack.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4286
+      "sizeBytes": 12830
     },
     {
       "id": "rocket-spear",
@@ -1967,7 +1967,7 @@
       "localPath": "/equipment/rocket-spear.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3480
+      "sizeBytes": 6892
     },
     {
       "id": "royal-gem",
@@ -1978,7 +1978,7 @@
       "localPath": "/equipment/royal-gem.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 3282
+      "sizeBytes": 8584
     },
     {
       "id": "seeking-shield",
@@ -1989,7 +1989,7 @@
       "localPath": "/equipment/seeking-shield.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 4370
+      "sizeBytes": 10508
     },
     {
       "id": "stun-blaster",
@@ -2000,7 +2000,7 @@
       "localPath": "/equipment/stun-blaster.webp",
       "format": "webp",
       "available": true,
-      "sizeBytes": 5432
+      "sizeBytes": 12610
     }
   ]
 }
