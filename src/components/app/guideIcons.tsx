@@ -1,11 +1,39 @@
 /**
- * Small original flat-icon illustrations for the "Hướng dẫn" (Guide) tab.
- * These are hand-drawn stylized glyphs (not Supercell artwork or any
- * hotlinked third-party image) so each guide card gets a recognizable
- * visual without an external image dependency or copyright concern.
+ * Icons for the "Hướng dẫn" (Guide) tab. Where a guide item maps to an
+ * actual in-game unit/building/spell, we hotlink its real icon from
+ * ClashKingAssets (github.com/ClashKingInc/ClashKingAssets) — a
+ * community-maintained mirror of extracted Clash of Clans game assets,
+ * used here under Supercell's Fan Content Policy the same as the rest of
+ * this app's content. For the handful of abstract strategy concepts with
+ * no matching game asset (scouting, funneling, ability timing...), we fall
+ * back to a small hand-drawn glyph. That same hand-drawn glyph is also the
+ * runtime fallback if a hotlinked image ever fails to load.
  */
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { GuideIconId } from "../../guideData";
+
+const ASSET_BASE = "https://raw.githubusercontent.com/ClashKingInc/ClashKingAssets/master/assets";
+
+const REAL_IMAGE_SRC: Partial<Record<GuideIconId, string>> = {
+  golem: `${ASSET_BASE}/troops/golem/icon.webp`,
+  hogRider: `${ASSET_BASE}/troops/hog_rider/icon.webp`,
+  electroDragon: `${ASSET_BASE}/troops/electro_dragon/icon.webp`,
+  superArcher: `${ASSET_BASE}/troops/super_archer/icon.webp`,
+  superYeti: `${ASSET_BASE}/troops/super_yeti/icon.webp`,
+  dragonDuke: `${ASSET_BASE}/heroes/dragon_duke/icon.webp`,
+  barbarianKing: `${ASSET_BASE}/heroes/barbarian_king/icon.webp`,
+  archerQueen: `${ASSET_BASE}/heroes/archer_queen/icon.webp`,
+  grandWarden: `${ASSET_BASE}/heroes/grand_warden/icon.webp`,
+  royalChampion: `${ASSET_BASE}/heroes/royal_champion/icon.webp`,
+  minionPrince: `${ASSET_BASE}/heroes/minion_prince/icon.webp`,
+  cheapTroop: `${ASSET_BASE}/troops/barbarian/icon.webp`,
+  spellOrder: `${ASSET_BASE}/spells/freeze_spell.webp`,
+  ccLure: `${ASSET_BASE}/buildings/home-village/clan_castle/level_5.webp`,
+  decoyStorage: `${ASSET_BASE}/buildings/home-village/gold_storage/level_5.webp`,
+  airCoverage: `${ASSET_BASE}/buildings/home-village/air_defense/level_5.webp`,
+  trapPlacement: `${ASSET_BASE}/traps/home-village/giant_bomb/level_5.webp`,
+};
 
 const ICON_COLORS: Record<GuideIconId, string> = {
   golem: "#5fc887",
@@ -287,6 +315,36 @@ export function GuideIcon({
   className?: string;
 }) {
   const color = ICON_COLORS[id];
+  const [imgFailed, setImgFailed] = useState(false);
+  const src = REAL_IMAGE_SRC[id];
+
+  if (src && !imgFailed) {
+    return (
+      <span
+        className={className}
+        style={{
+          display: "inline-grid",
+          placeItems: "center",
+          width: size,
+          height: size,
+          borderRadius: size * 0.23,
+          background: `${color}1f`,
+          overflow: "hidden",
+          flexShrink: 0,
+          ...style,
+        }}
+      >
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+          style={{ width: "82%", height: "82%", objectFit: "contain" }}
+        />
+      </span>
+    );
+  }
+
   return (
     <svg
       viewBox="0 0 48 48"
