@@ -16,6 +16,7 @@ import {
   clampIsoZoom,
   createLawnPattern,
   depthKeyForRect,
+  getContentBottomFraction,
   getWallVariant,
   gridToCanvas,
   wallBrightnessBucket,
@@ -444,7 +445,8 @@ export function IsometricGridBoard({
           ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(0,0,0,0.32)";
           ctx.fill();
-          ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+          const contentBottomFrac = getContentBottomFraction(img);
+          ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight * contentBottomFrac, drawWidth, drawHeight);
         }
       } else {
         // Loading placeholder only — a flat footprint tint, not a fake box,

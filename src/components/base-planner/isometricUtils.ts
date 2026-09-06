@@ -173,6 +173,54 @@ export function createLawnPattern(
   return ctx.createPattern(stripeCanvas, "repeat");
 }
 
+/**
+ * Source crops carry wildly inconsistent amounts of empty transparent
+ * margin below the sprite itself — e.g. Army Camp's PNG is ~29% empty
+ * space under the tent, versus ~3% for Cannon. Anchoring a sprite by its
+ * raw image bottom edge (as if every crop were tight) leaves that leftover
+ * margin as a visible gap between the sprite and its ground-contact
+ * shadow, reading as the building floating above the grass instead of
+ * standing on it. Scanning each image once for its true lowest non-transparent
+ * row (cached by src) and anchoring on that trimmed edge instead removes the
+ * gap without touching any of the hundreds of source PNGs.
+ */
+const contentBottomFractionCache = new Map<string, number>();
+export function getContentBottomFraction(img: HTMLImageElement): number {
+  const key = img.src;
+  const cached = contentBottomFractionCache.get(key);
+  if (cached !== undefined) return cached;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  let fraction = 1;
+  if (w > 0 && h > 0) {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        let lastOpaqueRow = -1;
+        for (let y = h - 1; y >= 0 && lastOpaqueRow < 0; y--) {
+          for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 10) {
+              lastOpaqueRow = y;
+              break;
+            }
+          }
+        }
+        if (lastOpaqueRow >= 0) fraction = (lastOpaqueRow + 1) / h;
+      }
+    } catch {
+      // Cross-origin canvas taint or other read failure — fall back to
+      // trusting the raw image bottom edge (previous behavior).
+    }
+  }
+  contentBottomFractionCache.set(key, fraction);
+  return fraction;
+}
+
 /** The 4 iso-projected corners of a grid rect, in draw order (top, right, bottom, left of the diamond). */
 export function rectToIsoPolygon(
   x: number,

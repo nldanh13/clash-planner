@@ -9,6 +9,7 @@ import {
   DEFAULT_ISO_CONFIG,
   createLawnPattern,
   depthKeyForRect,
+  getContentBottomFraction,
   getWallVariant,
   gridToIso,
   wallBrightnessBucket,
@@ -384,7 +385,8 @@ export async function exportLayoutAsIsometricImage(
     ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.fill();
-    ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+    const contentBottomFrac = getContentBottomFraction(img);
+    ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight * contentBottomFrac, drawWidth, drawHeight);
   }
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
