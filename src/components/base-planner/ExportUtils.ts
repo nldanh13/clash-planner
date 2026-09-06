@@ -351,21 +351,24 @@ export async function exportLayoutAsIsometricImage(
     const nh = img.naturalHeight;
     const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
     const bounds = getSpriteContentBounds(img);
-    const contentWidthFrac = Math.max(0.2, bounds.right - bounds.left);
+    // Floored at 0.85, not the crop's real value — see the matching comment
+    // in IsometricGridBoard.tsx for why letting each crop's own padding
+    // dictate its width blow-up made same-footprint buildings render at
+    // wildly inconsistent sizes next to each other.
+    const contentWidthFrac = Math.max(0.85, bounds.right - bounds.left);
     // Fit the sprite's actual non-transparent content to the footprint
     // span, not its raw padded canvas — see getSpriteContentBounds.
-    let drawWidth = footprintSpan / contentWidthFrac;
+    const drawWidth = footprintSpan / contentWidthFrac;
     let drawHeight = drawWidth * (nh / nw);
-    // Safety ceiling measured against real CONTENT height, not the padded
-    // canvas — see the matching comment in IsometricGridBoard.tsx for why.
+    // Safety ceiling measured against real CONTENT height, applied to
+    // HEIGHT ONLY (not rescaling drawWidth back down with it) — see the
+    // matching comment in IsometricGridBoard.tsx for why.
     const contentHeightFrac = Math.max(0.2, bounds.bottom - bounds.top);
     const contentHeightPx = drawHeight * contentHeightFrac;
     const oneTileHeightPx = config.tileHeight * viewport.zoom;
-    const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 2.4;
+    const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.8;
     if (contentHeightPx > maxContentHeight) {
-      const shrink = maxContentHeight / contentHeightPx;
-      drawWidth *= shrink;
-      drawHeight *= shrink;
+      drawHeight *= maxContentHeight / contentHeightPx;
     }
     const centerX = (top.x + right.x + bottom.x + left.x) / 4;
     const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
