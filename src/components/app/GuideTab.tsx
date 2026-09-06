@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
-import { ChevronDown, Crown, ShieldCheck, Swords, Target } from "lucide-react";
+import { ChevronDown, Crown, Gem, ShieldCheck, Swords, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
+  ACCOUNT_PROGRESS_TIPS,
   ATTACK_STRATEGY_TIPS,
   DEFENSE_BUILD_TIPS,
   HERO_PET_TIPS,
   TROOP_FOCUS_TIERS,
 } from "../../guideData";
+import { GuideIcon } from "./guideIcons";
+import { AttackScene } from "./guideAttackScenes";
 
 interface GuideSectionShellProps {
   icon: LucideIcon;
@@ -63,9 +66,13 @@ export function GuideTab() {
         >
           <div className="guide-card-grid">
             {TROOP_FOCUS_TIERS.map((tier) => (
-              <div className="guide-card" key={tier.range}>
+              <div className="guide-card guide-card--feature" key={tier.range}>
+                <div className="guide-card-media">
+                  <AttackScene range={tier.range} />
+                  <span className="guide-card-media-badge">{tier.range}</span>
+                </div>
                 <header>
-                  <span className="guide-card-badge">{tier.range}</span>
+                  <GuideIcon id={tier.icon} size={32} />
                   <strong>{tier.title}</strong>
                 </header>
                 <dl>
@@ -88,7 +95,10 @@ export function GuideTab() {
         >
           <div className="guide-card-grid">
             {HERO_PET_TIPS.map((hero) => (
-              <div className="guide-card" key={hero.hero}>
+              <div className="guide-card guide-card--profile" key={hero.hero}>
+                <div className="guide-hero-media">
+                  <GuideIcon id={hero.icon} size={64} />
+                </div>
                 <header>
                   <strong>{hero.hero}</strong>
                 </header>
@@ -110,11 +120,13 @@ export function GuideTab() {
           title="Chiến thuật tấn công tổng thể"
           intro="Chọn đúng quân chỉ là một nửa trận đấu — cách đọc base và điều khiển đội hình mới thường quyết định thắng thua."
         >
-          <ol className="guide-tip-list">
-            {ATTACK_STRATEGY_TIPS.map((tip) => (
-              <li key={tip.title}>
+          <ol className="guide-tip-grid">
+            {ATTACK_STRATEGY_TIPS.map((tip, i) => (
+              <li className="guide-tip-card" key={tip.title}>
+                <span className="guide-tip-kicker">{String(i + 1).padStart(2, "0")}</span>
+                <GuideIcon id={tip.icon} size={44} />
                 <strong>{tip.title}</strong>
-                <span>{tip.body}</span>
+                <span className="guide-tip-body">{tip.body}</span>
               </li>
             ))}
           </ol>
@@ -126,11 +138,31 @@ export function GuideTab() {
           title="Mẹo xây base cơ bản"
           intro="Vài nguyên tắc phòng thủ nền tảng luôn đúng bất kể Town Hall của bạn ở mốc nào — áp dụng trực tiếp khi thiết kế trong Base Planner."
         >
-          <ol className="guide-tip-list">
-            {DEFENSE_BUILD_TIPS.map((tip) => (
-              <li key={tip.title}>
+          <ol className="guide-tip-grid">
+            {DEFENSE_BUILD_TIPS.map((tip, i) => (
+              <li className="guide-tip-card" key={tip.title}>
+                <span className="guide-tip-kicker">{String(i + 1).padStart(2, "0")}</span>
+                <GuideIcon id={tip.icon} size={44} />
                 <strong>{tip.title}</strong>
-                <span>{tip.body}</span>
+                <span className="guide-tip-body">{tip.body}</span>
+              </li>
+            ))}
+          </ol>
+        </GuideSection>
+
+        <GuideSection
+          icon={Gem}
+          eyebrow="TÀI KHOẢN & TÀI NGUYÊN"
+          title="Mẹo phát triển tài khoản"
+          intro="Ngoài base và đội hình, tốc độ phát triển tài khoản (thợ xây, trang bị Tướng, tài nguyên) cũng quyết định bạn lên Town Hall nhanh hay chậm."
+        >
+          <ol className="guide-tip-grid">
+            {ACCOUNT_PROGRESS_TIPS.map((tip, i) => (
+              <li className="guide-tip-card" key={tip.title}>
+                <span className="guide-tip-kicker">{String(i + 1).padStart(2, "0")}</span>
+                <GuideIcon id={tip.icon} size={44} />
+                <strong>{tip.title}</strong>
+                <span className="guide-tip-body">{tip.body}</span>
               </li>
             ))}
           </ol>
