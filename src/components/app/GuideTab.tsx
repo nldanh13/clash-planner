@@ -7,6 +7,7 @@ import {
   HERO_PET_TIPS,
   TROOP_FOCUS_TIERS,
 } from "../../guideData";
+import { GuideIcon } from "./guideIcons";
 
 interface GuideSectionShellProps {
   icon: LucideIcon;
@@ -65,6 +66,7 @@ export function GuideTab() {
             {TROOP_FOCUS_TIERS.map((tier) => (
               <div className="guide-card" key={tier.range}>
                 <header>
+                  <GuideIcon id={tier.icon} />
                   <span className="guide-card-badge">{tier.range}</span>
                   <strong>{tier.title}</strong>
                 </header>
@@ -90,6 +92,7 @@ export function GuideTab() {
             {HERO_PET_TIPS.map((hero) => (
               <div className="guide-card" key={hero.hero}>
                 <header>
+                  <GuideIcon id={hero.icon} />
                   <strong>{hero.hero}</strong>
                 </header>
                 <dl>
@@ -113,8 +116,11 @@ export function GuideTab() {
           <ol className="guide-tip-list">
             {ATTACK_STRATEGY_TIPS.map((tip) => (
               <li key={tip.title}>
-                <strong>{tip.title}</strong>
-                <span>{tip.body}</span>
+                <GuideIcon id={tip.icon} size={32} />
+                <div>
+                  <strong>{tip.title}</strong>
+                  <span>{tip.body}</span>
+                </div>
               </li>
             ))}
           </ol>
@@ -129,8 +135,11 @@ export function GuideTab() {
           <ol className="guide-tip-list">
             {DEFENSE_BUILD_TIPS.map((tip) => (
               <li key={tip.title}>
-                <strong>{tip.title}</strong>
-                <span>{tip.body}</span>
+                <GuideIcon id={tip.icon} size={32} />
+                <div>
+                  <strong>{tip.title}</strong>
+                  <span>{tip.body}</span>
+                </div>
               </li>
             ))}
           </ol>
