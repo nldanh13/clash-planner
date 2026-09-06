@@ -20,6 +20,41 @@ import {
 } from "./isometricUtils";
 import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
 
+/**
+ * There's only one static wall sprite per level (no separate straight/
+ * corner/end art), so tiling it edge-to-edge identically on every tile is
+ * unavoidable if walls are to read as a continuous, unbroken line. Shrinking
+ * or rotating each tile individually (an earlier attempt) opens visible
+ * gaps between neighbors — fine in an isolated close-up, but at the density
+ * a full wall run actually has, those gaps break the line into a field of
+ * disconnected specks instead of a barrier.
+ *
+ * Keep every wall tile at full scale and perfectly aligned, and instead vary
+ * *brightness* slightly per tile (three pre-baked variants, picked
+ * deterministically by grid position so it's stable across redraws). That
+ * breaks up the "identical texture pasted N times" monotony without ever
+ * opening a gap in the wall itself. Each variant is composited once per
+ * unique source image (not per frame) onto an offscreen canvas and cached.
+ */
+const wallVariantCache = new Map<string, HTMLCanvasElement>();
+function getWallVariant(img: HTMLImageElement, variant: 1 | 2): HTMLCanvasElement | null {
+  const key = `${img.src}::v${variant}`;
+  const cached = wallVariantCache.get(key);
+  if (cached) return cached;
+  if (!img.naturalWidth || !img.naturalHeight) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  c.drawImage(img, 0, 0);
+  c.globalCompositeOperation = "source-atop";
+  c.fillStyle = variant === 1 ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.14)";
+  c.fillRect(0, 0, canvas.width, canvas.height);
+  wallVariantCache.set(key, canvas);
+  return canvas;
+}
+
 interface IsometricGridBoardProps {
   buildings: PlacedBuilding[];
   onUpdateBuildings: (newBuildings: PlacedBuilding[], replace?: boolean) => void;
@@ -424,25 +459,10 @@ export function IsometricGridBoard({
         ctx.globalAlpha = 1;
 
         if (isWall) {
-          // We only have one static wall sprite per level — no separate
-          // straight/corner/end art — so tiling it edge-to-edge at 100%
-          // scale on every tile produces a perfectly uniform repeat that
-          // reads as woven fabric rather than individual stone blocks.
-          // Shrinking each tile slightly opens a hairline gap to its
-          // neighbors, and a small deterministic per-tile rotation (seeded
-          // by grid position, so it's stable across re-renders/pan/zoom
-          // rather than flickering) breaks the perfect repeat without
-          // needing any new art.
-          const wallScale = 0.9;
-          const wallDrawWidth = drawWidth * wallScale;
-          const wallDrawHeight = drawHeight * wallScale;
           const hash = ((b.x * 374761393 + b.y * 668265263) ^ ((b.x * 668265263) >>> 3)) >>> 0;
-          const jitterAngle = ((hash % 1000) / 1000 - 0.5) * 0.12; // ~ +/-3.5 degrees
-          ctx.save();
-          ctx.translate(centerX, anchorY - wallDrawHeight / 2);
-          ctx.rotate(jitterAngle);
-          ctx.drawImage(img, -wallDrawWidth / 2, -wallDrawHeight / 2, wallDrawWidth, wallDrawHeight);
-          ctx.restore();
+          const bucket = hash % 3; // 0 = unmodified, 1 = lighter, 2 = darker
+          const source = bucket === 0 ? img : getWallVariant(img, bucket as 1 | 2) || img;
+          ctx.drawImage(source, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
         } else {
           // A tight contact-shadow ellipse right at the sprite's base (on top
           // of the wider ambient one from drawGroundShadow) reads as the
