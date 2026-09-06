@@ -424,7 +424,15 @@ export function IsometricGridBoard({
         // Fit the sprite's actual non-transparent content to the footprint
         // span, not its raw padded canvas — see getSpriteContentBounds for
         // why crops can't be trusted to already be tight.
-        const drawWidth = footprintSpan / contentWidthFrac;
+        let drawWidth = footprintSpan / contentWidthFrac;
+        // A real base never shows a building's foundation flush to 100% of
+        // its own tile — there's always a thin sliver of grass around it,
+        // even sitting right next to a wall or another building (e.g. a
+        // 3x3 storage's actual footprint reads closer to 2.8x2.8). Walls
+        // are the one exception: they're a continuous barrier, not an
+        // individual plot, so they keep the full connectivity fix above
+        // instead of this inset.
+        if (!isWall) drawWidth *= 0.93;
         let drawHeight = drawWidth * (nh / nw);
         // Safety ceiling for a pathologically tall/narrow crop, measured
         // against the sprite's real CONTENT height (not the padded canvas
