@@ -374,10 +374,11 @@ export async function exportLayoutAsIsometricImage(
     // Fit the sprite's actual non-transparent content to the footprint
     // span, not its raw padded canvas — see getSpriteContentBounds.
     let drawWidth = footprintSpan / contentWidthFrac;
-    // Thin natural grass margin around each building's own plot — see the
-    // matching comment in IsometricGridBoard.tsx. Walls stay full-width
-    // (a continuous barrier, not an individual plot).
-    if (!isWall) drawWidth *= 0.93;
+    // Clear grass gap around each building's own plot, so same-size
+    // buildings never visually merge into one mass — see the matching
+    // comment in IsometricGridBoard.tsx. Walls stay full-width (a
+    // continuous barrier, not an individual plot).
+    if (!isWall) drawWidth *= 0.78;
     let drawHeight = drawWidth * (nh / nw);
     // Safety ceiling measured against real CONTENT height, applied to
     // HEIGHT ONLY (not rescaling drawWidth back down with it) — see the
