@@ -14,9 +14,11 @@ import {
   DEFAULT_ISO_CONFIG,
   canvasToGrid,
   clampIsoZoom,
+  createDirtPathPattern,
   createLawnPattern,
   depthKeyForRect,
   drawGrassTufts,
+  getForestRing,
   getSpriteContentBounds,
   getWallVariant,
   gridToCanvas,
@@ -268,23 +270,36 @@ export function IsometricGridBoard({
       drawDiamond(points, gradient);
     };
 
-    // 1. Ground plane: the 3-tile grass border ring first (darker — real
-    // Clash of Clans shades the deploy strip around the village slightly
-    // darker than the base itself), then the buildable 44x44 diamond on top.
-    // Both get the mowed-lawn stripe texture; a soft directional gradient is
-    // layered on top at low opacity for the sun-lit-from-upper-left feel
-    // without hiding the stripes underneath.
+    // 0. A ring of procedural trees just outside the map, baked once into a
+    // cached bitmap (see getForestRing) and just drawImage()'d here at the
+    // current pan/zoom — so the buildable island reads as sitting in a
+    // forest clearing like the real game, instead of fading into empty
+    // canvas background, without recomputing tree geometry every redraw.
+    const forestRing = getForestRing(GRID_SIZE, MAP_BORDER);
+    if (forestRing) {
+      ctx.drawImage(
+        forestRing.canvas,
+        forestRing.worldX * viewport.zoom + viewport.panX,
+        forestRing.worldY * viewport.zoom + viewport.panY,
+        forestRing.canvas.width * viewport.zoom,
+        forestRing.canvas.height * viewport.zoom
+      );
+    }
+
+    // 1. Ground plane: the 3-tile deploy-zone border ring first — a worn
+    // dirt path in the real game, a visibly different material from the
+    // buildable lawn rather than just a darker shade of the same grass —
+    // then the buildable 44x44 diamond on top with the mowed-lawn texture.
+    const dirtPattern = createDirtPathPattern(ctx, viewport.zoom);
     const borderPoints = [
       project(-MAP_BORDER, -MAP_BORDER),
       project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
       project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
       project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
     ];
-    drawDiamond(borderPoints, "#0f2417", "rgba(255,255,255,0.05)", 1);
-    if (lawnPattern) {
-      ctx.globalAlpha = 0.55;
-      drawDiamond(borderPoints, lawnPattern);
-      ctx.globalAlpha = 1;
+    drawDiamond(borderPoints, "#6b5334", "rgba(255,255,255,0.08)", 1);
+    if (dirtPattern) {
+      drawDiamond(borderPoints, dirtPattern);
     }
 
     const groundPoints = [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)];

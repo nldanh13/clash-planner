@@ -218,6 +218,167 @@ export function createLawnPattern(
   return ctx.createPattern(stripeCanvas, "repeat");
 }
 
+/**
+ * Worn dirt path texture for the deploy-zone border ring. The real game
+ * doesn't shade that ring as darker grass — it's a visibly different
+ * material, a warm trodden-dirt path between the buildable lawn and the
+ * surrounding treeline. Reusing the green lawn pattern at lower brightness
+ * (the previous approach) reads as "dim grass", not "different ground".
+ * Same noise+blotch construction as createLawnPattern, just a tan/brown
+ * palette — cached the same way so it doesn't regenerate (and flicker) on
+ * every redraw.
+ */
+const dirtPatternTileCache = new Map<string, HTMLCanvasElement>();
+export function createDirtPathPattern(
+  ctx: CanvasRenderingContext2D,
+  zoom: number,
+  config: IsoProjectionConfig = DEFAULT_ISO_CONFIG
+): CanvasPattern | null {
+  const stripeUnitPx = Math.max(2, (config.tileHeight / 2) * 2 * zoom);
+  const tileWidth = 96;
+  const tileHeight = Math.round(stripeUnitPx * 2);
+  const key = `${tileWidth}x${tileHeight}`;
+
+  let dirtCanvas = dirtPatternTileCache.get(key);
+  if (!dirtCanvas) {
+    dirtCanvas = document.createElement("canvas");
+    dirtCanvas.width = tileWidth;
+    dirtCanvas.height = tileHeight;
+    const sctx = dirtCanvas.getContext("2d");
+    if (!sctx) return null;
+
+    sctx.fillStyle = "#6b5334";
+    sctx.fillRect(0, 0, tileWidth, tileHeight / 2);
+    sctx.fillStyle = "#5c4629";
+    sctx.fillRect(0, tileHeight / 2, tileWidth, tileHeight / 2);
+
+    const imageData = sctx.getImageData(0, 0, tileWidth, tileHeight);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const grain = (Math.random() - 0.5) * 24;
+      data[i] = Math.max(0, Math.min(255, data[i] + grain));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + grain * 0.85));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + grain * 0.5));
+    }
+    sctx.putImageData(imageData, 0, 0);
+
+    const pebbleCount = Math.round((tileWidth * tileHeight) / 110);
+    for (let i = 0; i < pebbleCount; i++) {
+      const x = Math.random() * tileWidth;
+      const y = Math.random() * tileHeight;
+      const r = 1 + Math.random() * 2.2;
+      const dark = Math.random() > 0.5;
+      sctx.beginPath();
+      sctx.arc(x, y, r, 0, Math.PI * 2);
+      sctx.fillStyle = dark ? "rgba(40,30,15,0.22)" : "rgba(150,130,90,0.2)";
+      sctx.fill();
+    }
+
+    dirtPatternTileCache.set(key, dirtCanvas);
+  }
+
+  return ctx.createPattern(dirtCanvas, "repeat");
+}
+
+export interface ForestRingSprite {
+  canvas: HTMLCanvasElement;
+  /** World-space (pre-pan, pre-zoom) position of the canvas's top-left corner. */
+  worldX: number;
+  worldY: number;
+}
+
+/**
+ * A thin ring of procedural tree canopies just outside the map's border,
+ * suggesting the buildable island sits in a clearing surrounded by forest
+ * (matching real Clash of Clans village screenshots) instead of fading
+ * into empty canvas background. Each "tree" is a few overlapping dark-green
+ * ellipses (a cheap stand-in for real foliage art, which we don't have an
+ * asset for). Rocks, water, and other scene-specific set dressing from any
+ * one reference screenshot aren't attempted here: they vary per village and
+ * would need real art to look intentional rather than crude.
+ *
+ * Baked ONCE into an offscreen bitmap at neutral (zoom-independent) world
+ * scale and cached by grid size — the ring never changes between redraws,
+ * so recomputing several hundred tree shapes on every pan/zoom/hover tick
+ * (this whole board redraws that often) would be pure waste. The caller
+ * just drawImage()s this cached canvas at the current viewport's pan/zoom,
+ * the same way a sprite sheet would be reused.
+ */
+const forestRingCache = new Map<string, ForestRingSprite>();
+export function getForestRing(
+  gridSize: number,
+  mapBorder: number,
+  config: IsoProjectionConfig = DEFAULT_ISO_CONFIG
+): ForestRingSprite | null {
+  const key = `${gridSize}:${mapBorder}`;
+  const cached = forestRingCache.get(key);
+  if (cached) return cached;
+
+  const depth = 3.2; // how many grid-units deep the treeline band is
+  const outerEdge = mapBorder + depth;
+  const corners = [
+    gridToIso(-outerEdge, -outerEdge, config),
+    gridToIso(gridSize + outerEdge, -outerEdge, config),
+    gridToIso(gridSize + outerEdge, gridSize + outerEdge, config),
+    gridToIso(-outerEdge, gridSize + outerEdge, config),
+  ];
+  const minX = Math.min(...corners.map((c) => c.x));
+  const maxX = Math.max(...corners.map((c) => c.x));
+  const minY = Math.min(...corners.map((c) => c.y));
+  const maxY = Math.max(...corners.map((c) => c.y));
+  const pad = 40; // headroom for tree canopies drawn past the outer corners
+  const worldX = minX - pad;
+  const worldY = minY - pad;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(maxX - minX) + pad * 2;
+  canvas.height = Math.ceil(maxY - minY) + pad * 2;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  let seed = 0x9e3779b9;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  const drawTree = (gx: number, gy: number) => {
+    const world = gridToIso(gx, gy, config);
+    const p = { x: world.x - worldX, y: world.y - worldY };
+    const scale = 6 + rand() * 5;
+    for (let i = 0; i < 3; i++) {
+      const jx = (rand() - 0.5) * scale * 0.9;
+      const jy = (rand() - 0.5) * scale * 0.5 - scale * 0.15;
+      const r = scale * (0.55 + rand() * 0.3);
+      ctx.beginPath();
+      ctx.ellipse(p.x + jx, p.y + jy, r, r * 0.72, 0, 0, Math.PI * 2);
+      ctx.fillStyle = i === 1 ? "#1f4a24" : "#183c1e";
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + scale * 0.1, scale * 0.7, scale * 0.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#255a2c";
+    ctx.fill();
+  };
+
+  // Walk a band of grid rows/cols just outside each of the diamond's 4
+  // sides, from one corner past the other, so the treeline traces the
+  // border's own shape instead of a plain rectangle.
+  const step = 0.9;
+  for (let t = -outerEdge; t <= gridSize + outerEdge; t += step) {
+    for (const depthOffset of [mapBorder + 0.6, mapBorder + 1.8, mapBorder + 3]) {
+      drawTree(t, -depthOffset);
+      drawTree(t, gridSize + depthOffset);
+      drawTree(-depthOffset, t);
+      drawTree(gridSize + depthOffset, t);
+    }
+  }
+
+  const sprite: ForestRingSprite = { canvas, worldX, worldY };
+  forestRingCache.set(key, sprite);
+  return sprite;
+}
+
 export interface SpriteContentBounds {
   /** Fraction (0-1) of image width where non-transparent content starts. */
   left: number;

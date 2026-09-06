@@ -7,9 +7,11 @@ import { PRNG } from "./generator/prng";
 import { preloadImagesForBuildings, resolveCachedBuildingImage } from "./imageMapper";
 import {
   DEFAULT_ISO_CONFIG,
+  createDirtPathPattern,
   createLawnPattern,
   depthKeyForRect,
   drawGrassTufts,
+  getForestRing,
   getSpriteContentBounds,
   getWallVariant,
   gridToIso,
@@ -289,22 +291,35 @@ export async function exportLayoutAsIsometricImage(
     ctx.fill();
   };
 
-  // Ground: border ring + buildable diamond, both with the mowed-lawn
-  // texture — see createLawnPattern for why this reads as real terrain
-  // instead of a flat colored parallelogram.
+  // A ring of procedural trees just outside the map — see getForestRing —
+  // so the exported image shows the buildable island sitting in a forest
+  // clearing like the real game, instead of fading into empty background.
+  const forestRing = getForestRing(GRID_SIZE, MAP_BORDER, config);
+  if (forestRing) {
+    ctx.drawImage(
+      forestRing.canvas,
+      forestRing.worldX * viewport.zoom + viewport.panX,
+      forestRing.worldY * viewport.zoom + viewport.panY,
+      forestRing.canvas.width * viewport.zoom,
+      forestRing.canvas.height * viewport.zoom
+    );
+  }
+
+  // Ground: border ring (a worn dirt path, a different material from the
+  // buildable lawn — see createDirtPathPattern) + the buildable diamond
+  // with the mowed-lawn texture.
   const borderPoints = [
     project(-MAP_BORDER, -MAP_BORDER),
     project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
     project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
     project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
   ];
-  drawDiamond(borderPoints, "#0f2417");
-  const lawnPattern = createLawnPattern(ctx, viewport.zoom, config);
-  if (lawnPattern) {
-    ctx.globalAlpha = 0.55;
-    drawDiamond(borderPoints, lawnPattern);
-    ctx.globalAlpha = 1;
+  drawDiamond(borderPoints, "#6b5334");
+  const dirtPattern = createDirtPathPattern(ctx, viewport.zoom, config);
+  if (dirtPattern) {
+    drawDiamond(borderPoints, dirtPattern);
   }
+  const lawnPattern = createLawnPattern(ctx, viewport.zoom, config);
   const groundPoints = [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)];
   drawDiamond(groundPoints, "#16311f");
   if (lawnPattern) drawDiamond(groundPoints, lawnPattern);
