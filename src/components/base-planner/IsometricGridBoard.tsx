@@ -20,6 +20,41 @@ import {
 } from "./isometricUtils";
 import type { BuildingDef, PlacedBuilding, TacticalSettings } from "./types";
 
+/**
+ * There's only one static wall sprite per level (no separate straight/
+ * corner/end art), so tiling it edge-to-edge identically on every tile is
+ * unavoidable if walls are to read as a continuous, unbroken line. Shrinking
+ * or rotating each tile individually (an earlier attempt) opens visible
+ * gaps between neighbors — fine in an isolated close-up, but at the density
+ * a full wall run actually has, those gaps break the line into a field of
+ * disconnected specks instead of a barrier.
+ *
+ * Keep every wall tile at full scale and perfectly aligned, and instead vary
+ * *brightness* slightly per tile (three pre-baked variants, picked
+ * deterministically by grid position so it's stable across redraws). That
+ * breaks up the "identical texture pasted N times" monotony without ever
+ * opening a gap in the wall itself. Each variant is composited once per
+ * unique source image (not per frame) onto an offscreen canvas and cached.
+ */
+const wallVariantCache = new Map<string, HTMLCanvasElement>();
+function getWallVariant(img: HTMLImageElement, variant: 1 | 2): HTMLCanvasElement | null {
+  const key = `${img.src}::v${variant}`;
+  const cached = wallVariantCache.get(key);
+  if (cached) return cached;
+  if (!img.naturalWidth || !img.naturalHeight) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  c.drawImage(img, 0, 0);
+  c.globalCompositeOperation = "source-atop";
+  c.fillStyle = variant === 1 ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.14)";
+  c.fillRect(0, 0, canvas.width, canvas.height);
+  wallVariantCache.set(key, canvas);
+  return canvas;
+}
+
 interface IsometricGridBoardProps {
   buildings: PlacedBuilding[];
   onUpdateBuildings: (newBuildings: PlacedBuilding[], replace?: boolean) => void;
@@ -224,7 +259,7 @@ export function IsometricGridBoard({
 
     const drawDiamond = (
       points: Array<{ x: number; y: number }>,
-      fill: string | CanvasGradient,
+      fill: string | CanvasGradient | CanvasPattern,
       stroke?: string,
       lineWidth = 1
     ) => {
@@ -240,6 +275,29 @@ export function IsometricGridBoard({
         ctx.stroke();
       }
     };
+
+    // "Mowed lawn" ground texture — the real game's grass isn't a flat
+    // color, it's alternating light/dark bands like a mowed field, which
+    // reads as an actual lit terrain surface instead of a colored
+    // parallelogram (part of why buildings on a flat fill can look
+    // "pasted on" rather than standing on real ground). A tile of grid rows
+    // (x+y) alternating shade projects to perfectly horizontal screen bands
+    // under this projection, so a tiny repeating canvas pattern is enough —
+    // no texture asset, no per-tile drawing cost.
+    const lawnStripeTiles = 2; // grid rows per stripe band
+    const stripeUnitPx = Math.max(2, (DEFAULT_ISO_CONFIG.tileHeight / 2) * lawnStripeTiles * viewport.zoom);
+    const stripeCanvas = document.createElement("canvas");
+    stripeCanvas.width = 4;
+    stripeCanvas.height = Math.round(stripeUnitPx * 2);
+    const sctx = stripeCanvas.getContext("2d");
+    let lawnPattern: CanvasPattern | null = null;
+    if (sctx) {
+      sctx.fillStyle = "#1a3a25";
+      sctx.fillRect(0, 0, 4, stripeUnitPx);
+      sctx.fillStyle = "#163420";
+      sctx.fillRect(0, stripeUnitPx, 4, stripeUnitPx);
+      lawnPattern = ctx.createPattern(stripeCanvas, "repeat");
+    }
 
     // Soft radial ground shadow under a footprint — reads as ambient
     // occlusion so the box looks like it's resting in a shallow dent rather
@@ -262,34 +320,31 @@ export function IsometricGridBoard({
     // 1. Ground plane: the 3-tile grass border ring first (darker — real
     // Clash of Clans shades the deploy strip around the village slightly
     // darker than the base itself), then the buildable 44x44 diamond on top.
-    drawDiamond(
-      [
-        project(-MAP_BORDER, -MAP_BORDER),
-        project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
-        project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
-        project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
-      ],
-      "#0f2417",
-      "rgba(255,255,255,0.05)",
-      1
-    );
+    // Both get the mowed-lawn stripe texture; a soft directional gradient is
+    // layered on top at low opacity for the sun-lit-from-upper-left feel
+    // without hiding the stripes underneath.
+    const borderPoints = [
+      project(-MAP_BORDER, -MAP_BORDER),
+      project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
+      project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
+      project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
+    ];
+    drawDiamond(borderPoints, "#0f2417", "rgba(255,255,255,0.05)", 1);
+    if (lawnPattern) {
+      ctx.globalAlpha = 0.55;
+      drawDiamond(borderPoints, lawnPattern);
+      ctx.globalAlpha = 1;
+    }
+
+    const groundPoints = [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)];
+    drawDiamond(groundPoints, "#16311f", "rgba(255,255,255,0.08)", 1);
+    if (lawnPattern) drawDiamond(groundPoints, lawnPattern);
     {
-      // A flat single-color fill reads as a colored parallelogram rather than
-      // a lit terrain plane. A soft gradient along the sun direction (the
-      // real game lights its ground from the upper-left) gives the grass a
-      // sense of depth without needing an actual texture asset.
-      const groundTL = project(0, 0);
-      const groundBR = project(GRID_SIZE, GRID_SIZE);
-      const groundGradient = ctx.createLinearGradient(groundTL.x, groundTL.y, groundBR.x, groundBR.y);
-      groundGradient.addColorStop(0, "#1d3d27");
-      groundGradient.addColorStop(0.55, "#16311f");
-      groundGradient.addColorStop(1, "#112819");
-      drawDiamond(
-        [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)],
-        groundGradient,
-        "rgba(255,255,255,0.08)",
-        1
-      );
+      const groundGradient = ctx.createLinearGradient(groundPoints[0].x, groundPoints[0].y, groundPoints[2].x, groundPoints[2].y);
+      groundGradient.addColorStop(0, "rgba(60,110,75,0.28)");
+      groundGradient.addColorStop(0.55, "rgba(0,0,0,0)");
+      groundGradient.addColorStop(1, "rgba(0,10,5,0.3)");
+      drawDiamond(groundPoints, groundGradient);
     }
 
     // 2. Deployment Zone overlay — ground-level, same mask as the 2D board, drawn
@@ -424,25 +479,10 @@ export function IsometricGridBoard({
         ctx.globalAlpha = 1;
 
         if (isWall) {
-          // We only have one static wall sprite per level — no separate
-          // straight/corner/end art — so tiling it edge-to-edge at 100%
-          // scale on every tile produces a perfectly uniform repeat that
-          // reads as woven fabric rather than individual stone blocks.
-          // Shrinking each tile slightly opens a hairline gap to its
-          // neighbors, and a small deterministic per-tile rotation (seeded
-          // by grid position, so it's stable across re-renders/pan/zoom
-          // rather than flickering) breaks the perfect repeat without
-          // needing any new art.
-          const wallScale = 0.9;
-          const wallDrawWidth = drawWidth * wallScale;
-          const wallDrawHeight = drawHeight * wallScale;
           const hash = ((b.x * 374761393 + b.y * 668265263) ^ ((b.x * 668265263) >>> 3)) >>> 0;
-          const jitterAngle = ((hash % 1000) / 1000 - 0.5) * 0.12; // ~ +/-3.5 degrees
-          ctx.save();
-          ctx.translate(centerX, anchorY - wallDrawHeight / 2);
-          ctx.rotate(jitterAngle);
-          ctx.drawImage(img, -wallDrawWidth / 2, -wallDrawHeight / 2, wallDrawWidth, wallDrawHeight);
-          ctx.restore();
+          const bucket = hash % 3; // 0 = unmodified, 1 = lighter, 2 = darker
+          const source = bucket === 0 ? img : getWallVariant(img, bucket as 1 | 2) || img;
+          ctx.drawImage(source, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
         } else {
           // A tight contact-shadow ellipse right at the sprite's base (on top
           // of the wider ambient one from drawGroundShadow) reads as the
