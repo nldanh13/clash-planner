@@ -1,7 +1,7 @@
 import React from "react";
 import { History, RotateCcw, X, Clock, AlertCircle } from "lucide-react";
 import type { LayoutCheckpoint, LayoutProject } from "./types";
-import { getCheckpoints, restoreCheckpoint } from "./layoutStorage";
+import { getCheckpoints, restoreCheckpoint } from "./layoutCheckpoints";
 
 interface CheckpointModalProps {
   layout: LayoutProject;
