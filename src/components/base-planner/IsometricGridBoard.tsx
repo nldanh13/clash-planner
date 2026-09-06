@@ -441,13 +441,19 @@ export function IsometricGridBoard({
         // why crops can't be trusted to already be tight.
         let drawWidth = footprintSpan / contentWidthFrac;
         // A real base never shows a building's foundation flush to 100% of
-        // its own tile — there's always a thin sliver of grass around it,
-        // even sitting right next to a wall or another building (e.g. a
-        // 3x3 storage's actual footprint reads closer to 2.8x2.8). Walls
+        // its own tile — there's a clear gap of grass around it, even
+        // sitting right next to another building, so two same-size
+        // buildings never visually merge into one mass at typical base
+        // density. 0.93 (a thin sliver) still left same-footprint neighbors
+        // touching/overlapping at real density; 0.78 opens a gap wide
+        // enough that each building reads as a distinct object, reserving
+        // actual visual overlap for genuinely different-sized buildings
+        // (a large one legitimately spilling past a much smaller
+        // neighbor), not same-size buildings crowding each other. Walls
         // are the one exception: they're a continuous barrier, not an
         // individual plot, so they keep the full connectivity fix above
         // instead of this inset.
-        if (!isWall) drawWidth *= 0.93;
+        if (!isWall) drawWidth *= 0.78;
         let drawHeight = drawWidth * (nh / nw);
         // Safety ceiling for a pathologically tall/narrow crop, measured
         // against the sprite's real CONTENT height (not the padded canvas
