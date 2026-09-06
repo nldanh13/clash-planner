@@ -102,7 +102,9 @@ export default function App() {
   const loadPlayer = () => {
     const tag = normalizeTag(input || (player ? `#${player.tag}` : ""));
     if (tag) {
-      load(tag);
+      // Explicit sync click — bypass the server's short-lived cache so a
+      // player checking right after an in-game upgrade sees it reflected.
+      load(tag, { force: true });
       window.history.replaceState({}, "", `?tag=${encodeURIComponent(tag)}`);
     } else {
       setIsSearchModalOpen(true);
@@ -113,7 +115,7 @@ export default function App() {
     const clean = normalizeTag(tag);
     if (clean) {
       setInput(clean);
-      load(clean);
+      load(clean, { force: true });
       window.history.replaceState({}, "", `?tag=${encodeURIComponent(clean)}`);
       if (tab === "home") {
         setTab("overview");

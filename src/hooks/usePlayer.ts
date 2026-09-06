@@ -35,7 +35,7 @@ export function usePlayer() {
     }
   }, [player]);
 
-  const load = useCallback(async (rawTag = input) => {
+  const load = useCallback(async (rawTag = input, options?: { force?: boolean }) => {
     const tag = normalizeTag(rawTag);
     if (tag.length < 4) {
       setError("Player Tag chưa hợp lệ.");
@@ -57,7 +57,7 @@ export function usePlayer() {
     }, 15000);
 
     try {
-      const data = await fetchPlayer(tag, controller.signal);
+      const data = await fetchPlayer(tag, controller.signal, options);
       
       if (abortControllerRef.current !== controller) return;
 
