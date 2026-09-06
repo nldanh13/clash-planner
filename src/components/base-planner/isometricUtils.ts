@@ -153,7 +153,19 @@ export function wallBrightnessBucket(x: number, y: number): 0 | 1 | 2 {
  * under this projection, so a tiny repeating canvas pattern is enough — no
  * texture asset, no per-tile drawing cost. Shared between the live
  * isometric view and the static PNG export.
+ *
+ * A perfectly flat, noise-free fill still clashes with the building sprites
+ * sitting on it: every crop's own grass-tufted edge (see drawGrassTufts and
+ * getSpriteContentBounds) is grainy, organic, mixed-tone art, and a
+ * mathematically smooth ground plane right up against that reads as a
+ * cutout sticker pasted onto a flat color rather than the same material
+ * continuing underneath it. Baking real per-pixel noise plus a scatter of
+ * soft dirt/tonal blotches into the tile — generated once and cached by
+ * size, not regenerated per redraw, so the grain stays put instead of
+ * flickering on every pan/zoom tick — closes that gap without needing an
+ * external texture asset.
  */
+const lawnPatternTileCache = new Map<string, HTMLCanvasElement>();
 export function createLawnPattern(
   ctx: CanvasRenderingContext2D,
   zoom: number,
@@ -161,15 +173,48 @@ export function createLawnPattern(
 ): CanvasPattern | null {
   const lawnStripeTiles = 2; // grid rows per stripe band
   const stripeUnitPx = Math.max(2, (config.tileHeight / 2) * lawnStripeTiles * zoom);
-  const stripeCanvas = document.createElement("canvas");
-  stripeCanvas.width = 4;
-  stripeCanvas.height = Math.round(stripeUnitPx * 2);
-  const sctx = stripeCanvas.getContext("2d");
-  if (!sctx) return null;
-  sctx.fillStyle = "#1a3a25";
-  sctx.fillRect(0, 0, 4, stripeUnitPx);
-  sctx.fillStyle = "#163420";
-  sctx.fillRect(0, stripeUnitPx, 4, stripeUnitPx);
+  const tileWidth = 96;
+  const tileHeight = Math.round(stripeUnitPx * 2);
+  const key = `${tileWidth}x${tileHeight}`;
+
+  let stripeCanvas = lawnPatternTileCache.get(key);
+  if (!stripeCanvas) {
+    stripeCanvas = document.createElement("canvas");
+    stripeCanvas.width = tileWidth;
+    stripeCanvas.height = tileHeight;
+    const sctx = stripeCanvas.getContext("2d");
+    if (!sctx) return null;
+
+    sctx.fillStyle = "#1a3a25";
+    sctx.fillRect(0, 0, tileWidth, tileHeight / 2);
+    sctx.fillStyle = "#163420";
+    sctx.fillRect(0, tileHeight / 2, tileWidth, tileHeight / 2);
+
+    const imageData = sctx.getImageData(0, 0, tileWidth, tileHeight);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const grain = (Math.random() - 0.5) * 20;
+      data[i] = Math.max(0, Math.min(255, data[i] + grain));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + grain));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + grain * 0.6));
+    }
+    sctx.putImageData(imageData, 0, 0);
+
+    const blotchCount = Math.round((tileWidth * tileHeight) / 140);
+    for (let i = 0; i < blotchCount; i++) {
+      const x = Math.random() * tileWidth;
+      const y = Math.random() * tileHeight;
+      const r = 1 + Math.random() * 2.5;
+      const warm = Math.random() > 0.55;
+      sctx.beginPath();
+      sctx.arc(x, y, r, 0, Math.PI * 2);
+      sctx.fillStyle = warm ? "rgba(120,100,50,0.14)" : "rgba(8,18,10,0.16)";
+      sctx.fill();
+    }
+
+    lawnPatternTileCache.set(key, stripeCanvas);
+  }
+
   return ctx.createPattern(stripeCanvas, "repeat");
 }
 
