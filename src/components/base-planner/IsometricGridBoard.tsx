@@ -273,12 +273,24 @@ export function IsometricGridBoard({
       "rgba(255,255,255,0.05)",
       1
     );
-    drawDiamond(
-      [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)],
-      "#16311f",
-      "rgba(255,255,255,0.08)",
-      1
-    );
+    {
+      // A flat single-color fill reads as a colored parallelogram rather than
+      // a lit terrain plane. A soft gradient along the sun direction (the
+      // real game lights its ground from the upper-left) gives the grass a
+      // sense of depth without needing an actual texture asset.
+      const groundTL = project(0, 0);
+      const groundBR = project(GRID_SIZE, GRID_SIZE);
+      const groundGradient = ctx.createLinearGradient(groundTL.x, groundTL.y, groundBR.x, groundBR.y);
+      groundGradient.addColorStop(0, "#1d3d27");
+      groundGradient.addColorStop(0.55, "#16311f");
+      groundGradient.addColorStop(1, "#112819");
+      drawDiamond(
+        [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)],
+        groundGradient,
+        "rgba(255,255,255,0.08)",
+        1
+      );
+    }
 
     // 2. Deployment Zone overlay — ground-level, same mask as the 2D board, drawn
     // strictly before any building face so it never occludes a sprite.
@@ -356,7 +368,12 @@ export function IsometricGridBoard({
       const bottom = project(b.x + def.width, b.y + def.height);
       const left = project(b.x, b.y + def.height);
 
-      drawGroundShadow([top, right, bottom, left]);
+      const isWall = def.category === "wall";
+      // A single wall tile touching neighbors on every side doesn't need its
+      // own ambient occlusion blob — stacked across a full wall run those
+      // blobs overlap into a muddy haze, which is a big part of why a dense
+      // wall line reads as a "woven rug" instead of distinct stone blocks.
+      if (!isWall) drawGroundShadow([top, right, bottom, left]);
 
       // The building art (public/buildings, public/town-halls, public/heroes)
       // is already a fully-rendered 3D isometric asset — the same style the
@@ -388,9 +405,11 @@ export function IsometricGridBoard({
         // Safety ceiling only, for any one pathologically tall/narrow crop —
         // keeps it from towering across several rows of neighbors, without
         // touching the vast majority of buildings whose real proportions
-        // are already well under this.
+        // are already well under this. Kept tighter than before (1.3->1.18)
+        // since the old ceiling still let tall defenses visibly spill across
+        // an adjacent tile and read as "leaning on" their neighbor.
         const oneTileHeightPx = DEFAULT_ISO_CONFIG.tileHeight * viewport.zoom;
-        const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.3;
+        const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.18;
         if (drawHeight > maxHeight) {
           const shrink = maxHeight / drawHeight;
           drawWidth *= shrink;
@@ -403,19 +422,42 @@ export function IsometricGridBoard({
         // the ground plane.
         const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
         ctx.globalAlpha = 1;
-        // A tight contact-shadow ellipse right at the sprite's base (on top
-        // of the wider ambient one from drawGroundShadow) reads as the
-        // object touching the ground instead of a flat cutout pasted on the
-        // grass. A plain fill, not ctx.shadowBlur/ctx.filter — those force a
-        // full offscreen composite pass PER drawImage call, which is fine
-        // for a handful of buildings but brings a maxed ~44x44 base (100+
-        // buildings, 200+ walls) to a crawl since this whole loop reruns on
-        // every redraw (every pan/zoom tick, every hovered tile).
-        ctx.beginPath();
-        ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0,0,0,0.32)";
-        ctx.fill();
-        ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+
+        if (isWall) {
+          // We only have one static wall sprite per level — no separate
+          // straight/corner/end art — so tiling it edge-to-edge at 100%
+          // scale on every tile produces a perfectly uniform repeat that
+          // reads as woven fabric rather than individual stone blocks.
+          // Shrinking each tile slightly opens a hairline gap to its
+          // neighbors, and a small deterministic per-tile rotation (seeded
+          // by grid position, so it's stable across re-renders/pan/zoom
+          // rather than flickering) breaks the perfect repeat without
+          // needing any new art.
+          const wallScale = 0.9;
+          const wallDrawWidth = drawWidth * wallScale;
+          const wallDrawHeight = drawHeight * wallScale;
+          const hash = ((b.x * 374761393 + b.y * 668265263) ^ ((b.x * 668265263) >>> 3)) >>> 0;
+          const jitterAngle = ((hash % 1000) / 1000 - 0.5) * 0.12; // ~ +/-3.5 degrees
+          ctx.save();
+          ctx.translate(centerX, anchorY - wallDrawHeight / 2);
+          ctx.rotate(jitterAngle);
+          ctx.drawImage(img, -wallDrawWidth / 2, -wallDrawHeight / 2, wallDrawWidth, wallDrawHeight);
+          ctx.restore();
+        } else {
+          // A tight contact-shadow ellipse right at the sprite's base (on top
+          // of the wider ambient one from drawGroundShadow) reads as the
+          // object touching the ground instead of a flat cutout pasted on the
+          // grass. A plain fill, not ctx.shadowBlur/ctx.filter — those force a
+          // full offscreen composite pass PER drawImage call, which is fine
+          // for a handful of buildings but brings a maxed ~44x44 base (100+
+          // buildings, 200+ walls) to a crawl since this whole loop reruns on
+          // every redraw (every pan/zoom tick, every hovered tile).
+          ctx.beginPath();
+          ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0,0,0,0.32)";
+          ctx.fill();
+          ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+        }
       } else {
         // Loading placeholder only — a flat footprint tint, not a fake box,
         // so there's no shape to "un-flatten" once the real sprite arrives.
