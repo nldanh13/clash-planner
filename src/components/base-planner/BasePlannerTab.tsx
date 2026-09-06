@@ -11,7 +11,7 @@ import {
   Plus,
   Shield,
 } from "lucide-react";
-import { exportLayoutAsImage, exportLayoutAsJSON, importLayoutFromJSON } from "./ExportUtils";
+import { exportLayoutAsImage, exportLayoutAsIsometricImage, exportLayoutAsJSON, importLayoutFromJSON } from "./ExportUtils";
 import { validateLayout, type ValidationIssue } from "./LayoutValidator";
 import { getAllBuildingLimits } from "./buildingLimits";
 import { CURRENT_CATALOG_VERSION } from "./catalog";
@@ -490,6 +490,16 @@ export function BasePlannerTab({
     }
   };
 
+  // Export PNG (3D isometric)
+  const handleExportPNG3D = async () => {
+    try {
+      await exportLayoutAsIsometricImage(buildings, townHallLevel, activeLayout?.name);
+      showToast(t("basePlanner.tab.exportedPng3d"));
+    } catch {
+      showToast(t("basePlanner.tab.exportPng3dError"));
+    }
+  };
+
   // Export JSON
   const handleExportJSON = () => {
     try {
@@ -648,6 +658,7 @@ export function BasePlannerTab({
               }}
               onDuplicateToTownHall={handleDuplicateToTownHall}
               onExportPNG={handleExportPNG}
+              onExportPNG3D={handleExportPNG3D}
               onExportJSON={handleExportJSON}
               onImportJSON={handleImportJSON}
               onOpenDefenseScore={() => {

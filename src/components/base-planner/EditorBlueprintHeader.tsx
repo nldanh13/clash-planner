@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Box,
   Castle,
   Check,
   CheckCircle2,
@@ -40,6 +41,7 @@ interface EditorBlueprintHeaderProps {
   onOpenNewWizard: (th?: number) => void;
   onDuplicateToTownHall: (targetTH: number) => void;
   onExportPNG?: () => void;
+  onExportPNG3D?: () => void;
   onExportJSON?: () => void;
   onImportJSON?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenDefenseScore?: () => void;
@@ -59,6 +61,7 @@ export function EditorBlueprintHeader({
   onOpenNewWizard,
   onDuplicateToTownHall,
   onExportPNG,
+  onExportPNG3D,
   onExportJSON,
   onImportJSON,
   onOpenDefenseScore,
@@ -318,7 +321,22 @@ export function EditorBlueprintHeader({
                     className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
                     <ImageIcon className="w-4 h-4 text-emerald-400" />
-                    <span>Xuất ảnh HD (PNG)</span>
+                    <span>Xuất ảnh HD 2D (PNG)</span>
+                  </button>
+                )}
+
+                {/* Xuất PNG 3D (Isometric) */}
+                {onExportPNG3D && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onExportPNG3D();
+                    }}
+                    className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:text-white hover:bg-slate-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Box className="w-4 h-4 text-cyan-400" />
+                    <span>Xuất ảnh HD 3D (Isometric)</span>
                   </button>
                 )}
 

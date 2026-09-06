@@ -690,6 +690,8 @@ export const vi = {
       clearedMap: "Đã dọn sạch bản đồ.",
       exportedPng: "Đã xuất tệp ảnh PNG bản đồ thành công!",
       exportPngError: "Lỗi khi xuất ảnh bản đồ.",
+      exportedPng3d: "Đã xuất tệp ảnh PNG 3D (Isometric) thành công!",
+      exportPng3dError: "Lỗi khi xuất ảnh 3D bản đồ.",
       exportedJson: "Đã xuất dữ liệu bố cục JSON thành công!",
       exportJsonError: "Lỗi khi xuất JSON.",
       importedName: "TH{th} Nhập khẩu",
