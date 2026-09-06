@@ -11,6 +11,7 @@ import type {
 import { PRNG } from "./prng";
 import { PlacementEngine } from "./placementEngine";
 import { WallGenerator } from "./wallGenerator";
+import { generateCompartmentLayout, type Rect } from "./compartmentGenerator";
 import { validateGeneratedBase } from "./generatorValidator";
 import { STRATEGY_PROFILES } from "./strategyProfiles";
 import { computeDeploymentAnalysis } from "../deploymentZones";
@@ -440,6 +441,52 @@ function buildTacticalBase(ctx: PipelineContext): PlacedBuilding[] {
 
   let countIdx = 1;
 
+  // --- Step 0: Build a real compartment layout and place its walls FIRST ---
+  // Every building placement below targets a specific compartment's center
+  // and lets findNearestFree/findBestPosition land it inside that
+  // compartment's already-placed walls — so a wall boundary's implied
+  // protection is actually true. The old pipeline placed every building at
+  // an absolute coordinate first, then drew a fixed core box + 8 hardcoded
+  // wing/corner rectangles afterward with no idea where anything had
+  // landed, which is why compartments didn't reliably contain what they
+  // were supposed to and Town Hall had no guaranteed wall-layer depth.
+  const layout = generateCompartmentLayout(wallCount);
+  const wallGen = new WallGenerator(engine, prng);
+  const walls = wallGen.placeCompartmentWalls(layout.wallTiles, wallCount);
+  placed.push(...walls);
+
+  const rectCenter = (r: Rect) => ({ x: Math.round(r.x + r.w / 2), y: Math.round(r.y + r.h / 2) });
+  const coreCenter = rectCenter(layout.core);
+
+  // Round-robin cursor SHARED across every S-tier / splash-vulnerable
+  // building type placed below. Advancing it globally — not resetting it
+  // per building type — is what actually spreads DIFFERENT high-value
+  // defenses across DIFFERENT compartments: the first Inferno Tower takes
+  // compartment 0, the first X-Bow takes compartment 1, and so on, instead
+  // of every type independently gravitating toward the same "ideal" spot
+  // and clustering several splash-vulnerable buildings in one compartment
+  // where a single spell or splash unit could hit them all.
+  let compartmentCursor = 0;
+  const nextCompartmentTargets = (
+    count: number,
+    w: number,
+    h: number
+  ): Array<{ x: number; y: number }> => {
+    if (layout.compartments.length === 0) {
+      return [{ x: coreCenter.x - Math.round(w / 2), y: coreCenter.y - Math.round(h / 2) }];
+    }
+    const targets: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < count; i++) {
+      const rect = layout.compartments[compartmentCursor % layout.compartments.length];
+      compartmentCursor++;
+      targets.push({
+        x: Math.round(rect.x + rect.w / 2 - w / 2),
+        y: Math.round(rect.y + rect.h / 2 - h / 2),
+      });
+    }
+    return targets;
+  };
+
   // Helper to place N instances of a building type with custom positioning logic
   function placeInstances(
     buildingId: string,
@@ -485,125 +532,88 @@ function buildTacticalBase(ctx: PipelineContext): PlacedBuilding[] {
     catalogMap.delete(buildingId);
   }
 
-  // --- Step 1: Place Core Anchor Buildings ---
-  // Town Hall
-  let thTarget = { x: center - 2, y: center - 2 };
-  if (profile.townHallPlacement === "off-center") {
-    thTarget = { x: center - 6, y: center - 6 };
-  } else if (profile.townHallPlacement === "semi-exposed") {
-    thTarget = { x: center - 2, y: center - 10 };
-  }
-  placeInstances("town-hall", [thTarget]);
+  // --- Step 1: Core Anchor Buildings — inside the double-walled core ---
+  // Placed explicitly side by side from the core's own interior corner
+  // (not both targeting the same center point) — a Town Hall centered in
+  // the core already consumes the middle of the interior, leaving only a
+  // margin too thin on every side for Clan Castle to also fit; seating
+  // them next to each other instead guarantees both stay inside as long as
+  // the interior is wide enough for their combined width (see coreSize).
+  const thEntry = catalogMap.get("town-hall");
+  const thWH = thEntry ? { w: thEntry.width, h: thEntry.height } : { w: 4, h: 4 };
+  const interiorX0 = layout.core.x + 1;
+  const interiorY0 = layout.core.y + 1;
+  placeInstances("town-hall", [{ x: interiorX0, y: interiorY0 }]);
+  placeInstances("clan-castle", [{ x: interiorX0 + thWH.w, y: interiorY0 }]);
 
-  // Clan Castle (Dead center for maximum unlureable defense)
-  placeInstances("clan-castle", [{ x: center - 1, y: center - 1 }]);
-
-  // Eagle Artillery (Opposite of TH in War, or Core in Trophy)
-  let eagleTarget = { x: center + 3, y: center + 3 };
+  // Eagle Artillery: "core" profiles (Trophy/Showcase) seat it with Town
+  // Hall behind the double ring; everything else treats it as a normal
+  // S-tier defense in Step 2 below, spread out like the others.
   if (profile.eaglePlacement === "core") {
-    eagleTarget = { x: center - 2, y: center + 3 };
+    placeInstances("eagle-artillery", [{ x: interiorX0, y: interiorY0 + thWH.h }]);
   }
-  placeInstances("eagle-artillery", [eagleTarget]);
 
-  // Hero Hall & Monolith
-  placeInstances("hero-hall", [{ x: center + 2, y: center - 5 }]);
-  placeInstances("monolith", [{ x: center - 5, y: center + 3 }]);
-
-  // --- Step 2: Place Tier 1 Key Defenses (Infernos, X-Bows, Scattershots, Spell Towers) ---
-  const quadAngles = [
-    { x: center - 8, y: center - 8 },
-    { x: center + 6, y: center - 8 },
-    { x: center - 8, y: center + 6 },
-    { x: center + 6, y: center + 6 },
+  // --- Step 2: S-tier defenses — one per compartment via the shared
+  // cursor, so no two of these end up sharing a compartment until every
+  // compartment already has one. ---
+  const sTierIds = [
+    "eagle-artillery", // only reaches here if not already seated in the core above
+    "inferno-tower",
+    "xbow",
+    "scattershot",
+    "monolith",
+    "spell-tower",
+    "multi-archer-tower",
+    "ricochet-cannon",
+    "firespitter",
+    "hero-hall",
   ];
-  placeInstances("inferno-tower", quadAngles, profile.infernoSpacingMin);
-  placeInstances("xbow", [
-    { x: center - 5, y: center },
-    { x: center + 4, y: center },
-    { x: center, y: center - 5 },
-    { x: center, y: center + 4 },
-  ], 2);
-  placeInstances("scattershot", [
-    { x: center - 9, y: center },
-    { x: center + 7, y: center },
-  ], 3);
-  placeInstances("spell-tower", [
-    { x: center - 4, y: center - 4 },
-    { x: center + 3, y: center + 3 },
-  ]);
-  placeInstances("multi-archer-tower", [
-    { x: center - 10, y: center - 4 },
-    { x: center + 8, y: center + 4 },
-  ]);
-  placeInstances("ricochet-cannon", [
-    { x: center - 4, y: center + 8 },
-    { x: center + 4, y: center - 10 },
-  ]);
-  placeInstances("firespitter", [
-    { x: center - 9, y: center + 5 },
-    { x: center + 7, y: center - 5 },
-  ]);
+  for (const id of sTierIds) {
+    const entry = catalogMap.get(id);
+    if (!entry) continue;
+    const targets = nextCompartmentTargets(entry.count, entry.width, entry.height);
+    placeInstances(id, targets, profile.infernoSpacingMin || 2);
+  }
 
-  // --- Step 3: Air & Splash Defenses (ADs, Wizard Towers, Bomb Towers, Air Sweepers) ---
-  // Air Defenses in balanced diamond/quad surrounding core
-  placeInstances("air-defense", [
-    { x: center - 9, y: center - 7 },
-    { x: center + 7, y: center - 7 },
-    { x: center - 7, y: center + 7 },
-    { x: center + 7, y: center + 7 },
-  ], 3);
-  placeInstances("wizard-tower", [
-    { x: center - 11, y: center - 3 },
-    { x: center + 9, y: center - 3 },
-    { x: center - 3, y: center + 9 },
-    { x: center + 3, y: center - 11 },
-    { x: center - 9, y: center + 9 },
-  ], 2);
-  placeInstances("air-sweeper", [
-    { x: center - 3, y: center - 2 },
-    { x: center + 2, y: center + 1 },
-  ]);
-  placeInstances("bomb-tower", [
-    { x: center - 7, y: center + 2 },
-    { x: center + 5, y: center - 2 },
-  ]);
+  // --- Step 3: Splash-vulnerable defenses — same shared cursor, so (say) a
+  // Wizard Tower and a Mortar don't both default into the same compartment
+  // as each other or as a Step-2 defense either. ---
+  const splashTierIds = ["air-defense", "wizard-tower", "bomb-tower", "hidden-tesla", "mortar", "air-sweeper"];
+  for (const id of splashTierIds) {
+    const entry = catalogMap.get(id);
+    if (!entry) continue;
+    const targets = nextCompartmentTargets(entry.count, entry.width, entry.height);
+    placeInstances(id, targets, 2);
+  }
 
-  // --- Step 4: Resources (Storages buffer defenses in War, or spread in Farming) ---
-  const storageTargets =
-    profile.storageStrategy === "spread-quadrants"
-      ? [
-          { x: center - 12, y: center - 12 },
-          { x: center + 10, y: center - 12 },
-          { x: center - 12, y: center + 10 },
-          { x: center + 10, y: center + 10 },
-        ]
-      : [
-          { x: center - 8, y: center - 3 },
-          { x: center + 6, y: center - 3 },
-          { x: center - 3, y: center + 6 },
-          { x: center + 3, y: center - 8 },
-        ];
+  // --- Step 4: Resources — spread storages across compartments too,
+  // buffered by whatever defenses Steps 2-3 already seated there. ---
+  placeInstances("dark-elixir-storage", [coreCenter]);
+  const goldTargets = nextCompartmentTargets(
+    catalogMap.get("gold-storage")?.count ?? 0,
+    catalogMap.get("gold-storage")?.width ?? 3,
+    catalogMap.get("gold-storage")?.height ?? 3
+  );
+  placeInstances("gold-storage", goldTargets);
+  const elixirTargets = nextCompartmentTargets(
+    catalogMap.get("elixir-storage")?.count ?? 0,
+    catalogMap.get("elixir-storage")?.width ?? 3,
+    catalogMap.get("elixir-storage")?.height ?? 3
+  );
+  placeInstances("elixir-storage", elixirTargets);
 
-  placeInstances("dark-elixir-storage", [{ x: center - 2, y: center + 2 }]);
-  placeInstances("gold-storage", storageTargets);
-  placeInstances("elixir-storage", storageTargets.map((p) => ({ x: p.y, y: p.x })));
-
-  // --- Step 5: Secondary Defenses (Teslas, Cannons, Mortars, Archer Towers) ---
-  placeInstances("hidden-tesla", [
-    { x: center - 4, y: center - 7 },
-    { x: center + 3, y: center - 7 },
-    { x: center - 4, y: center + 6 },
-    { x: center + 3, y: center + 6 },
-    { x: center, y: center - 8 },
-  ]);
-  placeInstances("mortar", [
-    { x: center - 13, y: center - 5 },
-    { x: center + 11, y: center - 5 },
-    { x: center - 5, y: center + 11 },
-    { x: center + 5, y: center - 13 },
-  ]);
-
-  // Point defenses around mid-perimeter
+  // --- Step 5: Everything else (army, production, hero support) — in the
+  // map's outer buffer ring outside the compartment grid. Real bases don't
+  // wall-protect farms/army nearly as tightly as core defenses, so this
+  // deliberately isn't compartment-cycled. ---
+  const outerRings: Array<{ x: number; y: number }> = [];
+  for (let a = 0; a < 16; a++) {
+    const angle = (a * Math.PI) / 8;
+    outerRings.push({
+      x: center + Math.round(Math.cos(angle) * 19),
+      y: center + Math.round(Math.sin(angle) * 19),
+    });
+  }
   const midPoints: Array<{ x: number; y: number }> = [];
   for (let a = 0; a < 8; a++) {
     const angle = (a * Math.PI) / 4;
@@ -614,44 +624,20 @@ function buildTacticalBase(ctx: PipelineContext): PlacedBuilding[] {
   }
   placeInstances("cannon", midPoints);
   placeInstances("archer-tower", midPoints.map((p) => ({ x: p.x + 2, y: p.y - 2 })));
-
-  // --- Step 6: Army & Resource Production Perimeter ---
-  const outerRings: Array<{ x: number; y: number }> = [];
-  for (let a = 0; a < 16; a++) {
-    const angle = (a * Math.PI) / 8;
-    outerRings.push({
-      x: center + Math.round(Math.cos(angle) * 16),
-      y: center + Math.round(Math.sin(angle) * 16),
-    });
-  }
-
-  placeInstances("army-camp", [
-    { x: center - 14, y: center - 14 },
-    { x: center + 11, y: center - 14 },
-    { x: center - 14, y: center + 11 },
-    { x: center + 11, y: center + 11 },
-  ]);
-  placeInstances("hero-banner", [
-    { x: center - 5, y: center - 5 },
-    { x: center + 4, y: center - 5 },
-    { x: center - 5, y: center + 4 },
-    { x: center + 4, y: center + 4 },
-  ]);
-  placeInstances("helper-hut", [{ x: center - 1, y: center - 4 }]);
-  placeInstances("builder-hut", [
-    { x: center - 16, y: center - 16 },
-    { x: center + 15, y: center - 16 },
-    { x: center - 16, y: center + 15 },
-    { x: center + 15, y: center + 15 },
-    { x: center, y: center - 16 },
-  ]);
-
-  // Production
+  placeInstances("army-camp", outerRings);
+  placeInstances(
+    "hero-banner",
+    nextCompartmentTargets(
+      catalogMap.get("hero-banner")?.count ?? 0,
+      catalogMap.get("hero-banner")?.width ?? 2,
+      catalogMap.get("hero-banner")?.height ?? 2
+    )
+  );
+  placeInstances("helper-hut", [coreCenter]);
+  placeInstances("builder-hut", outerRings);
   placeInstances("dark-elixir-drill", outerRings);
   placeInstances("gold-mine", outerRings);
   placeInstances("elixir-collector", outerRings);
-
-  // Remaining army
   placeInstances("barracks", outerRings);
   placeInstances("dark-barracks", outerRings);
   placeInstances("laboratory", outerRings);
@@ -661,39 +647,23 @@ function buildTacticalBase(ctx: PipelineContext): PlacedBuilding[] {
   placeInstances("workshop", outerRings);
   placeInstances("pet-house", outerRings);
 
-  // --- Step 7: Place Walls (All walls guaranteed) ---
-  const wallGen = new WallGenerator(engine, prng);
-  const walls = wallGen.generateWalls({
-    purpose,
-    wallCount,
-    townHallLevel,
-  });
-  placed.push(...walls);
-
-  // --- Step 8: Place Traps into Tactical Gaps ---
-  // Giant bombs & Giga bomb in gaps between defenses
-  placeInstances("giant-bomb", [
-    { x: center - 7, y: center - 4 },
-    { x: center + 6, y: center - 4 },
-    { x: center - 7, y: center + 4 },
-    { x: center + 6, y: center + 4 },
-    { x: center, y: center + 7 },
-  ]);
-  placeInstances("giga-bomb", [{ x: center - 1, y: center + 5 }]);
-  placeInstances("tornado-trap", [{ x: center - 2, y: center }]);
+  // --- Step 6: Traps into whatever gaps remain ---
+  placeInstances(
+    "giant-bomb",
+    nextCompartmentTargets(catalogMap.get("giant-bomb")?.count ?? 0, 1, 1)
+  );
+  placeInstances("giga-bomb", [coreCenter]);
+  placeInstances("tornado-trap", [coreCenter]);
   placeInstances("spring-trap", midPoints);
-  placeInstances("seeking-air-mine", [
-    { x: center - 8, y: center - 8 },
-    { x: center + 8, y: center - 8 },
-    { x: center - 8, y: center + 8 },
-    { x: center + 8, y: center + 8 },
-  ]);
+  placeInstances(
+    "seeking-air-mine",
+    nextCompartmentTargets(catalogMap.get("seeking-air-mine")?.count ?? 0, 1, 1)
+  );
   placeInstances("air-bomb", midPoints);
-  placeInstances("skeleton-trap", [
-    { x: center - 3, y: center - 3 },
-    { x: center + 3, y: center - 3 },
-    { x: center, y: center + 4 },
-  ]);
+  placeInstances(
+    "skeleton-trap",
+    nextCompartmentTargets(catalogMap.get("skeleton-trap")?.count ?? 0, 1, 1)
+  );
   placeInstances("bomb", outerRings);
 
   // Final check: In case any remaining items were left in catalogMap, place them in free spots
@@ -708,7 +678,71 @@ function buildTacticalBase(ctx: PipelineContext): PlacedBuilding[] {
     }
   }
 
+  // Top up any wall shortfall now — only after every other building has
+  // already claimed its cell, so this can never steal a cell (e.g. inside
+  // the core) that a building still needed. See placeCompartmentWalls /
+  // topUpWalls for why doing this any earlier is unsafe.
+  placed.push(...wallGen.topUpWalls(walls.length, wallCount));
+
   return placed;
+}
+
+/**
+ * Flood-fills the grid over wall-blocked cells to find real connected
+ * compartments — the physical regions walls actually separate — instead of
+ * inferring quality from a raw wall count or from a handful of hardcoded
+ * "core defense" ids checked pairwise. Works from the final building list
+ * alone, so it scores any layout correctly regardless of how (or whether)
+ * it went through the compartment-aware generator, including a base a user
+ * hand-edited afterward.
+ */
+function computeConnectedCompartments(buildings: PlacedBuilding[]): {
+  meaningfulCompartments: PlacedBuilding[][];
+} {
+  const blocked = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  for (const b of buildings) {
+    if (b.buildingId === "wall") blocked[b.y * GRID_SIZE + b.x] = 1;
+  }
+
+  const compId = new Int32Array(GRID_SIZE * GRID_SIZE).fill(-1);
+  let nextId = 0;
+  const stack: number[] = [];
+
+  for (let start = 0; start < blocked.length; start++) {
+    if (blocked[start] || compId[start] !== -1) continue;
+    const id = nextId++;
+    compId[start] = id;
+    stack.push(start);
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      const cx = cur % GRID_SIZE;
+      const cy = (cur - cx) / GRID_SIZE;
+      const neighbors =
+        cx + 1 < GRID_SIZE
+          ? [cur + 1]
+          : [];
+      if (cx - 1 >= 0) neighbors.push(cur - 1);
+      if (cy + 1 < GRID_SIZE) neighbors.push(cur + GRID_SIZE);
+      if (cy - 1 >= 0) neighbors.push(cur - GRID_SIZE);
+      for (const n of neighbors) {
+        if (blocked[n] || compId[n] !== -1) continue;
+        compId[n] = id;
+        stack.push(n);
+      }
+    }
+  }
+
+  const byComponent = new Map<number, PlacedBuilding[]>();
+  for (const b of buildings) {
+    if (b.buildingId === "wall") continue;
+    const id = compId[b.y * GRID_SIZE + b.x];
+    if (id === -1) continue;
+    const list = byComponent.get(id);
+    if (list) list.push(b);
+    else byComponent.set(id, [b]);
+  }
+
+  return { meaningfulCompartments: Array.from(byComponent.values()) };
 }
 
 /**
@@ -759,7 +793,33 @@ function computeBaseScore(
       if (d < 3.5) closePairs++;
     }
   }
-  const defensiveSpacing = Math.max(40, Math.min(100, 100 - closePairs * 12));
+  // Compartment membership (flood fill over wall-blocked cells) drives both
+  // compartmentQuality and the anti-splash-clustering half of
+  // defensiveSpacing below — computed once here from the actual final
+  // layout so both metrics reflect real walled-off regions, not just a raw
+  // wall tile count or distances between a handful of "core defense" ids.
+  const { meaningfulCompartments } = computeConnectedCompartments(buildings);
+  const highValueIds = new Set([
+    "inferno-tower",
+    "xbow",
+    "eagle-artillery",
+    "monolith",
+    "scattershot",
+    "spell-tower",
+    "multi-archer-tower",
+    "ricochet-cannon",
+    "firespitter",
+    "air-defense",
+    "wizard-tower",
+    "bomb-tower",
+    "hidden-tesla",
+    "mortar",
+  ]);
+  let overloadedCompartments = 0;
+  for (const list of meaningfulCompartments) {
+    if (list.filter((b) => highValueIds.has(b.buildingId)).length >= 2) overloadedCompartments++;
+  }
+  const defensiveSpacing = Math.max(20, Math.min(100, 100 - closePairs * 12 - overloadedCompartments * 10));
 
   // 4. Air Coverage
   const ads = buildings.filter((b) => b.buildingId === "air-defense");
@@ -787,9 +847,13 @@ function computeBaseScore(
   }
   const resourceProtection = Math.min(100, Math.round(avgStorageSpread * 5.5));
 
-  // 7. Compartment Quality
-  const wallCount = buildings.filter((b) => b.buildingId === "wall").length;
-  const compartmentQuality = wallCount > 100 ? 90 : Math.round((wallCount / 100) * 90);
+  // 7. Compartment Quality — how many genuinely separate, occupied
+  // compartments the walls create (not just how many wall tiles exist,
+  // which says nothing about whether they actually enclose anything). A
+  // healthy tactical base has roughly 12-24 distinct compartments; fewer
+  // means a few big, weakly-divided zones, so this rewards count up to
+  // that range rather than an unbounded raw wall tally.
+  const compartmentQuality = Math.round(Math.min(100, (meaningfulCompartments.length / 18) * 100));
 
   // 8. Path Complexity
   const pathComplexity = purpose === "war" ? 94 : purpose === "progress" ? 20 : 85;

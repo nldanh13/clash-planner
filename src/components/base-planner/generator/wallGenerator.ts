@@ -22,6 +22,47 @@ export class WallGenerator {
   }
 
   /**
+   * Places wall tiles from a precomputed compartment layout (see
+   * compartmentGenerator.ts) — used by the tactical (war/trophy/farming/
+   * hybrid) pipeline, which generates real compartment boundaries up front
+   * instead of drawing fixed outline shapes blind to where buildings end up.
+   *
+   * Deliberately does NOT top up a shortfall against wallCount itself (see
+   * topUpWalls) — the compartment layout is sized to fit comfortably under
+   * budget, but doing the top-up here, before any building is placed,
+   * let its center-outward spiral search claim cells inside the core
+   * reserved for Town Hall/Clan Castle, which had nothing placed there yet
+   * to make those cells look occupied. Topping up only after every building
+   * has already claimed its cell (topUpWalls, called at the end of the
+   * pipeline) avoids that entirely.
+   */
+  public placeCompartmentWalls(
+    tiles: Array<{ x: number; y: number }>,
+    wallCount: number
+  ): PlacedBuilding[] {
+    const walls: PlacedBuilding[] = [];
+    for (const pt of tiles) {
+      if (walls.length >= wallCount) break;
+      if (this.engine.isFree(pt.x, pt.y, 1, 1)) {
+        const instanceId = `wall_comp_${walls.length + 1}`;
+        this.engine.place(instanceId, "wall", pt.x, pt.y, 1, 1);
+        walls.push({ instanceId, buildingId: "wall", x: pt.x, y: pt.y });
+      }
+    }
+    return walls;
+  }
+
+  /**
+   * Tops up a wall shortfall against the catalog's exact required count —
+   * call this only after every other building is already placed, so the
+   * center-outward spiral fill only lands on cells nothing else needed.
+   */
+  public topUpWalls(currentCount: number, wallCount: number): PlacedBuilding[] {
+    if (currentCount >= wallCount) return [];
+    return this.fillRemainingWalls(wallCount - currentCount);
+  }
+
+  /**
    * Places EXACTLY wallCount wall instances onto the grid without any overlaps or out-of-bounds
    */
   public generateWalls(config: WallPlacementConfig): PlacedBuilding[] {
