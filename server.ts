@@ -355,7 +355,31 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            // Vite content-hashes these filenames (index-<hash>.js/css) — a
+            // rebuild always produces a new name, so browsers never need to
+            // re-check one they already have.
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          } else if (/\.(png|jpe?g|webp|gif|svg)$/i.test(filePath)) {
+            // Building/decoration/Town Hall art can be replaced via the
+            // Admin Image Manager without a rebuild (same filename, new
+            // bytes) — cache for an hour so repeat visits are instant, but
+            // an uploaded replacement still shows up well within a session
+            // instead of being stuck on stale art for a year.
+            res.setHeader("Cache-Control", "public, max-age=3600");
+          } else {
+            // index.html (and anything else) must always be revalidated —
+            // it's what references the current build's hashed asset names,
+            // so caching it would leave visitors on an old bundle after a
+            // new deploy.
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      })
+    );
     app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

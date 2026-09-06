@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState, useRef } from "react";
 import { AlertTriangle, ClipboardPaste, Info, LoaderCircle, Menu, RefreshCw, Search, ShieldCheck, Database } from "lucide-react";
 import { usePlayer } from "./hooks/usePlayer";
 
-import { AdminPanel } from "./components/AdminPanel";
 import { useGameDatabase, getTownHallInfo } from "./hooks/useGameDatabase";
 import { readStoredRecord, writeStoredRecord } from "./storage/playerStorage";
 import { clampInteger, extractDataLevels, type VillagePasteReport, type VillagePasteData, type VillagePasteChange } from "./utils/villageImport";
 import { normalizeTag, pct } from "./utils/formatters";
 import { villageDataIdMap } from "./villageDataMap";
 import { upgradeItems } from "./upgradeData";
-import { BasePlannerTab } from "./components/BasePlannerTab";
+
+// Both are large, self-contained subtrees only a fraction of visitors ever
+// open in a given session (Admin is gated behind a password and reached via
+// a footer link; Base Planner pulls in its own canvas rendering, generator
+// and export code) — split them into their own chunks so everyone else's
+// initial load doesn't pay for code they may never run.
+const AdminPanel = lazy(() => import("./components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
+const BasePlannerTab = lazy(() => import("./components/BasePlannerTab"));
 
 import { EmptyPlayerState } from "./components/app/EmptyPlayerState";
 import { PlayerProfile } from "./components/app/PlayerProfile";
@@ -36,6 +42,15 @@ const rosterSiege = upgradeItems.filter(i => i.kind === "siege").sort(byUnlock);
 const rosterPets = upgradeItems.filter(i => i.kind === "pet").sort(byUnlock);
 const rosterEquipment = upgradeItems.filter(i => i.kind === "equipment")
   .sort((a, b) => a.unlockTownHall - b.unlockTownHall || (a.owner || "").localeCompare(b.owner || "") || a.name.localeCompare(b.name));
+
+function TabLoadingFallback() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", padding: "80px 0", color: "#9fb0bb" }}>
+      <LoaderCircle className="spin" size={20} />
+      <span>Đang tải...</span>
+    </div>
+  );
+}
 
 export default function App() {
   const { t } = useTranslation();
@@ -344,12 +359,18 @@ export default function App() {
 
         {tab === "planner" && <UpgradeTracker player={player} manualLevels={manualLevels} guestTownHall={guestTownHall} setGuestTownHall={setGuestTownHall} setManualLevels={setManualLevels} />}
         {tab === "roadmap" && <Roadmap player={player} loading={loading} />}
-        {tab === "admin" && <AdminPanel />}
+        {tab === "admin" && (
+          <Suspense fallback={<TabLoadingFallback />}>
+            <AdminPanel />
+          </Suspense>
+        )}
         {tab === "base-planner" && (
-          <BasePlannerTab
-            initialTownHall={player?.townHallLevel || guestTownHall || 11}
-            onBackToPreviousTab={() => handleTabChange(prevTab || "overview")}
-          />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <BasePlannerTab
+              initialTownHall={player?.townHallLevel || guestTownHall || 11}
+              onBackToPreviousTab={() => handleTabChange(prevTab || "overview")}
+            />
+          </Suspense>
         )}
       </div>
 
