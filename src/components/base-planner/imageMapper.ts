@@ -1,8 +1,81 @@
 import { imageCache, preloadImage, getCachedImage, hasFailed } from "./imageCache";
 import { BUILDINGS_CATALOG } from "./constants";
 import { getEffectiveBuildingLevel, getMaxBuildingLevel } from "./buildingLevels";
+import type { PlacedBuilding } from "./types";
 
 export { getCachedImage, preloadImage };
+
+export const HERO_IDS = ["barbarian-king", "archer-queen", "minion-prince", "grand-warden", "royal-champion", "dragon-duke"];
+
+/**
+ * Looks up whatever's already cached for a placed building, using the exact
+ * same key scheme preloadImagesForBuildings warms — town halls by TH level,
+ * heroes by id, everything else by its effective per-level key falling back
+ * to the base (non-leveled) key. Returns undefined if nothing's cached yet
+ * (caller should await preloadImagesForBuildings first for a guaranteed
+ * result, e.g. before a one-shot PNG export).
+ */
+export function resolveCachedBuildingImage(
+  buildingId: string,
+  level: number | undefined,
+  townHallLevel: number
+): HTMLImageElement | undefined {
+  if (buildingId === "town-hall") {
+    const lvl = Math.max(1, Math.min(18, townHallLevel));
+    return getCachedImage(`town-hall-${lvl}`);
+  }
+  if (HERO_IDS.includes(buildingId)) {
+    return getCachedImage(buildingId);
+  }
+  const effLevel = getEffectiveBuildingLevel(townHallLevel, buildingId, level);
+  return getCachedImage(`${buildingId}::L${effLevel}`) || getCachedImage(buildingId);
+}
+
+/**
+ * Awaits every image a given set of placed buildings needs before returning
+ * — unlike getLeveledBuildingImage's fire-and-forget "return what's cached
+ * now, redraw later when it arrives" pattern (built for a live canvas that
+ * redraws on load), a one-shot PNG export has no later redraw to catch a
+ * still-loading sprite, so it needs the cache to be fully warm *before* it
+ * starts drawing. Safe to call even when everything is already cached —
+ * preloadImage short-circuits instantly for cache hits.
+ */
+export async function preloadImagesForBuildings(
+  buildings: PlacedBuilding[],
+  townHallLevel: number
+): Promise<void> {
+  const jobs: Promise<unknown>[] = [];
+  const seen = new Set<string>();
+
+  const enqueue = (key: string, src: string, fallbackKey?: string, fallbackSrc?: string) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    let job = preloadImage(key, src);
+    if (fallbackKey && fallbackSrc) job = job.catch(() => preloadImage(fallbackKey, fallbackSrc));
+    jobs.push(job.catch(() => {}));
+  };
+
+  for (const b of buildings) {
+    if (b.buildingId === "town-hall") {
+      const lvl = Math.max(1, Math.min(18, townHallLevel));
+      enqueue(`town-hall-${lvl}`, `/town-halls/th-${lvl}.png`);
+      continue;
+    }
+    if (HERO_IDS.includes(b.buildingId)) {
+      enqueue(b.buildingId, `/heroes/${b.buildingId}.webp`);
+      continue;
+    }
+    const effLevel = getEffectiveBuildingLevel(townHallLevel, b.buildingId, b.level);
+    enqueue(
+      `${b.buildingId}::L${effLevel}`,
+      `/buildings/${b.buildingId}-${effLevel}.png`,
+      b.buildingId,
+      `/buildings/${b.buildingId}.png`
+    );
+  }
+
+  await Promise.allSettled(jobs);
+}
 
 export function getBuildingImagePath(
   buildingId: string,

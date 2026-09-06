@@ -103,6 +103,76 @@ export function depthKeyForRect(x: number, y: number, width: number, height: num
   return x + width + (y + height);
 }
 
+/**
+ * There's only one static wall sprite per level (no separate straight/
+ * corner/end art), so tiling it edge-to-edge identically on every tile is
+ * unavoidable if walls are to read as a continuous, unbroken line. Shrinking
+ * or rotating each tile individually opens visible gaps between neighbors —
+ * fine in an isolated close-up, but at the density a full wall run actually
+ * has, those gaps break the line into a field of disconnected specks
+ * instead of a barrier.
+ *
+ * Keep every wall tile at full scale and perfectly aligned, and instead vary
+ * *brightness* slightly per tile (three pre-baked variants, picked
+ * deterministically by grid position so it's stable across redraws/exports).
+ * That breaks up the "identical texture pasted N times" monotony without
+ * ever opening a gap in the wall itself. Each variant is composited once per
+ * unique source image (not per frame) onto an offscreen canvas and cached.
+ * Shared between the live isometric view and the static PNG export so both
+ * render walls identically.
+ */
+const wallVariantCache = new Map<string, HTMLCanvasElement>();
+export function getWallVariant(img: HTMLImageElement, variant: 1 | 2): HTMLCanvasElement | null {
+  const key = `${img.src}::v${variant}`;
+  const cached = wallVariantCache.get(key);
+  if (cached) return cached;
+  if (!img.naturalWidth || !img.naturalHeight) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  c.drawImage(img, 0, 0);
+  c.globalCompositeOperation = "source-atop";
+  c.fillStyle = variant === 1 ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.14)";
+  c.fillRect(0, 0, canvas.width, canvas.height);
+  wallVariantCache.set(key, canvas);
+  return canvas;
+}
+
+export function wallBrightnessBucket(x: number, y: number): 0 | 1 | 2 {
+  const hash = ((x * 374761393 + y * 668265263) ^ ((x * 668265263) >>> 3)) >>> 0;
+  return (hash % 3) as 0 | 1 | 2;
+}
+
+/**
+ * "Mowed lawn" ground texture — the real game's grass isn't a flat color,
+ * it's alternating light/dark bands like a mowed field, which reads as an
+ * actual lit terrain surface instead of a colored parallelogram. Rows of
+ * constant (gridX + gridY) project to perfectly horizontal screen bands
+ * under this projection, so a tiny repeating canvas pattern is enough — no
+ * texture asset, no per-tile drawing cost. Shared between the live
+ * isometric view and the static PNG export.
+ */
+export function createLawnPattern(
+  ctx: CanvasRenderingContext2D,
+  zoom: number,
+  config: IsoProjectionConfig = DEFAULT_ISO_CONFIG
+): CanvasPattern | null {
+  const lawnStripeTiles = 2; // grid rows per stripe band
+  const stripeUnitPx = Math.max(2, (config.tileHeight / 2) * lawnStripeTiles * zoom);
+  const stripeCanvas = document.createElement("canvas");
+  stripeCanvas.width = 4;
+  stripeCanvas.height = Math.round(stripeUnitPx * 2);
+  const sctx = stripeCanvas.getContext("2d");
+  if (!sctx) return null;
+  sctx.fillStyle = "#1a3a25";
+  sctx.fillRect(0, 0, 4, stripeUnitPx);
+  sctx.fillStyle = "#163420";
+  sctx.fillRect(0, stripeUnitPx, 4, stripeUnitPx);
+  return ctx.createPattern(stripeCanvas, "repeat");
+}
+
 /** The 4 iso-projected corners of a grid rect, in draw order (top, right, bottom, left of the diamond). */
 export function rectToIsoPolygon(
   x: number,

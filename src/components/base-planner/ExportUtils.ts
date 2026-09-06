@@ -1,11 +1,20 @@
-import { BUILDINGS_BY_ID, GRID_SIZE } from "./constants";
+import { BUILDINGS_BY_ID, GRID_SIZE, MAP_BORDER } from "./constants";
 import { validateLayout } from "./LayoutValidator";
-import type { BaseLayoutData, PlacedBuilding } from "./types";
+import type { BaseLayoutData, BuildingDef, PlacedBuilding } from "./types";
 import { BUILDING_METADATA_MAP, getAllBuildingLimits, getTownHallCatalog } from "./catalog";
 import { PlacementEngine } from "./generator/placementEngine";
 import { PRNG } from "./generator/prng";
-import { getCachedImage } from "./imageCache";
-import { getMaxBuildingLevel } from "./buildingLevels";
+import { preloadImagesForBuildings, resolveCachedBuildingImage } from "./imageMapper";
+import {
+  DEFAULT_ISO_CONFIG,
+  createLawnPattern,
+  depthKeyForRect,
+  getWallVariant,
+  gridToIso,
+  wallBrightnessBucket,
+  type IsoViewport,
+  type Point,
+} from "./isometricUtils";
 
 /**
  * Generates and downloads high-resolution PNG of the 44x44 base layout
@@ -15,6 +24,12 @@ export async function exportLayoutAsImage(
   townHallLevel: number,
   layoutName = "Clash-Path-Base"
 ): Promise<void> {
+  // A one-shot export has no later redraw to pick up a still-loading sprite
+  // the way the live canvas does, so the image cache must be fully warm
+  // *before* drawing starts — otherwise every building silently falls back
+  // to the plain colored box below, images or not.
+  await preloadImagesForBuildings(buildings, townHallLevel);
+
   const canvas = document.createElement("canvas");
   const tileSize = 28; // high resolution export size
   const padding = 40;
@@ -98,13 +113,11 @@ export async function exportLayoutAsImage(
   ctx.strokeRect(startX + centerStart, startY + centerStart, centerSize, centerSize);
 
   // Draw Walls first (so buildings render cleanly over walls if near)
-  const defaultWallLvl = getMaxBuildingLevel(townHallLevel, "wall");
   const walls = buildings.filter((b) => b.buildingId === "wall");
   for (const wall of walls) {
     const px = startX + wall.x * tileSize;
     const py = startY + wall.y * tileSize;
-    const wallLvl = wall.level ?? defaultWallLvl;
-    const wallImg = getCachedImage(`wall::L${wallLvl}`) || getCachedImage("wall");
+    const wallImg = resolveCachedBuildingImage("wall", wall.level, townHallLevel);
 
     if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
       ctx.drawImage(wallImg, px, py, tileSize, tileSize);
@@ -136,27 +149,32 @@ export async function exportLayoutAsImage(
     ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
     ctx.fillRect(px + 3, py + 3, w, h);
 
-    // Building Base Box
-    ctx.fillStyle = def.color || "#34495e";
-    ctx.fillRect(px + 1, py + 1, w - 2, h - 2);
+    const img = resolveCachedBuildingImage(b.buildingId, b.level, townHallLevel);
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, px + 1, py + 1, w - 2, h - 2);
+    } else {
+      // Building Base Box
+      ctx.fillStyle = def.color || "#34495e";
+      ctx.fillRect(px + 1, py + 1, w - 2, h - 2);
 
-    // Darker inner border
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(px + 1, py + 1, w - 2, h - 2);
+      // Darker inner border
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px + 1, py + 1, w - 2, h - 2);
 
-    // Top highlight bevel
-    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-    ctx.fillRect(px + 2, py + 2, w - 4, 3);
+      // Top highlight bevel
+      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.fillRect(px + 2, py + 2, w - 4, 3);
 
-    // Label
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.max(9, Math.min(13, (def.width * tileSize) / 4))}px 'Segoe UI', Inter, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+      // Label
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${Math.max(9, Math.min(13, (def.width * tileSize) / 4))}px 'Segoe UI', Inter, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
 
-    const label = def.name.length > 12 && def.width <= 2 ? def.name.slice(0, 8) + ".." : def.name;
-    ctx.fillText(label, px + w / 2, py + h / 2);
+      const label = def.name.length > 12 && def.width <= 2 ? def.name.slice(0, 8) + ".." : def.name;
+      ctx.fillText(label, px + w / 2, py + h / 2);
+    }
   }
 
   // Watermark at bottom right
@@ -168,6 +186,214 @@ export async function exportLayoutAsImage(
   // Trigger Download
   const link = document.createElement("a");
   link.download = `${layoutName}-TH${townHallLevel}.png`;
+  link.href = canvas.toDataURL("image/png");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
+ * Generates and downloads a high-resolution PNG of the same isometric "3D"
+ * view IsometricGridBoard renders live — mowed-lawn ground texture,
+ * depth-sorted real building sprites, brightness-varied walls — as a single
+ * static snapshot instead of an interactive canvas.
+ */
+export async function exportLayoutAsIsometricImage(
+  buildings: PlacedBuilding[],
+  townHallLevel: number,
+  layoutName = "Clash-Path-Base"
+): Promise<void> {
+  await preloadImagesForBuildings(buildings, townHallLevel);
+
+  const config = DEFAULT_ISO_CONFIG;
+  const corners: Point[] = [
+    gridToIso(-MAP_BORDER, -MAP_BORDER, config),
+    gridToIso(GRID_SIZE + MAP_BORDER, -MAP_BORDER, config),
+    gridToIso(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER, config),
+    gridToIso(-MAP_BORDER, GRID_SIZE + MAP_BORDER, config),
+  ];
+  const minX = Math.min(...corners.map((c) => c.x));
+  const maxX = Math.max(...corners.map((c) => c.x));
+  const minY = Math.min(...corners.map((c) => c.y));
+  const maxY = Math.max(...corners.map((c) => c.y));
+  const worldW = maxX - minX;
+  const worldH = maxY - minY;
+
+  const targetWidth = 2200;
+  const headerHeight = 90;
+  const sidePad = 60;
+  // Generous headroom above the diamond: sprites stand upright and extend
+  // well past their own footprint (a Town Hall or hero towers over one
+  // tile), and near the map's top corner that overflow has nowhere to go
+  // but into this margin.
+  const topSkyPad = 260;
+  const bottomPad = 60;
+
+  const availW = targetWidth - sidePad * 2;
+  const zoom = availW / worldW;
+  const boardPixelHeight = worldH * zoom;
+  const canvasWidth = targetWidth;
+  const canvasHeight = Math.ceil(headerHeight + topSkyPad + boardPixelHeight + bottomPad);
+
+  const viewport: IsoViewport = {
+    zoom,
+    panX: sidePad + (availW - worldW * zoom) / 2 - minX * zoom,
+    panY: headerHeight + topSkyPad - minY * zoom,
+  };
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const bgGrad = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+  bgGrad.addColorStop(0, "#0d1822");
+  bgGrad.addColorStop(1, "#070d13");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  ctx.fillStyle = "#101d27";
+  ctx.fillRect(0, 0, canvasWidth, headerHeight);
+  ctx.fillStyle = "#2b3c4b";
+  ctx.fillRect(0, headerHeight - 1, canvasWidth, 1);
+  ctx.fillStyle = "#ffc857";
+  ctx.font = "bold 26px 'Segoe UI', Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("CLASH PATH — BASE PLANNER (3D)", sidePad, 42);
+  ctx.fillStyle = "#91a0ad";
+  ctx.font = "14px 'Segoe UI', Inter, sans-serif";
+  ctx.fillText(
+    `Town Hall ${townHallLevel} · ${buildings.length} công trình/vật phẩm · ${new Date().toLocaleDateString("vi-VN")}`,
+    sidePad,
+    68
+  );
+
+  const project = (gx: number, gy: number): Point => {
+    const world = gridToIso(gx, gy, config);
+    return { x: world.x * viewport.zoom + viewport.panX, y: world.y * viewport.zoom + viewport.panY };
+  };
+
+  const drawDiamond = (points: Point[], fill: string | CanvasGradient | CanvasPattern) => {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+
+  // Ground: border ring + buildable diamond, both with the mowed-lawn
+  // texture — see createLawnPattern for why this reads as real terrain
+  // instead of a flat colored parallelogram.
+  const borderPoints = [
+    project(-MAP_BORDER, -MAP_BORDER),
+    project(GRID_SIZE + MAP_BORDER, -MAP_BORDER),
+    project(GRID_SIZE + MAP_BORDER, GRID_SIZE + MAP_BORDER),
+    project(-MAP_BORDER, GRID_SIZE + MAP_BORDER),
+  ];
+  drawDiamond(borderPoints, "#0f2417");
+  const lawnPattern = createLawnPattern(ctx, viewport.zoom, config);
+  if (lawnPattern) {
+    ctx.globalAlpha = 0.55;
+    drawDiamond(borderPoints, lawnPattern);
+    ctx.globalAlpha = 1;
+  }
+  const groundPoints = [project(0, 0), project(GRID_SIZE, 0), project(GRID_SIZE, GRID_SIZE), project(0, GRID_SIZE)];
+  drawDiamond(groundPoints, "#16311f");
+  if (lawnPattern) drawDiamond(groundPoints, lawnPattern);
+  {
+    const gradient = ctx.createLinearGradient(
+      groundPoints[0].x,
+      groundPoints[0].y,
+      groundPoints[2].x,
+      groundPoints[2].y
+    );
+    gradient.addColorStop(0, "rgba(60,110,75,0.28)");
+    gradient.addColorStop(0.55, "rgba(0,0,0,0)");
+    gradient.addColorStop(1, "rgba(0,10,5,0.3)");
+    drawDiamond(groundPoints, gradient);
+  }
+
+  // Buildings, depth-sorted (painter's algorithm) so nearer sprites
+  // correctly occlude farther ones — matching the live isometric view.
+  const drawable = buildings
+    .map((b) => {
+      const def = BUILDINGS_BY_ID.get(b.buildingId);
+      if (!def) return null;
+      return { b, def, depth: depthKeyForRect(b.x, b.y, def.width, def.height) };
+    })
+    .filter((v): v is { b: PlacedBuilding; def: BuildingDef; depth: number } => v !== null)
+    .sort((a, c) => a.depth - c.depth);
+
+  for (const { b, def } of drawable) {
+    const top = project(b.x, b.y);
+    const right = project(b.x + def.width, b.y);
+    const bottom = project(b.x + def.width, b.y + def.height);
+    const left = project(b.x, b.y + def.height);
+    const isWall = def.category === "wall";
+
+    const img = resolveCachedBuildingImage(b.buildingId, b.level, townHallLevel);
+    if (!img || !img.complete || img.naturalWidth <= 0) {
+      // No cached art even after preloading (a genuine 404) — a flat
+      // footprint tint beats leaving a hole in the export.
+      drawDiamond([top, right, bottom, left], def.color || "#34495e");
+      continue;
+    }
+
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
+    let drawWidth = footprintSpan;
+    let drawHeight = drawWidth * (nh / nw);
+    const oneTileHeightPx = config.tileHeight * viewport.zoom;
+    const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.18;
+    if (drawHeight > maxHeight) {
+      const shrink = maxHeight / drawHeight;
+      drawWidth *= shrink;
+      drawHeight *= shrink;
+    }
+    const centerX = (top.x + right.x + bottom.x + left.x) / 4;
+    const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
+
+    if (isWall) {
+      const bucket = wallBrightnessBucket(b.x, b.y);
+      const source = bucket === 0 ? img : getWallVariant(img, bucket) || img;
+      ctx.drawImage(source, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+      continue;
+    }
+
+    // Ambient diamond shadow + tight contact-shadow ellipse, matching the
+    // live view's grounding cues.
+    const shadowRadius =
+      Math.max(Math.hypot(right.x - left.x, right.y - left.y), Math.hypot(top.x - bottom.x, top.y - bottom.y)) / 2;
+    if (Number.isFinite(shadowRadius) && shadowRadius > 0) {
+      const cx = (top.x + right.x + bottom.x + left.x) / 4;
+      const cy = (top.y + right.y + bottom.y + left.y) / 4;
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, shadowRadius);
+      gradient.addColorStop(0, "rgba(0,0,0,0.4)");
+      gradient.addColorStop(0.75, "rgba(0,0,0,0.16)");
+      gradient.addColorStop(1, "rgba(0,0,0,0)");
+      drawDiamond([top, right, bottom, left], gradient);
+    }
+    ctx.beginPath();
+    ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.fill();
+    ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+  }
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.font = "12px 'Segoe UI', Inter, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("Clash Path — AI Studio", canvasWidth - sidePad, canvasHeight - 15);
+
+  const link = document.createElement("a");
+  link.download = `${layoutName}-TH${townHallLevel}-3D.png`;
   link.href = canvas.toDataURL("image/png");
   document.body.appendChild(link);
   link.click();
