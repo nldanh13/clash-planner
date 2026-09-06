@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Home, LayoutGrid, Map, ShieldCheck, TrendingUp, UserRound, X } from "lucide-react";
+import { BookOpen, Home, LayoutGrid, Map, ShieldCheck, TrendingUp, UserRound, X } from "lucide-react";
 import { useTranslation, type TranslationKey } from "../../i18n";
 import type { Tab } from "../../App";
 
@@ -15,6 +15,7 @@ const NAV_ITEMS: { tab: Tab; icon: typeof Home; labelKey: TranslationKey }[] = [
   { tab: "overview", icon: UserRound, labelKey: "app.nav.overview" },
   { tab: "planner", icon: TrendingUp, labelKey: "app.nav.planner" },
   { tab: "roadmap", icon: Map, labelKey: "app.nav.roadmap" },
+  { tab: "guide", icon: BookOpen, labelKey: "app.nav.guide" },
   { tab: "base-planner", icon: LayoutGrid, labelKey: "app.nav.basePlanner" },
 ];
 

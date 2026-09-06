@@ -76,6 +76,7 @@ export const vi = {
       overview: "Hồ sơ người chơi",
       planner: "Upgrade Tracker",
       roadmap: "Roadmap TH1–18",
+      guide: "Hướng dẫn",
       basePlanner: "Base Planner (Lưới 44×44)",
     },
     overviewTab: {

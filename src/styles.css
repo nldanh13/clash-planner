@@ -1428,3 +1428,174 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;ma
 .manual-items label input:focus {
   border-color: var(--gold);
 }
+
+/* Guide tab ("Hướng dẫn") */
+.guide-disclaimer {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #ffc85733;
+  border-radius: 10px;
+  background: #ffc85710;
+  color: #c9b98a;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.guide-sections {
+  display: grid;
+  gap: 12px;
+}
+.guide-section {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #101b25;
+  overflow: hidden;
+}
+.guide-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.guide-section-head::-webkit-details-marker {
+  display: none;
+}
+.guide-section-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #ffc8571c;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.guide-section-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.guide-section-heading {
+  flex: 1;
+  min-width: 0;
+}
+.guide-section-heading p {
+  margin: 0 0 3px;
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.guide-section-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.guide-section-chevron {
+  width: 16px;
+  height: 16px;
+  color: #7c8d9a;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.guide-section[open] .guide-section-chevron {
+  transform: rotate(180deg);
+}
+.guide-section-body {
+  padding: 0 16px 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.guide-section-intro {
+  margin: 0 0 14px;
+  color: #8ea0ac;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.guide-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.guide-card {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #0c1720;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.guide-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.guide-card header strong {
+  font-size: 12px;
+  color: #fff3de;
+}
+.guide-card-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ffc8571f;
+  border: 1px solid #ffc85755;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 900;
+}
+.guide-card dl {
+  margin: 0;
+  display: grid;
+  gap: 3px;
+}
+.guide-card dt {
+  color: var(--cyan);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+.guide-card dt:first-child {
+  margin-top: 0;
+}
+.guide-card dd {
+  margin: 0;
+  color: #b7c4ce;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.guide-card-tip {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #ffffff08;
+  color: #c9d4db;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.guide-tip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.guide-tip-list li {
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0c1720;
+  display: grid;
+  gap: 4px;
+}
+.guide-tip-list li strong {
+  font-size: 11.5px;
+  color: var(--gold);
+}
+.guide-tip-list li span {
+  color: #b7c4ce;
+  font-size: 10.5px;
+  line-height: 1.55;
+}

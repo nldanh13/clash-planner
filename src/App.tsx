@@ -16,6 +16,7 @@ import { upgradeItems } from "./upgradeData";
 // initial load doesn't pay for code they may never run.
 const AdminPanel = lazy(() => import("./components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
 const BasePlannerTab = lazy(() => import("./components/BasePlannerTab"));
+const GuideTab = lazy(() => import("./components/app/GuideTab").then((m) => ({ default: m.GuideTab })));
 
 import { EmptyPlayerState } from "./components/app/EmptyPlayerState";
 import { PlayerProfile } from "./components/app/PlayerProfile";
@@ -31,7 +32,7 @@ import { HomeTab } from "./components/app/HomeTab";
 import { MobileNavDrawer } from "./components/app/MobileNavDrawer";
 import { useTranslation } from "./i18n";
 
-export type Tab = "home" | "overview" | "planner" | "roadmap" | "base-planner" | "admin";
+export type Tab = "home" | "overview" | "planner" | "roadmap" | "guide" | "base-planner" | "admin";
 
 const plannerItems = upgradeItems.filter(item => item.kind !== "wall");
 const byUnlock = (a: any, b: any) => a.unlockTownHall - b.unlockTownHall || a.name.localeCompare(b.name);
@@ -235,6 +236,9 @@ export default function App() {
             <button className={tab === "roadmap" ? "active" : ""} onClick={() => handleTabChange("roadmap")}>
               {t("app.nav.roadmap")}
             </button>
+            <button className={tab === "guide" ? "active" : ""} onClick={() => handleTabChange("guide")}>
+              {t("app.nav.guide")}
+            </button>
             <button className={tab === "base-planner" ? "active" : ""} onClick={() => handleTabChange("base-planner")}>
               {t("app.nav.basePlanner")}
             </button>
@@ -359,6 +363,11 @@ export default function App() {
 
         {tab === "planner" && <UpgradeTracker player={player} manualLevels={manualLevels} guestTownHall={guestTownHall} setGuestTownHall={setGuestTownHall} setManualLevels={setManualLevels} />}
         {tab === "roadmap" && <Roadmap player={player} loading={loading} />}
+        {tab === "guide" && (
+          <Suspense fallback={<TabLoadingFallback />}>
+            <GuideTab />
+          </Suspense>
+        )}
         {tab === "admin" && (
           <Suspense fallback={<TabLoadingFallback />}>
             <AdminPanel />
