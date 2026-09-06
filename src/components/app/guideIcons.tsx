@@ -34,6 +34,12 @@ const ICON_COLORS: Record<GuideIconId, string> = {
   airCoverage: "#e0b23c",
   trapPlacement: "#a9743f",
   plannerCheck: "#5fc887",
+  builders: "#eaa845",
+  heroEquipment: "#9aa0a8",
+  raidMedals: "#f0c054",
+  freeGems: "#4dbdd2",
+  seasonBank: "#5fc887",
+  magicItems: "#9a7fe0",
 };
 
 function Glyph({ id }: { id: GuideIconId }) {
@@ -324,6 +330,68 @@ function Glyph({ id }: { id: GuideIconId }) {
           <line x1="16" y1="16" x2="32" y2="16" stroke="currentColor" strokeWidth="2" opacity="0.6" />
           <line x1="16" y1="23" x2="32" y2="23" stroke="currentColor" strokeWidth="2" opacity="0.6" />
           <path d="M16 31 L21 36 L32 25" stroke="#f0c054" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      );
+    case "builders":
+      return (
+        <>
+          <polygon points="24,6 38,16 38,20 10,20 10,16" fill="#8a5a3a" />
+          <rect x="12" y="20" width="24" height="18" rx="2" fill="#c98a4b" />
+          <rect x="20" y="26" width="8" height="12" fill="#6b4423" />
+          <rect x="21" y="10" width="16" height="4.5" rx="1.5" fill="#8a9098" transform="rotate(28 21 10)" />
+          <circle cx="34" cy="8" r="4.5" fill="#eaa845" />
+        </>
+      );
+    case "heroEquipment":
+      return (
+        <>
+          <rect x="8" y="26" width="32" height="8" rx="2" fill="#5c636b" />
+          <rect x="16" y="20" width="16" height="8" rx="2" fill="#787f87" />
+          <rect x="21" y="8" width="6" height="14" rx="1.5" fill="#8a9098" />
+          <polygon points="15,34 24,44 33,34" fill="#3a3f45" />
+          <circle cx="30" cy="14" r="3.6" fill="#f0c054" />
+          <circle cx="30" cy="14" r="1.4" fill="#fff3d6" />
+        </>
+      );
+    case "raidMedals":
+      return (
+        <>
+          <polygon points="16,6 20,16 12,16" fill="#e0525f" />
+          <polygon points="32,6 36,16 28,16" fill="#4d7fd2" />
+          <circle cx="24" cy="28" r="14" fill="#f0c054" />
+          <circle cx="24" cy="28" r="9.5" fill="none" stroke="#c9922f" strokeWidth="2" />
+          <polygon points="24,22 26,27 31,27 27,30 28,35 24,32 20,35 21,30 17,27 22,27" fill="#fff3d6" />
+        </>
+      );
+    case "freeGems":
+      return (
+        <>
+          <polygon points="24,6 34,17 24,44 14,17" fill="#4dbdd2" />
+          <polygon points="24,6 34,17 24,22 14,17" fill="#8fe0ef" />
+          <polygon points="14,17 24,22 24,44" fill="#2a7f93" />
+          <polygon points="34,17 24,22 24,44" fill="#3a9fb5" />
+        </>
+      );
+    case "seasonBank":
+      return (
+        <>
+          <ellipse cx="24" cy="28" rx="16" ry="12" fill="#5fc887" />
+          <ellipse cx="24" cy="24" rx="16" ry="10" fill="#74d69a" />
+          <rect x="22" y="8" width="4" height="8" rx="1.5" fill="#3f9c66" />
+          <circle cx="24" cy="8" r="3" fill="#f0c054" />
+          <circle cx="15" cy="24" r="1.6" fill="#1a3b28" />
+          <rect x="20" y="30" width="8" height="3" rx="1.2" fill="#1a3b28" />
+        </>
+      );
+    case "magicItems":
+      return (
+        <>
+          <path d="M9 12 h16 a3 3 0 0 1 3 3 v21 h-19 a3 3 0 0 1 -3 -3 v-18 a3 3 0 0 1 3 -3 Z" fill="#9a7fe0" />
+          <line x1="15" y1="17" x2="24" y2="17" stroke="#e9ddff" strokeWidth="1.3" opacity="0.8" />
+          <line x1="15" y1="22" x2="24" y2="22" stroke="#e9ddff" strokeWidth="1.3" opacity="0.8" />
+          <path d="M31 10 v22" stroke="#5c4a99" strokeWidth="2" />
+          <circle cx="31" cy="12" r="4.5" fill="#f0c054" />
+          <circle cx="31" cy="12" r="1.8" fill="#fff3d6" />
         </>
       );
     default:

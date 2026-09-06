@@ -32,7 +32,13 @@ export type GuideIconId =
   | "decoyStorage"
   | "airCoverage"
   | "trapPlacement"
-  | "plannerCheck";
+  | "plannerCheck"
+  | "builders"
+  | "heroEquipment"
+  | "raidMedals"
+  | "freeGems"
+  | "seasonBank"
+  | "magicItems";
 
 export interface TroopFocusTier {
   range: string;
@@ -222,5 +228,44 @@ export const DEFENSE_BUILD_TIPS: DefenseTip[] = [
     icon: "plannerCheck",
     title: "Kiểm tra lại bằng Base Planner",
     body: "Dùng tính năng chấm điểm phòng thủ và xem thử hướng tấn công ngay trong Base Planner của app để phát hiện lỗ hổng trước khi lưu bản thiết kế cuối cùng.",
+  },
+];
+
+export interface ProgressTip {
+  title: string;
+  body: string;
+  icon: GuideIconId;
+}
+
+export const ACCOUNT_PROGRESS_TIPS: ProgressTip[] = [
+  {
+    icon: "builders",
+    title: "Mở đủ 6 Thợ Xây",
+    body: "Thợ 2–5 mở bằng Đá Quý ở Làng Chính. Thợ thứ 6 (O.T.T.O) cần Làng Thợ Xây lên Builder Hall 9 và hoàn thành 4 mốc: gia cố (Gear Up) Pháo Đôi/Tháp Cung/Đại Bác Cối ở Làng Chính, Cannon Cart lên cấp 18, Mega Tesla lên cấp 9, Battle Machine lên cấp 30 — không cần nâng tường Làng Thợ Xây vì tường không tính vào các mốc này.",
+  },
+  {
+    icon: "heroEquipment",
+    title: "Kiếm Trang Bị Tướng qua Lò Rèn",
+    body: "Trang bị nâng cấp bằng 3 loại Quặng: Quặng Sáng (hầu hết nguồn), Quặng Rực và Quặng Sao (Star Bonus hạng cao, đánh War nhắm đối thủ TH8+ — Quặng Sao chỉ rơi khi đối thủ từ TH10+). Thương Nhân mỗi tuần tặng thêm Quặng Rực miễn phí — nên duy trì đánh War đều đặn dù thắng hay thua vẫn có quặng.",
+  },
+  {
+    icon: "raidMedals",
+    title: "Tích Huy Chương từ Cuối Tuần Đột Kích",
+    body: "Đóng góp Vàng Thủ Đô để Clan đủ điều kiện mở Cuối Tuần Đột Kích (Raid Weekend), đánh đủ lượt để nhận Huy Chương Đột Kích. Đổi huy chương tại Thương Nhân lấy Vàng/Elixir/Nhẫn Tường/Bùa Phép — chỉ giữ tối đa 5.000 huy chương, phần dư tự đổi thành Đá Quý theo tỷ lệ 100:1 nên nên tiêu đều, đừng để tràn.",
+  },
+  {
+    icon: "freeGems",
+    title: "Nguồn Đá Quý miễn phí đều đặn",
+    body: "Dọn vật cản (cây, đá, bụi) quanh base mỗi tuần, hoàn thành thành tựu (hơn 60 thành tựu, tổng cộng có thể lên tới hàng chục nghìn Đá Quý), xây và thu hoạch Mỏ Đá Quý ở Làng Thợ Xây mỗi ngày, và tham gia Clan Games đều đặn cùng Clan.",
+  },
+  {
+    icon: "seasonBank",
+    title: "Tận dụng Season Bank & Gold Pass",
+    body: "Hoàn thành nhiệm vụ ngày để tích điểm Mùa và Stamp Card — tài nguyên trong Season Bank được nhân 5 lần khi nhận vào cuối mùa, càng để dành càng lời. Gold Pass mở thêm Research/Builder Boost, quyên góp quân chỉ tốn 1 Đá Quý, và Season Bank dung lượng lớn hơn.",
+  },
+  {
+    icon: "magicItems",
+    title: "Dùng Vật Phẩm Ma Thuật đúng lúc",
+    body: "Sách Xây/Sách Phép/Sách Tướng và Rune nhận từ Season Pass, Clan Games, rương kho báu và sự kiện — nên dùng ngay khi có đợt nâng cấp dài để rút ngắn thời gian chờ, thay vì để tồn kho không sinh lời.",
   },
 ];

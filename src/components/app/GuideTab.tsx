@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { ChevronDown, Crown, ShieldCheck, Swords, Target } from "lucide-react";
+import { ChevronDown, Crown, Gem, ShieldCheck, Swords, Target } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
+  ACCOUNT_PROGRESS_TIPS,
   ATTACK_STRATEGY_TIPS,
   DEFENSE_BUILD_TIPS,
   HERO_PET_TIPS,
@@ -139,6 +140,24 @@ export function GuideTab() {
         >
           <ol className="guide-tip-grid">
             {DEFENSE_BUILD_TIPS.map((tip, i) => (
+              <li className="guide-tip-card" key={tip.title}>
+                <span className="guide-tip-kicker">{String(i + 1).padStart(2, "0")}</span>
+                <GuideIcon id={tip.icon} size={44} />
+                <strong>{tip.title}</strong>
+                <span className="guide-tip-body">{tip.body}</span>
+              </li>
+            ))}
+          </ol>
+        </GuideSection>
+
+        <GuideSection
+          icon={Gem}
+          eyebrow="TÀI KHOẢN & TÀI NGUYÊN"
+          title="Mẹo phát triển tài khoản"
+          intro="Ngoài base và đội hình, tốc độ phát triển tài khoản (thợ xây, trang bị Tướng, tài nguyên) cũng quyết định bạn lên Town Hall nhanh hay chậm."
+        >
+          <ol className="guide-tip-grid">
+            {ACCOUNT_PROGRESS_TIPS.map((tip, i) => (
               <li className="guide-tip-card" key={tip.title}>
                 <span className="guide-tip-kicker">{String(i + 1).padStart(2, "0")}</span>
                 <GuideIcon id={tip.icon} size={44} />
