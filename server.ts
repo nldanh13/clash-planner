@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import { timingSafeEqual } from "crypto";
 import { createServer as createViteServer } from "vite";
+import compression from "compression";
 import multer from "multer";
 import sharp from "sharp";
 import { BUILDINGS_BY_ID } from "./src/components/base-planner/constants";
@@ -103,6 +104,14 @@ async function startServer() {
 
   const app = express();
   const PORT = 3000;
+
+  // Gzip/brotli-compress every response (JS/CSS bundle, JSON API replies,
+  // HTML) before it goes out — nothing was compressed at all before this,
+  // so every visitor downloaded the full ~1.4MB bundle uncompressed. Images
+  // are skipped automatically (compression's default filter recognizes
+  // already-compressed formats like PNG/WebP and doesn't waste CPU re-
+  // compressing them).
+  app.use(compression());
 
   // Middleware to parse JSON
   app.use(express.json());
