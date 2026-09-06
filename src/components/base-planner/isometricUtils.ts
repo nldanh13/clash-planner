@@ -173,25 +173,56 @@ export function createLawnPattern(
   return ctx.createPattern(stripeCanvas, "repeat");
 }
 
+export interface SpriteContentBounds {
+  /** Fraction (0-1) of image width where non-transparent content starts. */
+  left: number;
+  /** Fraction (0-1) of image width where non-transparent content ends. */
+  right: number;
+  /** Fraction (0-1) of image height where non-transparent content starts (from the top). */
+  top: number;
+  /** Fraction (0-1) of image height where non-transparent content ends (from the top). */
+  bottom: number;
+}
+
 /**
  * Source crops carry wildly inconsistent amounts of empty transparent
- * margin below the sprite itself — e.g. Army Camp's PNG is ~29% empty
- * space under the tent, versus ~3% for Cannon. Anchoring a sprite by its
- * raw image bottom edge (as if every crop were tight) leaves that leftover
- * margin as a visible gap between the sprite and its ground-contact
- * shadow, reading as the building floating above the grass instead of
- * standing on it. Scanning each image once for its true lowest non-transparent
- * row (cached by src) and anchoring on that trimmed edge instead removes the
- * gap without touching any of the hundreds of source PNGs.
+ * margin around the sprite itself in BOTH directions — e.g. Army Camp's
+ * PNG is only ~49% content width and ~52% content height, versus ~95%/~97%
+ * for Cannon; wall tiles run ~77-94% content width depending on level. Two
+ * visible bugs come from treating every crop as if it were tight to its
+ * content:
+ *
+ *  - Vertically: anchoring by the raw image bottom edge leaves the padding
+ *    as a gap between the sprite and its ground-contact shadow, reading as
+ *    the building floating above the grass instead of standing on it.
+ *  - Horizontally: sizing the sprite to the footprint's on-screen span
+ *    (`drawWidth = footprintSpan`) sizes the PADDED CANVAS to the
+ *    footprint, not the actual brick/wall art inside it — so two adjacent
+ *    1x1 wall tiles, each ~15-25% narrower in real content than their own
+ *    canvas, end up with a visible gap of real content between them
+ *    instead of touching. The same under-sizing shrinks core buildings
+ *    enough that tall ones (Inferno Tower, X-Bow) never spill over their
+ *    own tile's edge, flattening the whole board's sense of depth.
+ *
+ * Scanning each image once for its true content bounding box (cached by
+ * src) and scaling/anchoring on that box instead of the raw canvas fixes
+ * both without touching any of the hundreds of source PNGs — the scale
+ * correction is per-image (each crop's own padding), not a single guessed
+ * multiplier, because the padding fraction varies building to building and
+ * even level to level of the same building. `top` exists (in addition to
+ * `bottom`) so callers can also derive a sprite's true content height —
+ * needed for the height safety-cap next to this scaling to be measured
+ * against real art, not against however much padding a given crop happens
+ * to carry above/below it.
  */
-const contentBottomFractionCache = new Map<string, number>();
-export function getContentBottomFraction(img: HTMLImageElement): number {
+const contentBoundsCache = new Map<string, SpriteContentBounds>();
+export function getSpriteContentBounds(img: HTMLImageElement): SpriteContentBounds {
   const key = img.src;
-  const cached = contentBottomFractionCache.get(key);
-  if (cached !== undefined) return cached;
+  const cached = contentBoundsCache.get(key);
+  if (cached) return cached;
   const w = img.naturalWidth;
   const h = img.naturalHeight;
-  let fraction = 1;
+  let bounds: SpriteContentBounds = { left: 0, right: 1, top: 0, bottom: 1 };
   if (w > 0 && h > 0) {
     try {
       const canvas = document.createElement("canvas");
@@ -201,24 +232,31 @@ export function getContentBottomFraction(img: HTMLImageElement): number {
       if (ctx) {
         ctx.drawImage(img, 0, 0);
         const { data } = ctx.getImageData(0, 0, w, h);
-        let lastOpaqueRow = -1;
-        for (let y = h - 1; y >= 0 && lastOpaqueRow < 0; y--) {
+        let firstCol = w;
+        let lastCol = -1;
+        let firstRow = h;
+        let lastRow = -1;
+        for (let y = 0; y < h; y++) {
           for (let x = 0; x < w; x++) {
             if (data[(y * w + x) * 4 + 3] > 10) {
-              lastOpaqueRow = y;
-              break;
+              if (x < firstCol) firstCol = x;
+              if (x > lastCol) lastCol = x;
+              if (y < firstRow) firstRow = y;
+              if (y > lastRow) lastRow = y;
             }
           }
         }
-        if (lastOpaqueRow >= 0) fraction = (lastOpaqueRow + 1) / h;
+        if (lastCol >= 0) {
+          bounds = { left: firstCol / w, right: (lastCol + 1) / w, top: firstRow / h, bottom: (lastRow + 1) / h };
+        }
       }
     } catch {
       // Cross-origin canvas taint or other read failure — fall back to
-      // trusting the raw image bottom edge (previous behavior).
+      // trusting the raw image edges (previous behavior).
     }
   }
-  contentBottomFractionCache.set(key, fraction);
-  return fraction;
+  contentBoundsCache.set(key, bounds);
+  return bounds;
 }
 
 /**
