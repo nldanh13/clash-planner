@@ -9,6 +9,7 @@ import {
   DEFAULT_ISO_CONFIG,
   createLawnPattern,
   depthKeyForRect,
+  drawGrassTufts,
   getContentBottomFraction,
   getWallVariant,
   gridToIso,
@@ -381,6 +382,7 @@ export async function exportLayoutAsIsometricImage(
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       drawDiamond([top, right, bottom, left], gradient);
     }
+    drawGrassTufts(ctx, [top, right, bottom, left], b.x, b.y, viewport.zoom);
     ctx.beginPath();
     ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.32)";

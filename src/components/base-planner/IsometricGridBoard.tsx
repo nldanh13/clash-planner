@@ -16,6 +16,7 @@ import {
   clampIsoZoom,
   createLawnPattern,
   depthKeyForRect,
+  drawGrassTufts,
   getContentBottomFraction,
   getWallVariant,
   gridToCanvas,
@@ -378,7 +379,10 @@ export function IsometricGridBoard({
       // own ambient occlusion blob — stacked across a full wall run those
       // blobs overlap into a muddy haze, which is a big part of why a dense
       // wall line reads as a "woven rug" instead of distinct stone blocks.
-      if (!isWall) drawGroundShadow([top, right, bottom, left]);
+      if (!isWall) {
+        drawGroundShadow([top, right, bottom, left]);
+        drawGrassTufts(ctx, [top, right, bottom, left], b.x, b.y, viewport.zoom);
+      }
 
       // The building art (public/buildings, public/town-halls, public/heroes)
       // is already a fully-rendered 3D isometric asset — the same style the

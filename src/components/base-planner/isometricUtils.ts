@@ -221,6 +221,65 @@ export function getContentBottomFraction(img: HTMLImageElement): number {
   return fraction;
 }
 
+/**
+ * Small tufts of grass poking out around a building's footprint — the real
+ * game never plants a building on bare dirt; a fringe of grass blades at
+ * the base sells "standing in the lawn" the way a flat shadow alone can't.
+ * Drawn at the footprint diamond's side corners and front-side midpoints —
+ * the parts of the diamond a roughly-rectangular sprite silhouette leaves
+ * exposed on either side — so tufts peek out from beside/behind the
+ * building instead of being immediately painted over once the sprite draws
+ * on top. Placement is hashed by grid position (not Math.random) so it's
+ * stable across redraws/exports instead of flickering every frame; cheap
+ * enough (a handful of short strokes) to run per building every redraw.
+ * Skipped for walls, which tile edge-to-edge with no visible ground gap.
+ */
+export function drawGrassTufts(
+  ctx: CanvasRenderingContext2D,
+  points: [Point, Point, Point, Point],
+  gx: number,
+  gy: number,
+  zoom: number
+): void {
+  const [, right, bottom, left] = points;
+  const spots: Point[] = [
+    left,
+    right,
+    { x: (left.x + bottom.x) / 2, y: (left.y + bottom.y) / 2 },
+    { x: (right.x + bottom.x) / 2, y: (right.y + bottom.y) / 2 },
+  ];
+
+  let seed = ((gx * 374761393 + gy * 668265263) ^ ((gx * 668265263) >>> 3)) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  for (const spot of spots) {
+    const tufts = 2;
+    for (let i = 0; i < tufts; i++) {
+      const jx = (rand() - 0.5) * 8 * zoom;
+      const jy = (rand() - 0.5) * 4 * zoom;
+      const h = (4 + rand() * 3) * zoom;
+      drawGrassBlade(ctx, spot.x + jx, spot.y + jy, h);
+    }
+  }
+}
+
+const GRASS_BLADE_SHADES = ["#2f6a35", "#4a9b4f", "#3a7d40"];
+function drawGrassBlade(ctx: CanvasRenderingContext2D, x: number, y: number, h: number): void {
+  for (let i = 0; i < 3; i++) {
+    const lean = (i - 1) * h * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(x + (i - 1) * h * 0.25, y);
+    ctx.quadraticCurveTo(x + lean * 0.5, y - h * 0.65, x + lean, y - h);
+    ctx.strokeStyle = GRASS_BLADE_SHADES[i];
+    ctx.lineWidth = Math.max(0.7, h * 0.12);
+    ctx.lineCap = "round";
+    ctx.stroke();
+  }
+}
+
 /** The 4 iso-projected corners of a grid rect, in draw order (top, right, bottom, left of the diamond). */
 export function rectToIsoPolygon(
   x: number,
