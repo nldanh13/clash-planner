@@ -16,6 +16,8 @@ import {
   clampIsoZoom,
   createLawnPattern,
   depthKeyForRect,
+  drawGrassTufts,
+  getSpriteContentBounds,
   getWallVariant,
   gridToCanvas,
   wallBrightnessBucket,
@@ -377,7 +379,10 @@ export function IsometricGridBoard({
       // own ambient occlusion blob — stacked across a full wall run those
       // blobs overlap into a muddy haze, which is a big part of why a dense
       // wall line reads as a "woven rug" instead of distinct stone blocks.
-      if (!isWall) drawGroundShadow([top, right, bottom, left]);
+      if (!isWall) {
+        drawGroundShadow([top, right, bottom, left]);
+        drawGrassTufts(ctx, [top, right, bottom, left], b.x, b.y, viewport.zoom);
+      }
 
       // The building art (public/buildings, public/town-halls, public/heroes)
       // is already a fully-rendered 3D isometric asset — the same style the
@@ -404,18 +409,32 @@ export function IsometricGridBoard({
         // silhouette (e.g. Bomb Tower and Hidden Tesla are tall/narrow at
         // ~0.65 width:height, Army Camp is low/wide at ~1.2), so trust it.
         const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
-        let drawWidth = footprintSpan;
+        const bounds = getSpriteContentBounds(img);
+        const contentWidthFrac = Math.max(0.2, bounds.right - bounds.left);
+        // Fit the sprite's actual non-transparent content to the footprint
+        // span, not its raw padded canvas — see getSpriteContentBounds for
+        // why crops can't be trusted to already be tight (a 1x1 wall crop
+        // can be 15-25% empty margin, which otherwise opens a visible gap
+        // between two "touching" wall tiles' real brick art).
+        let drawWidth = footprintSpan / contentWidthFrac;
         let drawHeight = drawWidth * (nh / nw);
-        // Safety ceiling only, for any one pathologically tall/narrow crop —
-        // keeps it from towering across several rows of neighbors, without
-        // touching the vast majority of buildings whose real proportions
-        // are already well under this. Kept tighter than before (1.3->1.18)
-        // since the old ceiling still let tall defenses visibly spill across
-        // an adjacent tile and read as "leaning on" their neighbor.
+        // Safety ceiling for a pathologically tall/narrow crop, measured
+        // against the sprite's real CONTENT height (not the padded canvas
+        // height, which the width fix above already deliberately inflates
+        // for a padded crop — capping the padded canvas here would silently
+        // undo that fix for exactly the buildings it matters most for). A
+        // survey of every building/trap's actual content aspect ratio
+        // (content-height / content-width) puts ordinary buildings at
+        // 0.7-1.2 and only a handful of true towers (Air Defense, Hidden
+        // Tesla, Inferno Tower) above that up to ~1.5 — 2.4 lets all the
+        // former stand at their real corrected size while still bounding
+        // the latter instead of crushing everything to a shared ceiling.
+        const contentHeightFrac = Math.max(0.2, bounds.bottom - bounds.top);
+        const contentHeightPx = drawHeight * contentHeightFrac;
         const oneTileHeightPx = DEFAULT_ISO_CONFIG.tileHeight * viewport.zoom;
-        const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.18;
-        if (drawHeight > maxHeight) {
-          const shrink = maxHeight / drawHeight;
+        const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 2.4;
+        if (contentHeightPx > maxContentHeight) {
+          const shrink = maxContentHeight / contentHeightPx;
           drawWidth *= shrink;
           drawHeight *= shrink;
         }
@@ -425,12 +444,20 @@ export function IsometricGridBoard({
         // at its vertical center, which would sink half the building into
         // the ground plane.
         const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
+        // Anchor on the CONTENT's own edges, not the padded canvas's edges:
+        // its horizontal center lands on centerX and its lowest opaque row
+        // lands on anchorY, so a crop's empty margin is pushed outward/
+        // upward instead of shifting the visible art off-center or leaving
+        // a gap above the ground.
+        const contentCenterFrac = (bounds.left + bounds.right) / 2;
+        const drawX = centerX - drawWidth * contentCenterFrac;
+        const drawY = anchorY - drawHeight * bounds.bottom;
         ctx.globalAlpha = 1;
 
         if (isWall) {
           const bucket = wallBrightnessBucket(b.x, b.y);
           const source = bucket === 0 ? img : getWallVariant(img, bucket) || img;
-          ctx.drawImage(source, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+          ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
         } else {
           // A tight contact-shadow ellipse right at the sprite's base (on top
           // of the wider ambient one from drawGroundShadow) reads as the
@@ -440,11 +467,13 @@ export function IsometricGridBoard({
           // for a handful of buildings but brings a maxed ~44x44 base (100+
           // buildings, 200+ walls) to a crawl since this whole loop reruns on
           // every redraw (every pan/zoom tick, every hovered tile).
+          // Sized off footprintSpan (the real content width), not drawWidth
+          // (the padded canvas), so the shadow tracks the visible art.
           ctx.beginPath();
-          ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
+          ctx.ellipse(centerX, anchorY, footprintSpan * 0.3, Math.max(2, footprintSpan * 0.09), 0, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(0,0,0,0.32)";
           ctx.fill();
-          ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+          ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
         }
       } else {
         // Loading placeholder only — a flat footprint tint, not a fake box,

@@ -173,6 +173,151 @@ export function createLawnPattern(
   return ctx.createPattern(stripeCanvas, "repeat");
 }
 
+export interface SpriteContentBounds {
+  /** Fraction (0-1) of image width where non-transparent content starts. */
+  left: number;
+  /** Fraction (0-1) of image width where non-transparent content ends. */
+  right: number;
+  /** Fraction (0-1) of image height where non-transparent content starts (from the top). */
+  top: number;
+  /** Fraction (0-1) of image height where non-transparent content ends (from the top). */
+  bottom: number;
+}
+
+/**
+ * Source crops carry wildly inconsistent amounts of empty transparent
+ * margin around the sprite itself in BOTH directions — e.g. Army Camp's
+ * PNG is only ~49% content width and ~52% content height, versus ~95%/~97%
+ * for Cannon; wall tiles run ~77-94% content width depending on level. Two
+ * visible bugs come from treating every crop as if it were tight to its
+ * content:
+ *
+ *  - Vertically: anchoring by the raw image bottom edge leaves the padding
+ *    as a gap between the sprite and its ground-contact shadow, reading as
+ *    the building floating above the grass instead of standing on it.
+ *  - Horizontally: sizing the sprite to the footprint's on-screen span
+ *    (`drawWidth = footprintSpan`) sizes the PADDED CANVAS to the
+ *    footprint, not the actual brick/wall art inside it — so two adjacent
+ *    1x1 wall tiles, each ~15-25% narrower in real content than their own
+ *    canvas, end up with a visible gap of real content between them
+ *    instead of touching. The same under-sizing shrinks core buildings
+ *    enough that tall ones (Inferno Tower, X-Bow) never spill over their
+ *    own tile's edge, flattening the whole board's sense of depth.
+ *
+ * Scanning each image once for its true content bounding box (cached by
+ * src) and scaling/anchoring on that box instead of the raw canvas fixes
+ * both without touching any of the hundreds of source PNGs — the scale
+ * correction is per-image (each crop's own padding), not a single guessed
+ * multiplier, because the padding fraction varies building to building and
+ * even level to level of the same building. `top` exists (in addition to
+ * `bottom`) so callers can also derive a sprite's true content height —
+ * needed for the height safety-cap next to this scaling to be measured
+ * against real art, not against however much padding a given crop happens
+ * to carry above/below it.
+ */
+const contentBoundsCache = new Map<string, SpriteContentBounds>();
+export function getSpriteContentBounds(img: HTMLImageElement): SpriteContentBounds {
+  const key = img.src;
+  const cached = contentBoundsCache.get(key);
+  if (cached) return cached;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  let bounds: SpriteContentBounds = { left: 0, right: 1, top: 0, bottom: 1 };
+  if (w > 0 && h > 0) {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        let firstCol = w;
+        let lastCol = -1;
+        let firstRow = h;
+        let lastRow = -1;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 10) {
+              if (x < firstCol) firstCol = x;
+              if (x > lastCol) lastCol = x;
+              if (y < firstRow) firstRow = y;
+              if (y > lastRow) lastRow = y;
+            }
+          }
+        }
+        if (lastCol >= 0) {
+          bounds = { left: firstCol / w, right: (lastCol + 1) / w, top: firstRow / h, bottom: (lastRow + 1) / h };
+        }
+      }
+    } catch {
+      // Cross-origin canvas taint or other read failure — fall back to
+      // trusting the raw image edges (previous behavior).
+    }
+  }
+  contentBoundsCache.set(key, bounds);
+  return bounds;
+}
+
+/**
+ * Small tufts of grass poking out around a building's footprint — the real
+ * game never plants a building on bare dirt; a fringe of grass blades at
+ * the base sells "standing in the lawn" the way a flat shadow alone can't.
+ * Drawn at the footprint diamond's side corners and front-side midpoints —
+ * the parts of the diamond a roughly-rectangular sprite silhouette leaves
+ * exposed on either side — so tufts peek out from beside/behind the
+ * building instead of being immediately painted over once the sprite draws
+ * on top. Placement is hashed by grid position (not Math.random) so it's
+ * stable across redraws/exports instead of flickering every frame; cheap
+ * enough (a handful of short strokes) to run per building every redraw.
+ * Skipped for walls, which tile edge-to-edge with no visible ground gap.
+ */
+export function drawGrassTufts(
+  ctx: CanvasRenderingContext2D,
+  points: [Point, Point, Point, Point],
+  gx: number,
+  gy: number,
+  zoom: number
+): void {
+  const [, right, bottom, left] = points;
+  const spots: Point[] = [
+    left,
+    right,
+    { x: (left.x + bottom.x) / 2, y: (left.y + bottom.y) / 2 },
+    { x: (right.x + bottom.x) / 2, y: (right.y + bottom.y) / 2 },
+  ];
+
+  let seed = ((gx * 374761393 + gy * 668265263) ^ ((gx * 668265263) >>> 3)) >>> 0;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  for (const spot of spots) {
+    const tufts = 2;
+    for (let i = 0; i < tufts; i++) {
+      const jx = (rand() - 0.5) * 8 * zoom;
+      const jy = (rand() - 0.5) * 4 * zoom;
+      const h = (4 + rand() * 3) * zoom;
+      drawGrassBlade(ctx, spot.x + jx, spot.y + jy, h);
+    }
+  }
+}
+
+const GRASS_BLADE_SHADES = ["#2f6a35", "#4a9b4f", "#3a7d40"];
+function drawGrassBlade(ctx: CanvasRenderingContext2D, x: number, y: number, h: number): void {
+  for (let i = 0; i < 3; i++) {
+    const lean = (i - 1) * h * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(x + (i - 1) * h * 0.25, y);
+    ctx.quadraticCurveTo(x + lean * 0.5, y - h * 0.65, x + lean, y - h);
+    ctx.strokeStyle = GRASS_BLADE_SHADES[i];
+    ctx.lineWidth = Math.max(0.7, h * 0.12);
+    ctx.lineCap = "round";
+    ctx.stroke();
+  }
+}
+
 /** The 4 iso-projected corners of a grid rect, in draw order (top, right, bottom, left of the diamond). */
 export function rectToIsoPolygon(
   x: number,

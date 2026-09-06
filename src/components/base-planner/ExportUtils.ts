@@ -9,6 +9,8 @@ import {
   DEFAULT_ISO_CONFIG,
   createLawnPattern,
   depthKeyForRect,
+  drawGrassTufts,
+  getSpriteContentBounds,
   getWallVariant,
   gridToIso,
   wallBrightnessBucket,
@@ -348,22 +350,35 @@ export async function exportLayoutAsIsometricImage(
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
     const footprintSpan = Math.hypot(right.x - left.x, right.y - left.y);
-    let drawWidth = footprintSpan;
+    const bounds = getSpriteContentBounds(img);
+    const contentWidthFrac = Math.max(0.2, bounds.right - bounds.left);
+    // Fit the sprite's actual non-transparent content to the footprint
+    // span, not its raw padded canvas — see getSpriteContentBounds.
+    let drawWidth = footprintSpan / contentWidthFrac;
     let drawHeight = drawWidth * (nh / nw);
+    // Safety ceiling measured against real CONTENT height, not the padded
+    // canvas — see the matching comment in IsometricGridBoard.tsx for why.
+    const contentHeightFrac = Math.max(0.2, bounds.bottom - bounds.top);
+    const contentHeightPx = drawHeight * contentHeightFrac;
     const oneTileHeightPx = config.tileHeight * viewport.zoom;
-    const maxHeight = Math.max(def.width, def.height) * oneTileHeightPx * 1.18;
-    if (drawHeight > maxHeight) {
-      const shrink = maxHeight / drawHeight;
+    const maxContentHeight = Math.max(def.width, def.height) * oneTileHeightPx * 2.4;
+    if (contentHeightPx > maxContentHeight) {
+      const shrink = maxContentHeight / contentHeightPx;
       drawWidth *= shrink;
       drawHeight *= shrink;
     }
     const centerX = (top.x + right.x + bottom.x + left.x) / 4;
     const anchorY = bottom.y - (bottom.y - top.y) * 0.12;
+    // Anchor on the CONTENT's own edges, not the padded canvas's edges —
+    // see the matching comment in IsometricGridBoard.tsx.
+    const contentCenterFrac = (bounds.left + bounds.right) / 2;
+    const drawX = centerX - drawWidth * contentCenterFrac;
+    const drawY = anchorY - drawHeight * bounds.bottom;
 
     if (isWall) {
       const bucket = wallBrightnessBucket(b.x, b.y);
       const source = bucket === 0 ? img : getWallVariant(img, bucket) || img;
-      ctx.drawImage(source, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+      ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
       continue;
     }
 
@@ -380,11 +395,14 @@ export async function exportLayoutAsIsometricImage(
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       drawDiamond([top, right, bottom, left], gradient);
     }
+    drawGrassTufts(ctx, [top, right, bottom, left], b.x, b.y, viewport.zoom);
+    // Sized off footprintSpan (the real content width), not drawWidth (the
+    // padded canvas), so the shadow tracks the visible art.
     ctx.beginPath();
-    ctx.ellipse(centerX, anchorY, drawWidth * 0.3, Math.max(2, drawWidth * 0.09), 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, anchorY, footprintSpan * 0.3, Math.max(2, footprintSpan * 0.09), 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.fill();
-    ctx.drawImage(img, centerX - drawWidth / 2, anchorY - drawHeight, drawWidth, drawHeight);
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   }
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
