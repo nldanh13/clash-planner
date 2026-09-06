@@ -2,9 +2,19 @@ import type { Player } from "../types";
 import { normalizeTag } from "../utils/formatters";
 import { clampInteger } from "../utils/villageImport";
 
-export async function fetchPlayer(rawTag: string, signal?: AbortSignal): Promise<Player> {
+export async function fetchPlayer(
+  rawTag: string,
+  signal?: AbortSignal,
+  options?: { force?: boolean }
+): Promise<Player> {
   const tag = normalizeTag(rawTag);
-  const res = await fetch(`/api/warreport/v1/players/${encodeURIComponent(tag)}`, {
+  // The server caches lookups for a few minutes to protect against
+  // Supercell's rate limit under concurrent traffic — force=1 tells it to
+  // skip that cache, for an explicit "Đồng bộ" click where returning
+  // minutes-old data would be surprising (e.g. right after an in-game
+  // upgrade). A silent background/initial load doesn't need this.
+  const suffix = options?.force ? "?fresh=1" : "";
+  const res = await fetch(`/api/warreport/v1/players/${encodeURIComponent(tag)}${suffix}`, {
     cache: "no-store",
     signal,
   });

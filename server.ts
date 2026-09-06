@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import { timingSafeEqual } from "crypto";
 import { createServer as createViteServer } from "vite";
+import compression from "compression";
 import multer from "multer";
 import sharp from "sharp";
 import { BUILDINGS_BY_ID } from "./src/components/base-planner/constants";
@@ -104,18 +105,78 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Gzip/brotli-compress every response (JS/CSS bundle, JSON API replies,
+  // HTML) before it goes out — nothing was compressed at all before this,
+  // so every visitor downloaded the full ~1.4MB bundle uncompressed. Images
+  // are skipped automatically (compression's default filter recognizes
+  // already-compressed formats like PNG/WebP and doesn't waste CPU re-
+  // compressing them).
+  app.use(compression());
+
   // Middleware to parse JSON
   app.use(express.json());
+
+  // Every distinct Player Tag any visitor looks up currently makes its own
+  // live call to Supercell's API with zero reuse across requests. Under
+  // concurrent traffic (many people looking up the same or different tags
+  // around the same time) that's the one place this app could realistically
+  // trip Supercell's own rate limit and start failing lookups for everyone.
+  // Player stats don't change second-to-second, so a short-lived in-memory
+  // cache absorbs repeat/burst lookups without adding any new infrastructure.
+  const WARREPORT_CACHE_TTL_MS = 5 * 60 * 1000;
+  const WARREPORT_CACHE_MAX_ENTRIES = 500;
+  const warReportCache = new Map<string, { status: number; body: unknown; expiresAt: number }>();
+
+  function getWarReportCacheEntry(key: string) {
+    const entry = warReportCache.get(key);
+    if (!entry) return undefined;
+    if (entry.expiresAt < Date.now()) {
+      warReportCache.delete(key);
+      return undefined;
+    }
+    return entry;
+  }
+
+  function setWarReportCacheEntry(key: string, status: number, body: unknown) {
+    if (warReportCache.size >= WARREPORT_CACHE_MAX_ENTRIES && !warReportCache.has(key)) {
+      // Map preserves insertion order — evict the oldest entry rather than
+      // let this grow unbounded if many distinct tags get looked up once each.
+      const oldestKey = warReportCache.keys().next().value;
+      if (oldestKey !== undefined) warReportCache.delete(oldestKey);
+    }
+    warReportCache.set(key, { status, body, expiresAt: Date.now() + WARREPORT_CACHE_TTL_MS });
+  }
 
   // API Proxy Route for Clash of Clans (via RoyaleAPI Proxy)
   app.use("/api/warreport/v1", async (req, res) => {
     if (!apiKey) {
       return res.status(503).json({ error: "Chưa cấu hình COC_API_TOKEN. Vui lòng lấy API Key tại developer.clashofclans.com (với IP 45.79.218.79) và thêm vào môi trường." });
     }
-    
+
+    // Only GET lookups are cacheable — this proxy is a thin passthrough so a
+    // non-GET method (none exist in this app today, but the route is method-
+    // agnostic) must always go straight to the real API. `fresh=1` is our
+    // own internal signal (from an explicit "Đồng bộ"/search click) to skip
+    // the cache — strip it before forwarding so Supercell's API never sees
+    // a query param it doesn't understand, while any other real query
+    // param (e.g. pagination on a future endpoint) still passes through.
+    const requestUrl = new URL(req.url, "http://internal");
+    const forceFresh = requestUrl.searchParams.get("fresh") === "1";
+    requestUrl.searchParams.delete("fresh");
+    const forwardPath = requestUrl.pathname + requestUrl.search;
+    const cacheKey = forwardPath;
+    const isCacheable = req.method === "GET";
+
+    if (isCacheable && !forceFresh) {
+      const cached = getWarReportCacheEntry(cacheKey);
+      if (cached) {
+        return res.status(cached.status).json(cached.body);
+      }
+    }
+
     try {
       // Use RoyaleAPI public proxy to bypass IP whitelist restrictions
-      const targetUrl = `https://cocproxy.royaleapi.dev/v1${req.url}`;
+      const targetUrl = `https://cocproxy.royaleapi.dev/v1${forwardPath}`;
 
       const response = await fetch(targetUrl, {
         method: req.method,
@@ -132,6 +193,13 @@ async function startServer() {
       if (contentType.includes("application/json")) {
         try {
           const jsonData = JSON.parse(responseText);
+          // Cache both a real answer and a stable client error (e.g. 404 for
+          // an invalid tag) — both are worth remembering for a few minutes.
+          // Never cache a 5xx: that's Supercell/the proxy having a bad
+          // moment, not an answer, and should be retried next request.
+          if (isCacheable && response.status < 500) {
+            setWarReportCacheEntry(cacheKey, response.status, jsonData);
+          }
           // Clash of Clans API typically returns 403 or 400 with a reason/message
           return res.status(response.status).json(jsonData);
         } catch {
@@ -287,7 +355,31 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            // Vite content-hashes these filenames (index-<hash>.js/css) — a
+            // rebuild always produces a new name, so browsers never need to
+            // re-check one they already have.
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          } else if (/\.(png|jpe?g|webp|gif|svg)$/i.test(filePath)) {
+            // Building/decoration/Town Hall art can be replaced via the
+            // Admin Image Manager without a rebuild (same filename, new
+            // bytes) — cache for an hour so repeat visits are instant, but
+            // an uploaded replacement still shows up well within a session
+            // instead of being stuck on stale art for a year.
+            res.setHeader("Cache-Control", "public, max-age=3600");
+          } else {
+            // index.html (and anything else) must always be revalidated —
+            // it's what references the current build's hashed asset names,
+            // so caching it would leave visitors on an old bundle after a
+            // new deploy.
+            res.setHeader("Cache-Control", "no-cache");
+          }
+        },
+      })
+    );
     app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

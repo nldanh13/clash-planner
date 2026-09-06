@@ -38,7 +38,7 @@ describe('usePlayer', () => {
       await result.current.load('#ABCD');
     });
 
-    expect(fetchPlayer).toHaveBeenCalledWith('#ABCD', expect.any(AbortSignal));
+    expect(fetchPlayer).toHaveBeenCalledWith('#ABCD', expect.any(AbortSignal), undefined);
     expect(result.current.player).toEqual(mockPlayer);
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe('');
