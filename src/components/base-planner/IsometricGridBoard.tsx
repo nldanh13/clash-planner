@@ -444,16 +444,20 @@ export function IsometricGridBoard({
         // its own tile — there's a clear gap of grass around it, even
         // sitting right next to another building, so two same-size
         // buildings never visually merge into one mass at typical base
-        // density. 0.93 (a thin sliver) still left same-footprint neighbors
-        // touching/overlapping at real density; 0.78 opens a gap wide
-        // enough that each building reads as a distinct object, reserving
-        // actual visual overlap for genuinely different-sized buildings
-        // (a large one legitimately spilling past a much smaller
-        // neighbor), not same-size buildings crowding each other. Walls
-        // are the one exception: they're a continuous barrier, not an
-        // individual plot, so they keep the full connectivity fix above
-        // instead of this inset.
-        if (!isWall) drawWidth *= 0.78;
+        // density. At a real ~40-building compartment density, 0.78 still
+        // read as too crowded relative to real game screenshots at
+        // comparable zoom — 0.6 was verified against a simulated 15x15
+        // walled compartment (12 defenses + 4 resource buildings) and
+        // reads as clearly distinct objects with real breathing room,
+        // matching the reference density, while every building is still
+        // easily identifiable (not shrunk to an illegible icon). Reserves
+        // actual visual overlap for genuinely different-sized buildings (a
+        // large one legitimately spilling past a much smaller neighbor),
+        // not same-size buildings crowding each other. Walls are the one
+        // exception: they're a continuous barrier, not an individual plot,
+        // so they keep the full connectivity fix above instead of this
+        // inset.
+        if (!isWall) drawWidth *= 0.6;
         let drawHeight = drawWidth * (nh / nw);
         // Safety ceiling for a pathologically tall/narrow crop, measured
         // against the sprite's real CONTENT height (not the padded canvas
