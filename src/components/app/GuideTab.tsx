@@ -47,9 +47,10 @@ export function GuideTab() {
       </div>
 
       <p className="guide-disclaimer">
-        Nội dung dưới đây là các nguyên tắc và tổ hợp quân/tướng/thú phổ biến, ổn định theo thời gian —
-        không phải bảng chỉ số chính xác. Chi phí, sát thương và mức mở khoá cụ thể có thể thay đổi theo
-        từng đợt cập nhật, hãy đối chiếu lại trong game hoặc tab Roadmap/Upgrade Tracker của app.
+        Nội dung dưới đây đã được đối chiếu theo các chiến thuật đang phổ biến hiện nay, nhưng vẫn tập
+        trung vào nguyên tắc và tổ hợp quân/tướng/thú ổn định lâu dài — không phải bảng chỉ số chính xác.
+        Chi phí, sát thương và mức mở khoá cụ thể có thể thay đổi theo từng đợt cập nhật cân bằng, hãy đối
+        chiếu lại trong game hoặc tab Roadmap/Upgrade Tracker của app.
       </p>
 
       <div className="guide-sections">
