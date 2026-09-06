@@ -400,10 +400,14 @@ export async function exportLayoutAsIsometricImage(
     }
     drawGrassTufts(ctx, [top, right, bottom, left], b.x, b.y, viewport.zoom);
     // Sized off footprintSpan (the real content width), not drawWidth (the
-    // padded canvas), so the shadow tracks the visible art.
+    // padded canvas), so the shadow tracks the visible art. Centered a bit
+    // above anchorY, not exactly on it — see the matching comment in
+    // IsometricGridBoard.tsx for why (a crop's own opaque base art
+    // otherwise fully hides the ellipse behind it).
+    const shadowCenterY = anchorY - footprintSpan * 0.15;
     ctx.beginPath();
-    ctx.ellipse(centerX, anchorY, footprintSpan * 0.3, Math.max(2, footprintSpan * 0.09), 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.ellipse(centerX, shadowCenterY, footprintSpan * 0.32, Math.max(2, footprintSpan * 0.13), 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.36)";
     ctx.fill();
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   }

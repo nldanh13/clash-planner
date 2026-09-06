@@ -475,9 +475,19 @@ export function IsometricGridBoard({
           // every redraw (every pan/zoom tick, every hovered tile).
           // Sized off footprintSpan (the real content width), not drawWidth
           // (the padded canvas), so the shadow tracks the visible art.
+          //
+          // Centered a bit ABOVE anchorY (toward the footprint's middle),
+          // not exactly on it: many crops already carry their own opaque
+          // base/platform art reaching all the way down to anchorY, which
+          // put the ellipse directly behind that opaque art and made it
+          // fully invisible for exactly the buildings most likely to need
+          // a visible grounding cue (Inferno Tower, Air Defense). Nudging
+          // the center up lets it peek out from the sides/front of a wide
+          // base instead of hiding completely underneath it.
+          const shadowCenterY = anchorY - footprintSpan * 0.15;
           ctx.beginPath();
-          ctx.ellipse(centerX, anchorY, footprintSpan * 0.3, Math.max(2, footprintSpan * 0.09), 0, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(0,0,0,0.32)";
+          ctx.ellipse(centerX, shadowCenterY, footprintSpan * 0.32, Math.max(2, footprintSpan * 0.13), 0, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0,0,0,0.36)";
           ctx.fill();
           ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
         }
