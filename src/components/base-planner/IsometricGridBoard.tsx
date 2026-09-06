@@ -491,10 +491,15 @@ export function IsometricGridBoard({
           // fully invisible for exactly the buildings most likely to need
           // a visible grounding cue (Inferno Tower, Air Defense). Nudging
           // the center up lets it peek out from the sides/front of a wide
-          // base instead of hiding completely underneath it.
+          // base instead of hiding completely underneath it. A small
+          // rightward nudge on top of that reads as a light source coming
+          // from the upper-left (matching the real game's own building
+          // icons, which all cast toward the lower-right) instead of a
+          // shadow that looks pasted dead-center under the object.
+          const shadowCenterX = centerX + footprintSpan * 0.1;
           const shadowCenterY = anchorY - footprintSpan * 0.15;
           ctx.beginPath();
-          ctx.ellipse(centerX, shadowCenterY, footprintSpan * 0.32, Math.max(2, footprintSpan * 0.13), 0, 0, Math.PI * 2);
+          ctx.ellipse(shadowCenterX, shadowCenterY, footprintSpan * 0.32, Math.max(2, footprintSpan * 0.13), 0, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(0,0,0,0.36)";
           ctx.fill();
           ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
