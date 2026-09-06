@@ -20,7 +20,6 @@ import { evaluateBaseDefense } from "./defenseScorer";
 import { scanChainLightningHazards } from "./chainLightningUtils";
 import { suggestDeploymentAutoFix, type AutoFixResult } from "./deploymentAutoFix";
 import {
-  createCheckpoint,
   duplicateLayout,
   getActiveLayoutId,
   getSavedLayouts,
@@ -28,6 +27,7 @@ import {
   saveLayout,
   setActiveLayoutId,
 } from "./layoutStorage";
+import { createCheckpoint } from "./layoutCheckpoints";
 import { useBasePlannerHistory } from "./useBasePlannerHistory";
 import type { LayoutProject, PlacedBuilding, PlacedDecoration, PlannerViewMode, TacticalSettings } from "./types";
 import { VerticalTacticalToolbar } from "./VerticalTacticalToolbar";

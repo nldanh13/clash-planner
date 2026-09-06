@@ -48,23 +48,20 @@ import {
   createVariantLayout,
   duplicateLayout,
   emptyTrash,
-  exportLibraryJSON,
   getAllLayoutsRaw,
   getSavedLayouts,
   getTrashLayouts,
   moveToTrash,
-  parseImportedLayoutJSON,
   permanentlyDeleteLayout,
   renameLayout,
   restoreFromTrash,
   saveLayout,
-  serializeLayout,
   STORAGE_KEY_VIEW_MODE,
-  supplementMissingObjects,
   togglePinLayout,
   TRASH_EXPIRY_MS,
-  updateLayoutToCurrentCatalog,
 } from "./layoutStorage";
+import { exportLibraryJSON, parseImportedLayoutJSON, serializeLayout } from "./layoutImportExport";
+import { supplementMissingObjects, updateLayoutToCurrentCatalog } from "./layoutCatalogMigration";
 import { getTownHallRequirements } from "./catalog";
 import { BlueprintThumbnail } from "./BlueprintThumbnail";
 import { CheckpointModal } from "./CheckpointModal";

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { FileUp, X, CheckCircle2, AlertTriangle, Layers, ArrowRight } from "lucide-react";
-import { importLibraryJSON } from "./layoutStorage";
+import { importLibraryJSON } from "./layoutImportExport";
 
 interface LibraryImportModalProps {
   isOpen: boolean;
