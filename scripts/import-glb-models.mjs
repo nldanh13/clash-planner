@@ -72,7 +72,12 @@ async function main() {
   const invalidFile = [];
 
   for (const file of glbFiles) {
-    const id = file.slice(0, -4);
+    // Accept both "<id>.glb" and "<id>-<level>.glb" (e.g. "air-defense-18.glb")
+    // — same per-level naming public/buildings/ already uses for art that
+    // changes look across upgrade levels (see getLeveledBuildingImage).
+    const stem = file.slice(0, -4);
+    const levelMatch = stem.match(/^(.+)-(\d+)$/);
+    const id = levelMatch ? levelMatch[1] : stem;
     const fullPath = path.join(RAW_DIR, file);
     const s = await stat(fullPath);
     if (s.size === 0) {
@@ -88,16 +93,16 @@ async function main() {
       continue;
     }
     if (!CHECK_ONLY) {
-      await copyFile(fullPath, path.join(OUT_DIR, `${id}.glb`));
+      await copyFile(fullPath, path.join(OUT_DIR, stem + ".glb"));
     }
-    matched.push({ id, sizeKb: Math.round(s.size / 1024) });
+    matched.push({ id, outputName: stem + ".glb", sizeKb: Math.round(s.size / 1024) });
   }
 
   console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${glbFiles.length} file trong raw-models/:\n`);
 
   if (matched.length > 0) {
     console.log(`✅ Khớp id, ${CHECK_ONLY ? "sẽ được copy" : "đã copy"} vào public/models/:`);
-    for (const m of matched) console.log(`   - ${m.id}.glb (${m.sizeKb} KB)`);
+    for (const m of matched) console.log(`   - ${m.outputName} (id: ${m.id}, ${m.sizeKb} KB)`);
   }
   if (unmatchedName.length > 0) {
     console.log(`\n⚠️  Tên file không khớp id nào trong danh sách (xem raw-models/README.txt):`);

@@ -19,6 +19,11 @@ Script sẽ tự động:
 QUAN TRỌNG — đặt tên file đúng id bên dưới (viết thường, gạch ngang),
 ví dụ cannon.glb, archer-tower.glb. Sai tên = script không nhận ra.
 
+Nếu muốn model riêng theo từng cấp độ (giống cách public/buildings/ có
+air-defense-18.png riêng cho cấp 18), đặt tên "<id>-<cấp>.glb", ví dụ
+air-defense-18.glb. Không bắt buộc — nếu chỉ có "<id>.glb" (không số
+cấp), app sẽ dùng chung 1 model cho mọi cấp của công trình đó.
+
 Danh sách đầy đủ 53 id (giống hệt public/buildings/README.txt):
 
 -- Trụ sở & Phòng thủ --
