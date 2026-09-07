@@ -49,7 +49,13 @@ const RAW_DIR = sourceArg
 const OUT_DIR = path.join(ROOT, "public", "models");
 const CHECK_ONLY = process.argv.includes("--check-only");
 const NO_OPTIMIZE = process.argv.includes("--no-optimize");
-const GLTF_TRANSFORM = path.join(ROOT, "node_modules", ".bin", "gltf-transform");
+// Run gltf-transform's own JS entry point directly with the current
+// `node` binary rather than the node_modules/.bin/gltf-transform shim —
+// that shim is a bare executable script on macOS/Linux but a .CMD/.ps1
+// wrapper on Windows, and execFileSync doesn't resolve either
+// automatically (ENOENT). Invoking `node <cli.js>` is identical on every
+// platform since it's just running a JS file, no shell/shim involved.
+const GLTF_TRANSFORM_CLI = path.join(ROOT, "node_modules", "@gltf-transform", "cli", "bin", "cli.js");
 const TEXTURE_SIZE = 512;
 
 /**
@@ -59,10 +65,9 @@ const TEXTURE_SIZE = 512;
  * copy so a failure never corrupts anything already in raw-models/.
  */
 function optimizeGlb(inputPath, outputPath) {
-  execFileSync(GLTF_TRANSFORM, ["resize", "--width", String(TEXTURE_SIZE), "--height", String(TEXTURE_SIZE), inputPath, outputPath], {
-    stdio: "pipe",
-  });
-  execFileSync(GLTF_TRANSFORM, ["webp", outputPath, outputPath], { stdio: "pipe" });
+  const run = (args) => execFileSync(process.execPath, [GLTF_TRANSFORM_CLI, ...args], { stdio: "pipe" });
+  run(["resize", "--width", String(TEXTURE_SIZE), "--height", String(TEXTURE_SIZE), inputPath, outputPath]);
+  run(["webp", outputPath, outputPath]);
 }
 
 // Cùng danh sách 53 id với public/buildings/README.txt / raw-models/README.txt.
