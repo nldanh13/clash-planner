@@ -70,9 +70,14 @@ buildingRenderer.ts):
     wall-post.glb   — "trụ": khối đứng riêng ở giữa mỗi ô tường
     wall-arm.glb    — "cánh nối": đoạn thẳng nối sang ô tường liền kề
 
-Script nhận diện đúng 2 tên này (không cộng vào số đếm 53 id ở trên,
-không nhận số cấp độ phía sau). Lưu ý: hiện tại app CHƯA tự động ghép
-2 phần này lại khi vẽ tường 3D — bước này mới chỉ đưa file vào đúng
-public/models/wall-post.glb và public/models/wall-arm.glb, phần ghép
-theo từng ô (dựa vào ô nào có tường liền kề, giống logic 2D đã làm) là
-việc làm sau, khi cả 2 file đã sẵn sàng.
+Script nhận diện đúng 2 tên này (không cộng vào số đếm 53 id ở trên).
+Tường đổi hẳn màu sắc/chất liệu qua 19 cấp (gỗ → đá → sắt → vàng...),
+nên 2 tên này CŨNG nhận số cấp độ phía sau giống mọi id khác, ví dụ
+wall-post-13.glb, wall-arm-13.glb — không bắt buộc, chỉ có
+wall-post.glb/wall-arm.glb (không số cấp) thì app dùng chung 1 cặp cho
+mọi cấp tường.
+
+Lưu ý: hiện tại app CHƯA tự động ghép 2 phần này lại khi vẽ tường 3D —
+bước này mới chỉ đưa file vào đúng public/models/, phần ghép theo từng
+ô (dựa vào ô nào có tường liền kề, giống logic 2D đã làm) là việc làm
+sau, khi đã có đủ file cần thiết.
