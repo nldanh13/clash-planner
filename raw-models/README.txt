@@ -12,6 +12,11 @@ Script sẽ tự động:
   - Đối chiếu tên file (không tính đuôi .glb) với đúng danh sách id công
     trình bên dưới.
   - Kiểm tra file có đúng định dạng .glb hợp lệ không (magic header).
+  - Nén texture xuống 512x512 + chuyển sang WebP (xem lý do trong chính
+    file script) — đo thực tế trên model đầu tiên cho thấy giảm dung
+    lượng file lẫn bộ nhớ GPU khoảng 15-19 lần, không nhìn thấy khác biệt
+    ở kích thước hiển thị thực tế trong app. Muốn giữ nguyên bản gốc
+    (không nén) thì thêm cờ --no-optimize.
   - Copy vào public/models/<id>.glb — chỗ app thật sự sẽ đọc.
   - Báo cáo file nào khớp, file nào tên sai/không nhận diện được, và
     những id nào còn thiếu.

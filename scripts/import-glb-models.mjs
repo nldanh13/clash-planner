@@ -3,18 +3,46 @@
 // thành public/models/<id>.glb — chỗ app thật sự đọc. Chạy:
 //
 //   node scripts/import-glb-models.mjs
-//   node scripts/import-glb-models.mjs --check-only   (chỉ báo cáo, không copy)
+//   node scripts/import-glb-models.mjs --check-only   (chỉ báo cáo, không copy/nén)
+//   node scripts/import-glb-models.mjs --no-optimize  (copy nguyên bản, bỏ qua nén)
 //
 // Không cần Internet — chỉ đọc/ghi file local.
+//
+// Vì sao có bước nén: đo thực tế trên model Town Hall cấp 1 đầu tiên cho
+// thấy phần hình học chỉ ~300KB, nhưng riêng 3 texture (màu/normal/độ nhám)
+// xuất ở 2048x2048 từ Hyper3D chiếm tới ~22MB bộ nhớ GPU MỖI texture — tức
+// ~67MB VRAM cho một công trình nhỏ hiển thị dạng icon. Với hàng chục công
+// trình cùng lúc trên một base, mức đó không thể chấp nhận được. Giảm về
+// 512x512 + chuyển sang WebP giữ nguyên chất lượng nhìn thấy được ở kích
+// thước hiển thị thực tế nhưng giảm dung lượng file lẫn VRAM khoảng 15-19
+// lần — không cần đụng đến phần hình học (đã đủ nhỏ) hay thêm bộ giải nén
+// runtime nào (Draco/KTX2) vào app.
 
-import { readdir, mkdir, copyFile, stat, open } from "node:fs/promises";
+import { readdir, mkdir, copyFile, stat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const RAW_DIR = path.join(ROOT, "raw-models");
 const OUT_DIR = path.join(ROOT, "public", "models");
 const CHECK_ONLY = process.argv.includes("--check-only");
+const NO_OPTIMIZE = process.argv.includes("--no-optimize");
+const GLTF_TRANSFORM = path.join(ROOT, "node_modules", ".bin", "gltf-transform");
+const TEXTURE_SIZE = 512;
+
+/**
+ * Resizes every texture to TEXTURE_SIZE and re-encodes as WebP in place.
+ * Runs gltf-transform as a subprocess (simplest way to reuse its resize +
+ * webp commands without wiring their JS API by hand) against a scratch
+ * copy so a failure never corrupts anything already in raw-models/.
+ */
+function optimizeGlb(inputPath, outputPath) {
+  execFileSync(GLTF_TRANSFORM, ["resize", "--width", String(TEXTURE_SIZE), "--height", String(TEXTURE_SIZE), inputPath, outputPath], {
+    stdio: "pipe",
+  });
+  execFileSync(GLTF_TRANSFORM, ["webp", outputPath, outputPath], { stdio: "pipe" });
+}
 
 // Cùng danh sách 53 id với public/buildings/README.txt / raw-models/README.txt.
 const KNOWN_IDS = new Set([
@@ -70,6 +98,7 @@ async function main() {
   const matched = [];
   const unmatchedName = [];
   const invalidFile = [];
+  const optimizeFailed = [];
 
   for (const file of glbFiles) {
     // Accept both "<id>.glb" and "<id>-<level>.glb" (e.g. "air-defense-18.glb")
@@ -92,21 +121,51 @@ async function main() {
       unmatchedName.push(file);
       continue;
     }
+
+    const outPath = path.join(OUT_DIR, stem + ".glb");
+    let finalSize = s.size;
+    let optimized = false;
     if (!CHECK_ONLY) {
-      await copyFile(fullPath, path.join(OUT_DIR, stem + ".glb"));
+      if (NO_OPTIMIZE) {
+        await copyFile(fullPath, outPath);
+      } else {
+        try {
+          optimizeGlb(fullPath, outPath);
+          optimized = true;
+          finalSize = (await stat(outPath)).size;
+        } catch (err) {
+          optimizeFailed.push(`${file}: ${err.message.split("\n")[0]}`);
+          await copyFile(fullPath, outPath);
+        }
+      }
     }
-    matched.push({ id, outputName: stem + ".glb", sizeKb: Math.round(s.size / 1024) });
+    matched.push({
+      id,
+      outputName: stem + ".glb",
+      sizeKb: Math.round(finalSize / 1024),
+      originalKb: Math.round(s.size / 1024),
+      optimized,
+    });
   }
 
   console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${glbFiles.length} file trong raw-models/:\n`);
 
   if (matched.length > 0) {
     console.log(`✅ Khớp id, ${CHECK_ONLY ? "sẽ được copy" : "đã copy"} vào public/models/:`);
-    for (const m of matched) console.log(`   - ${m.outputName} (id: ${m.id}, ${m.sizeKb} KB)`);
+    for (const m of matched) {
+      const sizeNote = m.optimized
+        ? `${m.originalKb} KB -> ${m.sizeKb} KB sau khi nén texture 512px/WebP`
+        : `${m.sizeKb} KB`;
+      console.log(`   - ${m.outputName} (id: ${m.id}, ${sizeNote})`);
+    }
   }
   if (unmatchedName.length > 0) {
     console.log(`\n⚠️  Tên file không khớp id nào trong danh sách (xem raw-models/README.txt):`);
     for (const f of unmatchedName) console.log(`   - ${f}`);
+  }
+  if (optimizeFailed.length > 0) {
+    console.log(`\n⚠️  Nén thất bại, đã copy bản gốc (chưa tối ưu) thay thế:`);
+    for (const f of optimizeFailed) console.log(`   - ${f}`);
   }
   if (invalidFile.length > 0) {
     console.log(`\n❌ File lỗi, bỏ qua:`);
