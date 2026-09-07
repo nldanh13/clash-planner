@@ -30,6 +30,7 @@ import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } 
 import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
 import { getDecorationImage } from "./decorationImageMapper";
 import { drawDecorationArt } from "./decorationRenderer";
+import { drawBuildingArt, drawWallArt } from "./buildingRenderer";
 import { getMaxBuildingLevel } from "./buildingLevels";
 
 interface CanvasGridBoardProps {
@@ -522,8 +523,11 @@ export function CanvasGridBoard({
         setRedrawCounter((c) => c + 1)
       );
 
+      const wallDef = BUILDINGS_BY_ID.get("wall");
       if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
         ctx.drawImage(wallImg, px, py, cellSize, cellSize);
+      } else if (wallDef) {
+        drawWallArt(ctx, px, py, cellSize, wallDef);
       } else {
         // High-contrast fallback block while image is loading
         ctx.fillStyle = isSelected ? "#ffd32a" : "#64748b";
@@ -571,6 +575,9 @@ export function CanvasGridBoard({
         ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
         ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
         ctx.drawImage(img, px + 1, py + 1, pw - 2, ph - 2);
+      } else if (!isInvalid && drawBuildingArt(ctx, b.buildingId, px + 1, py + 1, pw - 2, ph - 2, def)) {
+        // Hand-drawn vector fallback (buildingRenderer.ts) — used until the
+        // real sprite loads/exists, instead of a flat, unrecognizable box.
       } else {
         ctx.fillStyle = isInvalid ? "#7f8c8d" : (def.color || "#34495e");
         ctx.fillRect(px + 1, py + 1, pw - 2, ph - 2);
