@@ -12,3 +12,9 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store
 .vscode/
+
+# Local-only staging for raw Hyper3D exports before they're optimized and
+# committed into public/models/ — never meant to reach the repo (kept off
+# GitHub on purpose so raw, uncompressed .glb files don't bloat git history;
+# see raw-models/README.txt for the actual import pipeline).
+data-model-3d/
