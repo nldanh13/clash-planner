@@ -8,6 +8,16 @@ chạy:
 
     node scripts/import-glb-models.mjs
 
+Nếu đã tự clone repo về máy (npm install xong đầy đủ), có thể chạy thẳng
+script này ở máy bạn, trỏ vào bất kỳ thư mục nào đang chứa file .glb gốc
+— không bắt buộc phải là raw-models/, không cần đưa file lên GitHub hay
+gửi qua chat nữa:
+
+    node scripts/import-glb-models.mjs --source=data-model-3d
+
+(đường dẫn tính từ gốc repo; đổi "data-model-3d" thành đúng tên thư mục
+bạn đang dùng). Kết quả vẫn luôn ghi vào public/models/ như bình thường.
+
 Script sẽ tự động:
   - Đối chiếu tên file (không tính đuôi .glb) với đúng danh sách id công
     trình bên dưới.
