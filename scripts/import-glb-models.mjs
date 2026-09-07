@@ -62,6 +62,16 @@ const KNOWN_IDS = new Set([
   "wall",
 ]);
 
+// The wall's two named parts (agreed with the user: "trụ" / post and
+// "cánh nối" / connecting arm — see the matching comment on drawWallArt
+// in buildingRenderer.ts) aren't separate catalog buildings, just two
+// pieces meant to be composited per-tile the same way the 2D vector
+// fallback already does (a post at every wall tile's center, an arm
+// reaching toward each connected neighbor). Recognized as fixed
+// filenames rather than going through the <id>-<level> parsing below,
+// and reported separately from the 53 real building ids.
+const WALL_PART_IDS = new Set(["wall-post", "wall-arm"]);
+
 // A valid .glb starts with the 4-byte magic "glTF" (0x46546C67) followed by
 // a uint32 version. Checking this catches an accidental non-glb upload
 // (e.g. someone dragged in the .obj/.fbx variant by mistake) before it gets
@@ -101,12 +111,14 @@ async function main() {
   const optimizeFailed = [];
 
   for (const file of glbFiles) {
-    // Accept both "<id>.glb" and "<id>-<level>.glb" (e.g. "air-defense-18.glb")
-    // — same per-level naming public/buildings/ already uses for art that
-    // changes look across upgrade levels (see getLeveledBuildingImage).
+    // Accept "<id>.glb", "<id>-<level>.glb" (e.g. "air-defense-18.glb" —
+    // same per-level naming public/buildings/ already uses for art that
+    // changes look across upgrade levels, see getLeveledBuildingImage),
+    // and the two fixed wall-part filenames (wall-post.glb / wall-arm.glb).
     const stem = file.slice(0, -4);
-    const levelMatch = stem.match(/^(.+)-(\d+)$/);
-    const id = levelMatch ? levelMatch[1] : stem;
+    const isWallPart = WALL_PART_IDS.has(stem);
+    const levelMatch = isWallPart ? null : stem.match(/^(.+)-(\d+)$/);
+    const id = isWallPart ? stem : levelMatch ? levelMatch[1] : stem;
     const fullPath = path.join(RAW_DIR, file);
     const s = await stat(fullPath);
     if (s.size === 0) {
@@ -117,7 +129,7 @@ async function main() {
       invalidFile.push(file + " (không phải .glb hợp lệ — kiểm tra lại định dạng xuất từ Hyper3D)");
       continue;
     }
-    if (!KNOWN_IDS.has(id)) {
+    if (!isWallPart && !KNOWN_IDS.has(id)) {
       unmatchedName.push(file);
       continue;
     }
@@ -175,6 +187,12 @@ async function main() {
   const missing = [...KNOWN_IDS].filter((id) => !matched.some((m) => m.id === id));
   console.log(`\nCòn thiếu ${missing.length}/${KNOWN_IDS.size} id chưa có model (vẫn dùng ảnh/vector cũ bình thường):`);
   console.log("   " + missing.join(", "));
+
+  const wallPartsStatus = [...WALL_PART_IDS]
+    .map((id) => `${id}: ${matched.some((m) => m.id === id) ? "✅ có" : "❌ chưa có"}`)
+    .join(", ");
+  console.log(`\nPhần tường ghép riêng (trụ / cánh nối) — chưa được app tự ghép hiển thị, chỉ mới nằm sẵn trong public/models/:`);
+  console.log("   " + wallPartsStatus);
 }
 
 main().catch((err) => {

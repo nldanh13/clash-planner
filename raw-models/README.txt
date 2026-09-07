@@ -60,3 +60,19 @@ wall
 Không bắt buộc phải làm đủ 53 id cùng lúc — thả bao nhiêu file cũng
 được, script chỉ xử lý những file có tên khớp, phần còn lại vẫn dùng
 ảnh/vector cũ bình thường.
+
+-- Hai phần ghép riêng của tường (trụ / cánh nối) --
+Ngoài "wall" (model nguyên khối cho 1 ô tường, dùng chung như mọi id
+khác ở trên), có thêm 2 tên file CỐ ĐỊNH riêng cho 2 thành phần đã
+thống nhất khi thiết kế bản vector (xem drawWallArt trong
+buildingRenderer.ts):
+
+    wall-post.glb   — "trụ": khối đứng riêng ở giữa mỗi ô tường
+    wall-arm.glb    — "cánh nối": đoạn thẳng nối sang ô tường liền kề
+
+Script nhận diện đúng 2 tên này (không cộng vào số đếm 53 id ở trên,
+không nhận số cấp độ phía sau). Lưu ý: hiện tại app CHƯA tự động ghép
+2 phần này lại khi vẽ tường 3D — bước này mới chỉ đưa file vào đúng
+public/models/wall-post.glb và public/models/wall-arm.glb, phần ghép
+theo từng ô (dựa vào ô nào có tường liền kề, giống logic 2D đã làm) là
+việc làm sau, khi cả 2 file đã sẵn sàng.
