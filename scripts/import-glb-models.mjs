@@ -67,9 +67,12 @@ const KNOWN_IDS = new Set([
 // in buildingRenderer.ts) aren't separate catalog buildings, just two
 // pieces meant to be composited per-tile the same way the 2D vector
 // fallback already does (a post at every wall tile's center, an arm
-// reaching toward each connected neighbor). Recognized as fixed
-// filenames rather than going through the <id>-<level> parsing below,
-// and reported separately from the 53 real building ids.
+// reaching toward each connected neighbor). Recognized as their own
+// fixed base names — "wall-post" / "wall-arm" — rather than one of the
+// 53 real building ids, but still go through the same optional
+// "-<level>" suffix as everything else below (wall changes material
+// across all 19 levels, e.g. wall-post-13.glb), and are reported
+// separately from the 53-id missing count.
 const WALL_PART_IDS = new Set(["wall-post", "wall-arm"]);
 
 // A valid .glb starts with the 4-byte magic "glTF" (0x46546C67) followed by
@@ -111,14 +114,15 @@ async function main() {
   const optimizeFailed = [];
 
   for (const file of glbFiles) {
-    // Accept "<id>.glb", "<id>-<level>.glb" (e.g. "air-defense-18.glb" —
-    // same per-level naming public/buildings/ already uses for art that
-    // changes look across upgrade levels, see getLeveledBuildingImage),
-    // and the two fixed wall-part filenames (wall-post.glb / wall-arm.glb).
+    // Accept "<id>.glb" and "<id>-<level>.glb" (e.g. "air-defense-18.glb"
+    // or "wall-post-13.glb") — same per-level naming public/buildings/
+    // already uses for art that changes look across upgrade levels, see
+    // getLeveledBuildingImage. <id> is either one of the 53 real
+    // building ids or one of the two wall-part base names.
     const stem = file.slice(0, -4);
-    const isWallPart = WALL_PART_IDS.has(stem);
-    const levelMatch = isWallPart ? null : stem.match(/^(.+)-(\d+)$/);
-    const id = isWallPart ? stem : levelMatch ? levelMatch[1] : stem;
+    const levelMatch = stem.match(/^(.+)-(\d+)$/);
+    const id = levelMatch ? levelMatch[1] : stem;
+    const isWallPart = WALL_PART_IDS.has(id);
     const fullPath = path.join(RAW_DIR, file);
     const s = await stat(fullPath);
     if (s.size === 0) {
@@ -188,11 +192,11 @@ async function main() {
   console.log(`\nCòn thiếu ${missing.length}/${KNOWN_IDS.size} id chưa có model (vẫn dùng ảnh/vector cũ bình thường):`);
   console.log("   " + missing.join(", "));
 
-  const wallPartsStatus = [...WALL_PART_IDS]
-    .map((id) => `${id}: ${matched.some((m) => m.id === id) ? "✅ có" : "❌ chưa có"}`)
-    .join(", ");
   console.log(`\nPhần tường ghép riêng (trụ / cánh nối) — chưa được app tự ghép hiển thị, chỉ mới nằm sẵn trong public/models/:`);
-  console.log("   " + wallPartsStatus);
+  for (const partId of WALL_PART_IDS) {
+    const variants = matched.filter((m) => m.id === partId).map((m) => m.outputName);
+    console.log(`   - ${partId}: ${variants.length > 0 ? variants.join(", ") : "chưa có"}`);
+  }
 }
 
 main().catch((err) => {
