@@ -12,6 +12,16 @@
 // data-model-3d/, đã có sẵn trong .gitignore) thay vì raw-models/, để
 // chạy thẳng trên máy mà không cần đưa file lên GitHub hay gửi qua chat.
 //
+// Quét ĐỆ QUY vào mọi thư mục con của --source (hoặc raw-models/) — có
+// thể để nguyên cấu trúc thư mục con tùy ý (ví dụ townhall/, army/...),
+// không cần gom hết .glb ra một chỗ phẳng. Cũng tự nhận diện file .zip
+// tải thẳng từ Hyper3D (chưa giải nén) — tự mở, tìm file .glb bên trong
+// (ưu tiên bản "pbr", rớt xuống "shaded" nếu không có), dùng TÊN FILE ZIP
+// (không phải tên file .glb bên trong, luôn là "base_basic_pbr.glb" giống
+// nhau ở mọi zip) để xác định đúng id/cấp độ — nên chỉ cần đặt tên file
+// .zip đúng chuẩn (vd. town-hall-5.zip) là đủ, không cần tự giải nén rồi
+// đổi tên tay.
+//
 // Không cần Internet — chỉ đọc/ghi file local.
 //
 // Vì sao có bước nén: đo thực tế trên model Town Hall cấp 1 đầu tiên cho
@@ -24,10 +34,12 @@
 // lần — không cần đụng đến phần hình học (đã đủ nhỏ) hay thêm bộ giải nén
 // runtime nào (Draco/KTX2) vào app.
 
-import { readdir, mkdir, copyFile, stat, open, unlink } from "node:fs/promises";
+import { readdir, mkdir, copyFile, stat, open, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import AdmZip from "adm-zip";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const sourceArg = process.argv.find((a) => a.startsWith("--source="));
@@ -100,18 +112,85 @@ async function isValidGlb(filePath) {
   }
 }
 
-async function main() {
+/** Recursively lists every file under dir, however deeply nested. */
+async function walk(dir) {
   let entries;
   try {
-    entries = await readdir(RAW_DIR);
+    entries = await readdir(dir, { withFileTypes: true });
   } catch {
-    console.log(`Không tìm thấy thư mục ${RAW_DIR} — chưa có gì để xử lý.`);
+    return [];
+  }
+  const files = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await walk(full)));
+    } else if (entry.isFile()) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+/**
+ * Turns every discovered .glb / .zip under RAW_DIR into a uniform
+ * candidate: { logicalName, actualPath, cleanup }. A .glb file's logical
+ * name is its own filename; a .zip's logical name is the ZIP's filename
+ * (e.g. "town-hall-5.zip" -> "town-hall-5.glb") since Hyper3D always
+ * names the .glb inside the same generic way ("base_basic_pbr.glb")
+ * regardless of which building it is — cleanup deletes the extracted
+ * temp copy once this run is done with it.
+ */
+async function collectCandidates(allFiles) {
+  const candidates = [];
+  const tmpRoot = path.join(tmpdir(), "clash-planner-glb-import-" + Date.now());
+
+  for (const filePath of allFiles) {
+    const lower = filePath.toLowerCase();
+    if (lower.endsWith(".glb")) {
+      candidates.push({ logicalName: path.basename(filePath), actualPath: filePath, cleanup: null });
+      continue;
+    }
+    if (lower.endsWith(".zip")) {
+      let zip;
+      try {
+        zip = new AdmZip(filePath);
+      } catch {
+        continue; // not a real zip, or unreadable — silently skip, not this script's job to validate arbitrary zips
+      }
+      const glbEntries = zip.getEntries().filter((e) => !e.isDirectory && e.entryName.toLowerCase().endsWith(".glb"));
+      if (glbEntries.length === 0) continue; // e.g. one of the reference-image zips, no model inside
+      const pick =
+        glbEntries.find((e) => e.entryName.toLowerCase().includes("pbr")) ||
+        glbEntries.find((e) => e.entryName.toLowerCase().includes("shaded")) ||
+        glbEntries[0];
+      const zipStem = path.basename(filePath, path.extname(filePath));
+      const outTmp = path.join(tmpRoot, zipStem + ".glb");
+      await mkdir(tmpRoot, { recursive: true });
+      await writeFile(outTmp, zip.readFile(pick));
+      candidates.push({
+        logicalName: zipStem + ".glb",
+        actualPath: outTmp,
+        cleanup: () => rm(outTmp, { force: true }),
+        sourceZip: path.basename(filePath),
+      });
+    }
+  }
+  return { candidates, tmpRoot };
+}
+
+async function main() {
+  const allFiles = await walk(RAW_DIR);
+  if (allFiles.length === 0) {
+    console.log(`Không tìm thấy thư mục ${RAW_DIR}, hoặc thư mục rỗng.`);
     return;
   }
 
-  const glbFiles = entries.filter((f) => f.toLowerCase().endsWith(".glb"));
-  if (glbFiles.length === 0) {
-    console.log(`${RAW_DIR} chưa có file .glb nào. Xem raw-models/README.txt để biết cách đặt tên file.`);
+  const { candidates, tmpRoot } = await collectCandidates(allFiles);
+  if (candidates.length === 0) {
+    console.log(
+      `${RAW_DIR} chưa có file .glb hay .zip chứa .glb nào. Xem raw-models/README.txt để biết cách đặt tên file.`
+    );
     return;
   }
 
@@ -122,28 +201,33 @@ async function main() {
   const invalidFile = [];
   const optimizeFailed = [];
 
-  for (const file of glbFiles) {
+  for (const candidate of candidates) {
     // Accept "<id>.glb" and "<id>-<level>.glb" (e.g. "air-defense-18.glb"
     // or "wall-post-13.glb") — same per-level naming public/buildings/
     // already uses for art that changes look across upgrade levels, see
     // getLeveledBuildingImage. <id> is either one of the 53 real
-    // building ids or one of the two wall-part base names.
-    const stem = file.slice(0, -4);
+    // building ids or one of the two wall-part base names. A .zip's
+    // logical name (its own filename) is parsed exactly the same way.
+    const stem = candidate.logicalName.slice(0, -4);
     const levelMatch = stem.match(/^(.+)-(\d+)$/);
     const id = levelMatch ? levelMatch[1] : stem;
     const isWallPart = WALL_PART_IDS.has(id);
-    const fullPath = path.join(RAW_DIR, file);
-    const s = await stat(fullPath);
+    const label = candidate.sourceZip ? `${candidate.sourceZip} (bên trong: ${candidate.logicalName})` : candidate.logicalName;
+
+    const s = await stat(candidate.actualPath);
     if (s.size === 0) {
-      invalidFile.push(file + " (file rỗng)");
+      invalidFile.push(label + " (file rỗng)");
+      if (candidate.cleanup) await candidate.cleanup();
       continue;
     }
-    if (!(await isValidGlb(fullPath))) {
-      invalidFile.push(file + " (không phải .glb hợp lệ — kiểm tra lại định dạng xuất từ Hyper3D)");
+    if (!(await isValidGlb(candidate.actualPath))) {
+      invalidFile.push(label + " (không phải .glb hợp lệ — kiểm tra lại định dạng xuất từ Hyper3D)");
+      if (candidate.cleanup) await candidate.cleanup();
       continue;
     }
     if (!isWallPart && !KNOWN_IDS.has(id)) {
-      unmatchedName.push(file);
+      unmatchedName.push(label);
+      if (candidate.cleanup) await candidate.cleanup();
       continue;
     }
 
@@ -152,28 +236,32 @@ async function main() {
     let optimized = false;
     if (!CHECK_ONLY) {
       if (NO_OPTIMIZE) {
-        await copyFile(fullPath, outPath);
+        await copyFile(candidate.actualPath, outPath);
       } else {
         try {
-          optimizeGlb(fullPath, outPath);
+          optimizeGlb(candidate.actualPath, outPath);
           optimized = true;
           finalSize = (await stat(outPath)).size;
         } catch (err) {
-          optimizeFailed.push(`${file}: ${err.message.split("\n")[0]}`);
-          await copyFile(fullPath, outPath);
+          optimizeFailed.push(`${label}: ${err.message.split("\n")[0]}`);
+          await copyFile(candidate.actualPath, outPath);
         }
       }
     }
+    if (candidate.cleanup) await candidate.cleanup();
     matched.push({
       id,
       outputName: stem + ".glb",
       sizeKb: Math.round(finalSize / 1024),
       originalKb: Math.round(s.size / 1024),
       optimized,
+      fromZip: Boolean(candidate.sourceZip),
     });
   }
 
-  console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${glbFiles.length} file trong ${RAW_DIR}:\n`);
+  await rm(tmpRoot, { recursive: true, force: true });
+
+  console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${candidates.length} model tìm thấy trong ${RAW_DIR} (đệ quy):\n`);
 
   if (matched.length > 0) {
     console.log(`✅ Khớp id, ${CHECK_ONLY ? "sẽ được copy" : "đã copy"} vào public/models/:`);
@@ -181,11 +269,11 @@ async function main() {
       const sizeNote = m.optimized
         ? `${m.originalKb} KB -> ${m.sizeKb} KB sau khi nén texture 512px/WebP`
         : `${m.sizeKb} KB`;
-      console.log(`   - ${m.outputName} (id: ${m.id}, ${sizeNote})`);
+      console.log(`   - ${m.outputName} (id: ${m.id}, ${sizeNote}${m.fromZip ? ", từ .zip" : ""})`);
     }
   }
   if (unmatchedName.length > 0) {
-    console.log(`\n⚠️  Tên file không khớp id nào trong danh sách (xem raw-models/README.txt):`);
+    console.log(`\n⚠️  Tên không khớp id nào trong danh sách (xem raw-models/README.txt):`);
     for (const f of unmatchedName) console.log(`   - ${f}`);
   }
   if (optimizeFailed.length > 0) {
