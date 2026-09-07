@@ -1234,14 +1234,17 @@ export interface WallNeighbors {
 }
 
 /**
- * A lone wall tile reads as a single post; one touching another wall
- * grows an arm toward that neighbor, reaching the tile edge so a run of
- * connected walls merges into one continuous barrier instead of a strip
- * of identical disconnected squares — matching how a real wall segment
- * looks alone versus lined up with others. The outline only strokes the
- * shape's true outer boundary (skipping the seam between the post and
- * each active arm), so a connected run reads as one piece, not stacked
- * rectangles.
+ * Two named parts (agreed with the user in Vietnamese, kept here so code
+ * and conversation use the same vocabulary):
+ *   - "trụ" (post) — the small square always drawn at the tile center,
+ *     what a lone wall tile reduces to when it has no neighbors.
+ *   - "cánh nối" (connecting arm) — a bar reaching from the post to the
+ *     tile edge, drawn only toward a side that has a connected wall
+ *     neighbor, so a run of walls merges into one continuous barrier
+ *     instead of a strip of identical disconnected squares.
+ * The outline only strokes the shape's true outer boundary (skipping the
+ * seam between the post and each active arm), so a connected run reads
+ * as one piece, not stacked rectangles.
  */
 export function drawWallArt(
   ctx: Ctx,
