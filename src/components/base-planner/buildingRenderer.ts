@@ -56,56 +56,244 @@ function roundBase(ctx: Ctx, x: number, y: number, w: number, h: number, color: 
 function drawTownHall(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
   const cx = x + w / 2;
   const accent = def.accentColor || shade(def.color, -20);
-  // Stepped tiers, widest at the bottom.
-  const tiers = [
-    { top: y + h * 0.32, bottom: y + h * 0.9, half: w * 0.46 },
-    { top: y + h * 0.14, bottom: y + h * 0.5, half: w * 0.32 },
-    { top: y + h * 0.02, bottom: y + h * 0.24, half: w * 0.16 },
-  ];
-  for (const t of tiers) {
-    ctx.fillStyle = def.color;
-    ctx.fillRect(cx - t.half, t.top, t.half * 2, t.bottom - t.top);
-    ctx.strokeStyle = "rgba(0,0,0,0.25)";
-    ctx.lineWidth = Math.max(0.5, w * 0.012);
-    ctx.strokeRect(cx - t.half, t.top, t.half * 2, t.bottom - t.top);
-    ctx.fillStyle = accent;
-    ctx.fillRect(cx - t.half, t.top, t.half * 2, h * 0.05);
-  }
-  // Roof cap + banner.
+  const bottom = y + h * 0.88;
+  const domeTop = y + h * 0.28;
+  const half = w * 0.38;
+
+  // Wooden fence ring at the base.
+  ctx.strokeStyle = "#6e4423";
+  ctx.lineWidth = Math.max(1, w * 0.025);
   ctx.beginPath();
-  ctx.moveTo(cx - w * 0.18, y + h * 0.02);
-  ctx.lineTo(cx, y - h * 0.06);
-  ctx.lineTo(cx + w * 0.18, y + h * 0.02);
+  ctx.ellipse(cx, bottom, w * 0.47, h * 0.07, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = -4; i <= 4; i++) {
+    const px = cx + (i / 4) * w * 0.44;
+    ctx.beginPath();
+    ctx.moveTo(px, bottom - h * 0.05);
+    ctx.lineTo(px, bottom + h * 0.05);
+    ctx.stroke();
+  }
+
+  // Domed thatched-hut body.
+  ctx.beginPath();
+  ctx.moveTo(cx - half, bottom);
+  ctx.lineTo(cx - half, y + h * 0.55);
+  ctx.quadraticCurveTo(cx - half, domeTop, cx, domeTop - h * 0.02);
+  ctx.quadraticCurveTo(cx + half, domeTop, cx + half, y + h * 0.55);
+  ctx.lineTo(cx + half, bottom);
   ctx.closePath();
+  const grad = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+  grad.addColorStop(0, shade(def.color, -12));
+  grad.addColorStop(0.5, shade(def.color, 15));
+  grad.addColorStop(1, shade(def.color, -12));
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.012);
+  ctx.stroke();
+
+  // Thatch/plank lines curving with the dome.
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
+  ctx.lineWidth = Math.max(0.5, w * 0.01);
+  for (const t of [0.35, 0.62, 0.85]) {
+    const yy = domeTop + (bottom - domeTop) * t;
+    const spread = half * (0.3 + t * 0.75);
+    ctx.beginPath();
+    ctx.moveTo(cx - spread, yy);
+    ctx.quadraticCurveTo(cx, yy + h * 0.03, cx + spread, yy);
+    ctx.stroke();
+  }
+
+  // Arched doorway.
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.1, bottom);
+  ctx.lineTo(cx - w * 0.1, bottom - h * 0.22);
+  ctx.quadraticCurveTo(cx, bottom - h * 0.32, cx + w * 0.1, bottom - h * 0.22);
+  ctx.lineTo(cx + w * 0.1, bottom);
+  ctx.closePath();
+  ctx.fill();
+
+  // Roof cap ring + flagpole + banner.
+  ctx.beginPath();
+  ctx.ellipse(cx, domeTop, w * 0.09, h * 0.025, 0, 0, Math.PI * 2);
   ctx.fillStyle = accent;
   ctx.fill();
-  ctx.fillStyle = "#c0392b";
-  ctx.fillRect(cx + w * 0.02, y - h * 0.1, w * 0.02, h * 0.12);
+  ctx.strokeStyle = "#5b3a24";
+  ctx.lineWidth = Math.max(1, w * 0.022);
   ctx.beginPath();
-  ctx.moveTo(cx + w * 0.04, y - h * 0.1);
-  ctx.lineTo(cx + w * 0.16, y - h * 0.07);
-  ctx.lineTo(cx + w * 0.04, y - h * 0.04);
+  ctx.moveTo(cx, domeTop);
+  ctx.lineTo(cx, y - h * 0.05);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, y - h * 0.05);
+  ctx.lineTo(cx + w * 0.15, y - h * 0.01);
+  ctx.lineTo(cx, y + h * 0.03);
   ctx.closePath();
+  ctx.fillStyle = "#c0392b";
   ctx.fill();
-  // Doorway.
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.fillRect(cx - w * 0.08, y + h * 0.68, w * 0.16, h * 0.2);
 }
 
 function drawCannonLike(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef, twin: boolean) {
-  roundBase(ctx, x, y, w, h, def.color);
-  const barrels = twin ? [-0.14, 0.14] : [0];
+  const cx = x + w / 2;
+  const baseY = y + h * 0.8;
+  // Round wooden gun-carriage platform.
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY, w * 0.4, h * 0.15, 0, 0, Math.PI * 2);
+  const woodGrad = ctx.createLinearGradient(x, baseY - h * 0.15, x, baseY + h * 0.15);
+  woodGrad.addColorStop(0, "#a5713e");
+  woodGrad.addColorStop(1, "#6e4423");
+  ctx.fillStyle = woodGrad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+  for (const a of [0, Math.PI / 3, (-Math.PI) / 3]) {
+    ctx.beginPath();
+    ctx.moveTo(cx, baseY);
+    ctx.lineTo(cx + Math.cos(a) * w * 0.36, baseY + Math.sin(a) * h * 0.13);
+    ctx.stroke();
+  }
+
+  const barrels = twin ? [-0.15, 0.15] : [0];
   for (const dx of barrels) {
-    const bx = x + w / 2 + dx * w;
+    const bx = cx + dx * w;
     ctx.save();
-    ctx.translate(bx, y + h * 0.62);
-    ctx.rotate(-0.5);
-    ctx.fillStyle = shade(def.color, -10);
-    ctx.fillRect(-w * 0.09, -h * 0.5, w * 0.18, h * 0.5);
-    ctx.fillStyle = "#2c2c2c";
-    ctx.fillRect(-w * 0.1, -h * 0.5, w * 0.2, h * 0.08);
+    ctx.translate(bx, baseY - h * 0.1);
+    ctx.rotate(-0.55);
+    const len = h * 0.58;
+    const bw = w * (twin ? 0.17 : 0.22);
+    ctx.fillStyle = "#3a3a3a";
+    ctx.fillRect(-bw / 2, -len, bw, len);
+    ctx.fillStyle = "#c9a227";
+    ctx.fillRect(-bw / 2 - 1, -len * 0.4, bw + 2, h * 0.045);
+    ctx.fillRect(-bw / 2 - 1, -len * 0.78, bw + 2, h * 0.045);
+    ctx.beginPath();
+    ctx.ellipse(0, -len, bw / 2, bw * 0.24, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#111";
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    ctx.fillRect(-bw * 0.28, -len, bw * 0.16, len);
     ctx.restore();
   }
+}
+
+function drawArcherTowerLike(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  def: BuildingDef,
+  twin: boolean
+) {
+  const drawOne = (offsetX: number, scale: number) => {
+    const cx = x + w / 2 + offsetX;
+    const half = w * 0.22 * scale;
+    const bottom = y + h * 0.86;
+    const top = y + h * 0.24;
+
+    ctx.beginPath();
+    ctx.moveTo(cx - half, bottom);
+    ctx.lineTo(cx - half * 0.82, top);
+    ctx.lineTo(cx + half * 0.82, top);
+    ctx.lineTo(cx + half, bottom);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+    grad.addColorStop(0, "#8d8477");
+    grad.addColorStop(0.5, "#c4bba8");
+    grad.addColorStop(1, "#8d8477");
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.lineWidth = Math.max(0.5, w * 0.012);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(0,0,0,0.12)";
+    ctx.lineWidth = Math.max(0.5, w * 0.008);
+    for (let i = 1; i < 4; i++) {
+      const yy = bottom - ((bottom - top) * i) / 4;
+      const t = i / 4;
+      const spread = half * (0.82 + t * 0.18);
+      ctx.beginPath();
+      ctx.moveTo(cx - spread, yy);
+      ctx.lineTo(cx + spread, yy);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(cx - w * 0.025 * scale, top + h * 0.14, w * 0.05 * scale, h * 0.16);
+
+    // Platform overhang + crenellations.
+    ctx.beginPath();
+    ctx.ellipse(cx, top, half * 1.15, h * 0.045, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#9a9182";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.stroke();
+    ctx.fillStyle = "#7d7566";
+    for (const t of [-0.7, -0.25, 0.25, 0.7]) {
+      ctx.fillRect(cx + t * half - half * 0.12, top - h * 0.065, half * 0.24, h * 0.075);
+    }
+
+    // Tiny archer silhouette on the platform.
+    ctx.fillStyle = def.accentColor || def.color;
+    ctx.beginPath();
+    ctx.arc(cx, top - h * 0.1, w * 0.032 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(cx - w * 0.014 * scale, top - h * 0.08, w * 0.028 * scale, h * 0.06);
+  };
+  if (twin) {
+    drawOne(-w * 0.17, 0.72);
+    drawOne(w * 0.17, 0.72);
+  } else {
+    drawOne(0, 1);
+  }
+}
+
+function drawWizardTowerLike(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
+  const cx = x + w / 2;
+  const bottom = y + h * 0.88;
+  const top = y + h * 0.32;
+  const half = w * 0.3;
+
+  ctx.beginPath();
+  ctx.moveTo(cx - half, bottom);
+  ctx.lineTo(cx - half, y + h * 0.55);
+  ctx.quadraticCurveTo(cx - half, top, cx, top - h * 0.04);
+  ctx.quadraticCurveTo(cx + half, top, cx + half, y + h * 0.55);
+  ctx.lineTo(cx + half, bottom);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(cx - half, 0, cx + half, 0);
+  grad.addColorStop(0, shade(def.color, -15));
+  grad.addColorStop(0.5, shade(def.color, 12));
+  grad.addColorStop(1, shade(def.color, -15));
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.012);
+  ctx.stroke();
+
+  // Round window with glowing eyes peeking out.
+  ctx.beginPath();
+  ctx.arc(cx, y + h * 0.55, w * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = "#1e1e1e";
+  ctx.fill();
+  ctx.fillStyle = def.accentColor || "#f4d35e";
+  ctx.beginPath();
+  ctx.arc(cx - w * 0.03, y + h * 0.55, w * 0.015, 0, Math.PI * 2);
+  ctx.arc(cx + w * 0.03, y + h * 0.55, w * 0.015, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rounded roof tip + glowing orb.
+  const orbGrad = ctx.createRadialGradient(cx, top - h * 0.06, 1, cx, top - h * 0.06, w * 0.07);
+  orbGrad.addColorStop(0, "#ffffff");
+  orbGrad.addColorStop(1, def.color);
+  ctx.beginPath();
+  ctx.arc(cx, top - h * 0.06, w * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = orbGrad;
+  ctx.fill();
 }
 
 function drawTowerLike(
@@ -162,58 +350,89 @@ function drawTowerLike(
 }
 
 function drawMortarLike(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef, bulbous: boolean) {
-  roundBase(ctx, x, y, w, h, def.color);
   const cx = x + w / 2;
-  const cy = y + h * 0.52;
+  const baseY = y + h * 0.8;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, w * 0.24, h * 0.2, 0, Math.PI, Math.PI * 2);
-  ctx.fillStyle = shade(def.color, -10);
+  ctx.ellipse(cx, baseY, w * 0.36, h * 0.15, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#8d8477";
   ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(cx, baseY - h * 0.08);
+  ctx.rotate(-1.1);
+  const len = h * 0.5;
+  const bw = w * 0.34;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, w * 0.16, h * 0.13, 0, Math.PI, Math.PI * 2);
-  ctx.fillStyle = "#1e1e1e";
+  ctx.moveTo(-bw / 2, 0);
+  ctx.lineTo(-bw * 0.32, -len);
+  ctx.lineTo(bw * 0.32, -len);
+  ctx.lineTo(bw / 2, 0);
+  ctx.closePath();
+  ctx.fillStyle = "#5c6266";
   ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0, -len, bw * 0.33, bw * 0.13, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1a1a";
+  ctx.fill();
+  ctx.restore();
+
   if (bulbous) {
     ctx.beginPath();
-    ctx.arc(cx, cy - h * 0.06, w * 0.1, 0, Math.PI * 2);
+    ctx.arc(cx, baseY - h * 0.05, w * 0.1, 0, Math.PI * 2);
     ctx.fillStyle = def.color;
     ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.3)";
     ctx.stroke();
     ctx.strokeStyle = "#5b3a24";
     ctx.beginPath();
-    ctx.moveTo(cx, cy - h * 0.14);
-    ctx.lineTo(cx + w * 0.06, cy - h * 0.22);
+    ctx.moveTo(cx, baseY - h * 0.13);
+    ctx.lineTo(cx + w * 0.06, baseY - h * 0.21);
     ctx.stroke();
   }
 }
 
 function drawAirDefense(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
-  roundBase(ctx, x, y, w, h, def.color);
   const cx = x + w / 2;
-  const baseY = y + h * 0.62;
+  const baseY = y + h * 0.68;
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY, w * 0.38, h * 0.16, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#8a9296";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.stroke();
+
   const angles = [-0.9, -0.3, 0.3, 0.9];
   for (const a of angles) {
     ctx.save();
-    ctx.translate(cx, baseY);
+    ctx.translate(cx, baseY - h * 0.05);
     ctx.rotate(a);
     ctx.fillStyle = def.color;
     ctx.beginPath();
-    ctx.moveTo(-w * 0.05, 0);
-    ctx.lineTo(w * 0.05, 0);
-    ctx.lineTo(w * 0.02, -h * 0.5);
-    ctx.lineTo(-w * 0.02, -h * 0.5);
+    ctx.moveTo(-w * 0.045, 0);
+    ctx.lineTo(w * 0.045, 0);
+    ctx.lineTo(w * 0.025, -h * 0.45);
+    ctx.lineTo(-w * 0.025, -h * 0.45);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = shade(def.color, -20);
+    ctx.fillStyle = "#dcdde1";
     ctx.beginPath();
-    ctx.moveTo(-w * 0.02, -h * 0.4);
-    ctx.lineTo(w * 0.02, -h * 0.4);
-    ctx.lineTo(0, -h * 0.5);
+    ctx.moveTo(-w * 0.02, -h * 0.36);
+    ctx.lineTo(w * 0.02, -h * 0.36);
+    ctx.lineTo(0, -h * 0.46);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
   }
+  ctx.beginPath();
+  ctx.arc(cx, baseY - h * 0.05, w * 0.08, 0, Math.PI * 2);
+  ctx.fillStyle = "#5c6266";
+  ctx.fill();
 }
 
 function drawAirSweeper(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
@@ -264,63 +483,136 @@ function drawHiddenTesla(ctx: Ctx, x: number, y: number, w: number, h: number, d
 }
 
 function drawXbow(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
-  roundBase(ctx, x, y, w, h, def.color);
   const cx = x + w / 2;
-  const cy = y + h * 0.5;
-  ctx.strokeStyle = def.color;
-  ctx.lineWidth = Math.max(1.5, w * 0.05);
-  ctx.beginPath();
-  ctx.moveTo(cx - w * 0.32, cy - h * 0.28);
-  ctx.quadraticCurveTo(cx - w * 0.1, cy, cx - w * 0.32, cy + h * 0.28);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + w * 0.32, cy - h * 0.28);
-  ctx.quadraticCurveTo(cx + w * 0.1, cy, cx + w * 0.32, cy + h * 0.28);
-  ctx.stroke();
-  ctx.strokeStyle = "#dcdde1";
+  const cy = y + h * 0.56;
+
+  // Stone mount block.
+  ctx.fillStyle = "#8d8477";
+  ctx.fillRect(cx - w * 0.24, y + h * 0.68, w * 0.48, h * 0.2);
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
   ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.strokeRect(cx - w * 0.24, y + h * 0.68, w * 0.48, h * 0.2);
+
+  // Wooden bow arms curving outward from the stock.
+  ctx.strokeStyle = "#6e4423";
+  ctx.lineWidth = Math.max(1.5, w * 0.045);
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(cx - w * 0.32, cy - h * 0.28);
-  ctx.lineTo(cx + w * 0.32, cy + h * 0.28);
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx - w * 0.42, cy - h * 0.06, cx - w * 0.36, cy - h * 0.34);
   ctx.stroke();
-  ctx.fillStyle = shade(def.color, -20);
-  ctx.fillRect(cx - w * 0.05, cy - h * 0.05, w * 0.1, h * 0.1);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx + w * 0.42, cy - h * 0.06, cx + w * 0.36, cy - h * 0.34);
+  ctx.stroke();
+
+  // Taut string between the two bow tips.
+  ctx.strokeStyle = "#dcdde1";
+  ctx.lineWidth = Math.max(0.5, w * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.36, cy - h * 0.34);
+  ctx.lineTo(cx + w * 0.36, cy - h * 0.34);
+  ctx.stroke();
+
+  // Central stock/rail with a nocked bolt.
+  ctx.fillStyle = "#4a3222";
+  ctx.fillRect(cx - w * 0.05, cy - h * 0.32, w * 0.1, h * 0.38);
+  ctx.strokeStyle = def.accentColor || def.color;
+  ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - h * 0.36);
+  ctx.lineTo(cx, cy + h * 0.02);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - h * 0.36);
+  ctx.lineTo(cx - w * 0.04, cy - h * 0.26);
+  ctx.lineTo(cx + w * 0.04, cy - h * 0.26);
+  ctx.closePath();
+  ctx.fillStyle = def.accentColor || def.color;
+  ctx.fill();
 }
 
 function drawInfernoTower(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
-  roundBase(ctx, x, y, w, h, def.color);
   const cx = x + w / 2;
-  for (const dx of [-0.16, 0, 0.16]) {
-    const bx = x + w / 2 + dx * w;
-    const glow = ctx.createLinearGradient(bx, y + h * 0.15, bx, y + h * 0.6);
+  const baseY = y + h * 0.8;
+  ctx.beginPath();
+  ctx.ellipse(cx, baseY, w * 0.36, h * 0.16, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#8d8477";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.stroke();
+
+  // Mechanical turret housing.
+  ctx.fillStyle = "#5c6266";
+  ctx.fillRect(cx - w * 0.17, y + h * 0.4, w * 0.34, h * 0.34);
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.strokeRect(cx - w * 0.17, y + h * 0.4, w * 0.34, h * 0.34);
+
+  for (const dx of [-0.14, 0, 0.14]) {
+    const bx = cx + dx * w;
+    const glow = ctx.createLinearGradient(bx, y + h * 0.08, bx, y + h * 0.42);
     glow.addColorStop(0, "#ffdf6b");
     glow.addColorStop(1, def.color);
     ctx.fillStyle = glow;
-    ctx.fillRect(bx - w * 0.05, y + h * 0.15, w * 0.1, h * 0.45);
+    ctx.fillRect(bx - w * 0.04, y + h * 0.08, w * 0.08, h * 0.34);
   }
   ctx.beginPath();
-  ctx.arc(cx, y + h * 0.12, w * 0.1, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,180,60,0.55)";
+  ctx.arc(cx, y + h * 0.08, w * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,180,60,0.5)";
   ctx.fill();
 }
 
 function drawEagleArtillery(ctx: Ctx, x: number, y: number, w: number, h: number, def: BuildingDef) {
   const cx = x + w / 2;
-  roundBase(ctx, x, y, w, h * 0.8, def.color);
-  ctx.fillStyle = shade(def.color, -10);
-  ctx.fillRect(cx - w * 0.1, y + h * 0.18, w * 0.2, h * 0.45);
-  // Twin wing-like cannon arms.
-  for (const s of [-1, 1]) {
-    ctx.save();
-    ctx.translate(cx, y + h * 0.28);
-    ctx.rotate(s * -0.5);
-    ctx.fillStyle = def.color;
-    ctx.fillRect(-w * 0.06, -h * 0.05, w * 0.4 * s > 0 ? w * 0.4 : -w * 0.4, h * 0.1);
-    ctx.restore();
-  }
+  const baseY = y + h * 0.86;
+
+  // Round stone platform.
   ctx.beginPath();
-  ctx.arc(cx, y + h * 0.16, w * 0.08, 0, Math.PI * 2);
-  ctx.fillStyle = def.accentColor || "#fff3c4";
+  ctx.ellipse(cx, baseY, w * 0.46, h * 0.12, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#8d8477";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = Math.max(0.5, w * 0.015);
+  ctx.stroke();
+
+  // Folded stone wings swept back on both sides.
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx, y + h * 0.36);
+    ctx.quadraticCurveTo(cx + s * w * 0.4, y + h * 0.24, cx + s * w * 0.46, y + h * 0.7);
+    ctx.quadraticCurveTo(cx + s * w * 0.22, y + h * 0.6, cx, y + h * 0.55);
+    ctx.closePath();
+    ctx.fillStyle = shade("#c9b896", s > 0 ? 0 : -12);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.stroke();
+  }
+
+  // Eagle head/body.
+  ctx.beginPath();
+  ctx.ellipse(cx, y + h * 0.42, w * 0.22, h * 0.26, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#c9b896";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.stroke();
+
+  // Beak.
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.05, y + h * 0.32);
+  ctx.lineTo(cx - w * 0.18, y + h * 0.36);
+  ctx.lineTo(cx - w * 0.05, y + h * 0.4);
+  ctx.closePath();
+  ctx.fillStyle = def.accentColor || "#f39c12";
+  ctx.fill();
+
+  // Massive cannon barrel across the chest.
+  ctx.fillStyle = "#3a3a3a";
+  ctx.fillRect(cx - w * 0.09, y + h * 0.56, w * 0.18, h * 0.32);
+  ctx.beginPath();
+  ctx.ellipse(cx, y + h * 0.88, w * 0.09, h * 0.03, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#111";
   ctx.fill();
 }
 
@@ -846,9 +1138,9 @@ const RENDERERS: Record<string, (ctx: Ctx, x: number, y: number, w: number, h: n
   "town-hall": drawTownHall,
   cannon: (ctx, x, y, w, h, def) => drawCannonLike(ctx, x, y, w, h, def, false),
   "ricochet-cannon": (ctx, x, y, w, h, def) => drawCannonLike(ctx, x, y, w, h, def, true),
-  "archer-tower": (ctx, x, y, w, h, def) => drawTowerLike(ctx, x, y, w, h, def, { crenellate: true }),
-  "multi-archer-tower": (ctx, x, y, w, h, def) => drawTowerLike(ctx, x, y, w, h, def, { crenellate: true, twin: true }),
-  "wizard-tower": (ctx, x, y, w, h, def) => drawTowerLike(ctx, x, y, w, h, def, { orb: true }),
+  "archer-tower": (ctx, x, y, w, h, def) => drawArcherTowerLike(ctx, x, y, w, h, def, false),
+  "multi-archer-tower": (ctx, x, y, w, h, def) => drawArcherTowerLike(ctx, x, y, w, h, def, true),
+  "wizard-tower": drawWizardTowerLike,
   "spell-tower": (ctx, x, y, w, h, def) => drawTowerLike(ctx, x, y, w, h, def, { orb: true }),
   mortar: (ctx, x, y, w, h, def) => drawMortarLike(ctx, x, y, w, h, def, false),
   "bomb-tower": (ctx, x, y, w, h, def) => drawMortarLike(ctx, x, y, w, h, def, true),
