@@ -29,6 +29,7 @@ import { buildDecorationOccupancyMask, isDecorationPlacementFree } from "./decor
 import type { BuildingDef, PlacedBuilding, PlacedDecoration, TacticalSettings } from "./types";
 import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
 import { getDecorationImage } from "./decorationImageMapper";
+import { drawDecorationArt } from "./decorationRenderer";
 import { getMaxBuildingLevel } from "./buildingLevels";
 
 interface CanvasGridBoardProps {
@@ -708,13 +709,17 @@ export function CanvasGridBoard({
       const ph = def.height * cellSize;
       const radius = Math.min(pw, ph) * 0.22;
 
-      // Decorations ship with no bundled art (see decorationCatalog.ts) — an
-      // admin can upload one via AdminImageManager, at which point it takes
-      // over from the color-tile-plus-emoji placeholder entirely.
+      // An admin can upload real art via AdminImageManager, which always
+      // takes priority when present. Otherwise draw hand-crafted vector art
+      // (decorationRenderer.ts) instead of the old flat color-tile + emoji
+      // glyph — a drawn tree/rock/fountain reads far closer to the in-game
+      // look than a stamped emoji character, and every shape in it stays
+      // easy to retune (color, proportions) since it's just canvas paths,
+      // not a cropped or stretched screenshot.
       const decoImg = getDecorationImage(def.id, () => setRedrawCounter((c) => c + 1));
       if (decoImg && decoImg.complete && decoImg.naturalWidth > 0) {
         ctx.drawImage(decoImg, px + 1, py + 1, pw - 2, ph - 2);
-      } else {
+      } else if (!drawDecorationArt(ctx, def.id, px + 1, py + 1, pw - 2, ph - 2, def)) {
         ctx.beginPath();
         if (typeof (ctx as CanvasRenderingContext2D & { roundRect?: Function }).roundRect === "function") {
           ctx.roundRect(px + 1, py + 1, pw - 2, ph - 2, radius);
