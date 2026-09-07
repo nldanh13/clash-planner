@@ -517,6 +517,17 @@ export function CanvasGridBoard({
     const safeTH = Math.max(1, Math.min(18, townHallLevel || 11));
     const defaultWallLevel = getMaxBuildingLevel(safeTH, "wall");
 
+    // Wall tile positions, for the vector fallback's neighbor-aware shape
+    // (a lone wall draws as a single center post; one touching a neighbor
+    // grows an arm toward it so a connected run reads as one continuous
+    // barrier instead of a strip of identical disconnected tiles — this
+    // only matters for drawWallArt, the real per-level sprite already
+    // handles it via its own art).
+    const wallPositions = new Set<string>();
+    for (const b of buildings) {
+      if (b.buildingId === "wall") wallPositions.add(`${b.x},${b.y}`);
+    }
+
     // Render walls first for clean layering
     for (let i = 0; i < buildings.length; i++) {
       const b = buildings[i];
@@ -536,7 +547,12 @@ export function CanvasGridBoard({
       if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
         ctx.drawImage(wallImg, px, py, cellSize, cellSize);
       } else if (wallDef) {
-        drawWallArt(ctx, px, py, cellSize, wallDef);
+        drawWallArt(ctx, px, py, cellSize, wallDef, {
+          north: wallPositions.has(`${b.x},${b.y - 1}`),
+          south: wallPositions.has(`${b.x},${b.y + 1}`),
+          west: wallPositions.has(`${b.x - 1},${b.y}`),
+          east: wallPositions.has(`${b.x + 1},${b.y}`),
+        });
       } else {
         // High-contrast fallback block while image is loading
         ctx.fillStyle = isSelected ? "#ffd32a" : "#64748b";
