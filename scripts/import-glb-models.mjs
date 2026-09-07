@@ -3,8 +3,14 @@
 // thành public/models/<id>.glb — chỗ app thật sự đọc. Chạy:
 //
 //   node scripts/import-glb-models.mjs
-//   node scripts/import-glb-models.mjs --check-only   (chỉ báo cáo, không copy/nén)
-//   node scripts/import-glb-models.mjs --no-optimize  (copy nguyên bản, bỏ qua nén)
+//   node scripts/import-glb-models.mjs --check-only         (chỉ báo cáo, không copy/nén)
+//   node scripts/import-glb-models.mjs --no-optimize         (copy nguyên bản, bỏ qua nén)
+//   node scripts/import-glb-models.mjs --source=data-model-3d (đọc từ thư mục khác, không phải raw-models/)
+//
+// --source nhận đường dẫn tương đối (tính từ gốc repo) hoặc tuyệt đối —
+// dùng khi bạn muốn giữ file .glb gốc ở một thư mục local riêng (ví dụ
+// data-model-3d/, đã có sẵn trong .gitignore) thay vì raw-models/, để
+// chạy thẳng trên máy mà không cần đưa file lên GitHub hay gửi qua chat.
 //
 // Không cần Internet — chỉ đọc/ghi file local.
 //
@@ -24,7 +30,10 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const RAW_DIR = path.join(ROOT, "raw-models");
+const sourceArg = process.argv.find((a) => a.startsWith("--source="));
+const RAW_DIR = sourceArg
+  ? path.resolve(ROOT, sourceArg.slice("--source=".length))
+  : path.join(ROOT, "raw-models");
 const OUT_DIR = path.join(ROOT, "public", "models");
 const CHECK_ONLY = process.argv.includes("--check-only");
 const NO_OPTIMIZE = process.argv.includes("--no-optimize");
@@ -102,7 +111,7 @@ async function main() {
 
   const glbFiles = entries.filter((f) => f.toLowerCase().endsWith(".glb"));
   if (glbFiles.length === 0) {
-    console.log("raw-models/ chưa có file .glb nào. Xem raw-models/README.txt để biết cách thả file vào.");
+    console.log(`${RAW_DIR} chưa có file .glb nào. Xem raw-models/README.txt để biết cách đặt tên file.`);
     return;
   }
 
@@ -164,7 +173,7 @@ async function main() {
     });
   }
 
-  console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${glbFiles.length} file trong raw-models/:\n`);
+  console.log(`\n${CHECK_ONLY ? "[check-only] " : ""}Kết quả xử lý ${glbFiles.length} file trong ${RAW_DIR}:\n`);
 
   if (matched.length > 0) {
     console.log(`✅ Khớp id, ${CHECK_ONLY ? "sẽ được copy" : "đã copy"} vào public/models/:`);
