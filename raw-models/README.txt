@@ -19,9 +19,20 @@ gửi qua chat nữa:
 bạn đang dùng). Kết quả vẫn luôn ghi vào public/models/ như bình thường.
 
 Script sẽ tự động:
-  - Đối chiếu tên file (không tính đuôi .glb) với đúng danh sách id công
+  - Quét ĐỆ QUY vào mọi thư mục con — cứ để nguyên cấu trúc thư mục tùy ý
+    (ví dụ data-model-3d/townhall/, data-model-3d/army/...), không cần
+    gom hết .glb ra một chỗ phẳng.
+  - Nhận cả file .zip tải thẳng từ Hyper3D, CHƯA GIẢI NÉN — tự mở, tìm
+    file .glb bên trong (ưu tiên bản "pbr", rớt xuống "shaded" nếu
+    không có), dùng đúng TÊN FILE .ZIP để xác định id/cấp độ (vì file
+    .glb bên trong luôn tên chung "base_basic_pbr.glb" ở mọi zip, không
+    phân biệt được công trình nào). Nghĩa là chỉ cần đặt tên file .zip
+    đúng chuẩn bên dưới (ví dụ town-hall-5.zip) là đủ, không cần tự giải
+    nén rồi đổi tên tay từng cái.
+  - Đối chiếu tên file/zip (không tính đuôi) với đúng danh sách id công
     trình bên dưới.
-  - Kiểm tra file có đúng định dạng .glb hợp lệ không (magic header).
+  - Kiểm tra file .glb tìm được có đúng định dạng hợp lệ không (magic
+    header).
   - Nén texture xuống 512x512 + chuyển sang WebP (xem lý do trong chính
     file script) — đo thực tế trên model đầu tiên cho thấy giảm dung
     lượng file lẫn bộ nhớ GPU khoảng 15-19 lần, không nhìn thấy khác biệt
