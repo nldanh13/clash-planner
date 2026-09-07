@@ -31,7 +31,8 @@ import { getLeveledBuildingImage, preloadAllBaseImages } from "./imageMapper";
 import { getDecorationImage } from "./decorationImageMapper";
 import { drawDecorationArt } from "./decorationRenderer";
 import { drawBuildingArt, drawWallArt } from "./buildingRenderer";
-import { getMaxBuildingLevel } from "./buildingLevels";
+import { getMaxBuildingLevel, getEffectiveBuildingLevel } from "./buildingLevels";
+import { Building3DPreview } from "./Building3DPreview";
 
 interface CanvasGridBoardProps {
   buildings: PlacedBuilding[];
@@ -108,6 +109,7 @@ export function CanvasGridBoard({
   const [isPanning, setIsPanning] = useState(false);
   const [isHeatmapHudExpanded, setIsHeatmapHudExpanded] = useState(false);
   const [isChainAlertDismissed, setIsChainAlertDismissed] = useState(true);
+  const [has3DModel, setHas3DModel] = useState(false);
   const [isChainAlertExpanded, setIsChainAlertExpanded] = useState(true);
   const panStartRef = useRef<{
     clientX: number;
@@ -269,6 +271,13 @@ export function CanvasGridBoard({
     if (!selectedPlacedBuilding) return null;
     return BUILDINGS_BY_ID.get(selectedPlacedBuilding.buildingId) || null;
   }, [selectedPlacedBuilding]);
+
+  // Building3DPreview reports availability asynchronously per building —
+  // reset on every new selection so switching from a building that has a
+  // model to one that doesn't can't briefly show the previous stale state.
+  useEffect(() => {
+    setHas3DModel(false);
+  }, [selectedPlacedId]);
 
   // Helper: Convert screen/mouse event to grid tile coordinates
   const getTileFromEvent = useCallback(
@@ -1418,6 +1427,33 @@ export function CanvasGridBoard({
                 <span>NW:{heatmapData.quadrantBalance.nw}% SE:{heatmapData.quadrantBalance.se}%</span>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING CARD: Live 3D model preview for the selected building —
+          only a handful of ids have a Hyper3D model yet (public/models/),
+          so this stays hidden (has3DModel stays false) for everything
+          else instead of showing an empty box. */}
+      {selectedPlacedBuilding && selectedPlacedDef && (
+        <div
+          className={`absolute bottom-4 right-4 z-30 transition-all ${has3DModel ? "" : "pointer-events-none opacity-0"}`}
+        >
+          <div className="p-2.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-700/60 text-slate-200 shadow-2xl flex flex-col gap-1.5">
+            <span className="text-[10px] text-slate-400 font-semibold px-0.5">
+              {selectedPlacedDef.name} — Xem 3D
+            </span>
+            <Building3DPreview
+              key={selectedPlacedBuilding.instanceId}
+              buildingId={selectedPlacedBuilding.buildingId}
+              level={getEffectiveBuildingLevel(
+                Math.max(1, Math.min(18, townHallLevel || 11)),
+                selectedPlacedBuilding.buildingId,
+                selectedPlacedBuilding.level
+              )}
+              onAvailabilityChange={setHas3DModel}
+              size={180}
+            />
           </div>
         </div>
       )}
