@@ -1226,29 +1226,105 @@ export function drawBuildingArt(
 }
 
 /** Brick-textured wall tile, used by the board's dedicated wall render pass. */
-export function drawWallArt(ctx: Ctx, x: number, y: number, size: number, def: BuildingDef) {
+export interface WallNeighbors {
+  north: boolean;
+  south: boolean;
+  east: boolean;
+  west: boolean;
+}
+
+/**
+ * A lone wall tile reads as a single post; one touching another wall
+ * grows an arm toward that neighbor, reaching the tile edge so a run of
+ * connected walls merges into one continuous barrier instead of a strip
+ * of identical disconnected squares — matching how a real wall segment
+ * looks alone versus lined up with others. The outline only strokes the
+ * shape's true outer boundary (skipping the seam between the post and
+ * each active arm), so a connected run reads as one piece, not stacked
+ * rectangles.
+ */
+export function drawWallArt(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  size: number,
+  def: BuildingDef,
+  neighbors: WallNeighbors = { north: false, south: false, east: false, west: false }
+) {
   ctx.save();
   const grad = ctx.createLinearGradient(x, y, x, y + size);
   grad.addColorStop(0, shade(def.color, 15));
   grad.addColorStop(1, shade(def.color, -15));
   ctx.fillStyle = grad;
-  ctx.fillRect(x, y, size, size);
+
+  const half = (size * 0.44) / 2;
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const postLeft = cx - half;
+  const postRight = cx + half;
+  const postTop = cy - half;
+  const postBottom = cy + half;
+
+  ctx.fillRect(postLeft, postTop, postRight - postLeft, postBottom - postTop);
+  if (neighbors.north) ctx.fillRect(postLeft, y, postRight - postLeft, postTop - y);
+  if (neighbors.south) ctx.fillRect(postLeft, postBottom, postRight - postLeft, y + size - postBottom);
+  if (neighbors.west) ctx.fillRect(x, postTop, postLeft - x, postBottom - postTop);
+  if (neighbors.east) ctx.fillRect(postRight, postTop, x + size - postRight, postBottom - postTop);
+
   ctx.strokeStyle = "rgba(0,0,0,0.35)";
   ctx.lineWidth = Math.max(0.5, size * 0.05);
-  ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
-  ctx.strokeStyle = "rgba(0,0,0,0.2)";
-  ctx.lineWidth = Math.max(0.5, size * 0.03);
   ctx.beginPath();
-  ctx.moveTo(x + size * 0.5, y);
-  ctx.lineTo(x + size * 0.5, y + size * 0.5);
-  ctx.moveTo(x, y + size * 0.5);
-  ctx.lineTo(x + size, y + size * 0.5);
-  ctx.moveTo(x + size * 0.25, y + size * 0.5);
-  ctx.lineTo(x + size * 0.25, y + size);
-  ctx.moveTo(x + size * 0.75, y + size * 0.5);
-  ctx.lineTo(x + size * 0.75, y + size);
+  if (!neighbors.north) {
+    ctx.moveTo(postLeft, postTop);
+    ctx.lineTo(postRight, postTop);
+  }
+  if (!neighbors.south) {
+    ctx.moveTo(postLeft, postBottom);
+    ctx.lineTo(postRight, postBottom);
+  }
+  if (!neighbors.west) {
+    ctx.moveTo(postLeft, postTop);
+    ctx.lineTo(postLeft, postBottom);
+  }
+  if (!neighbors.east) {
+    ctx.moveTo(postRight, postTop);
+    ctx.lineTo(postRight, postBottom);
+  }
+  if (neighbors.north) {
+    ctx.moveTo(postLeft, y);
+    ctx.lineTo(postRight, y);
+    ctx.moveTo(postLeft, y);
+    ctx.lineTo(postLeft, postTop);
+    ctx.moveTo(postRight, y);
+    ctx.lineTo(postRight, postTop);
+  }
+  if (neighbors.south) {
+    ctx.moveTo(postLeft, y + size);
+    ctx.lineTo(postRight, y + size);
+    ctx.moveTo(postLeft, postBottom);
+    ctx.lineTo(postLeft, y + size);
+    ctx.moveTo(postRight, postBottom);
+    ctx.lineTo(postRight, y + size);
+  }
+  if (neighbors.west) {
+    ctx.moveTo(x, postTop);
+    ctx.lineTo(x, postBottom);
+    ctx.moveTo(x, postTop);
+    ctx.lineTo(postLeft, postTop);
+    ctx.moveTo(x, postBottom);
+    ctx.lineTo(postLeft, postBottom);
+  }
+  if (neighbors.east) {
+    ctx.moveTo(x + size, postTop);
+    ctx.lineTo(x + size, postBottom);
+    ctx.moveTo(postRight, postTop);
+    ctx.lineTo(x + size, postTop);
+    ctx.moveTo(postRight, postBottom);
+    ctx.lineTo(x + size, postBottom);
+  }
   ctx.stroke();
-  ctx.fillStyle = def.accentColor || "rgba(255,255,255,0.25)";
-  ctx.fillRect(x + size * 0.06, y + size * 0.06, size * 0.88, size * 0.08);
+
+  ctx.fillStyle = def.accentColor || "rgba(255,255,255,0.3)";
+  ctx.fillRect(postLeft + half * 0.15, postTop + half * 0.15, postRight - postLeft - half * 0.3, half * 0.3);
   ctx.restore();
 }
