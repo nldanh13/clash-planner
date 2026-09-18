@@ -42,7 +42,7 @@ export const vi = {
     decorations: "Vật trang trí",
   },
   app: {
-    brandName: "Clash Path",
+    brandName: "Osmox COC",
     brandTagline: "Đồng bộ dữ liệu Clash of Clans",
     searchPlaceholder: "Nhập Player Tag, ví dụ #R0CV8RVU2",
     syncTooltip: "Đồng bộ lại dữ liệu",
@@ -138,7 +138,7 @@ export const vi = {
     signOut: "Đăng xuất",
     guestName: "Clasher",
     accountModal: {
-      title: "Tài khoản Clash Path",
+      title: "Tài khoản Osmox COC",
       subtitle: "Đăng ký hoặc đăng nhập để lưu trữ bản vẽ Base Planner và tiến độ lên đám mây",
       tabSignIn: "Đăng nhập",
       tabSignUp: "Đăng ký",

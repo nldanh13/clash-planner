@@ -185,7 +185,7 @@ export async function exportLayoutAsImage(
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "11px 'Segoe UI', Inter, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("Clash Path — AI Studio", width - padding, height - 15);
+  ctx.fillText("Osmox COC — AI Studio", width - padding, height - 15);
 
   // Trigger Download
   const link = document.createElement("a");
@@ -438,7 +438,7 @@ export async function exportLayoutAsIsometricImage(
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "12px 'Segoe UI', Inter, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("Clash Path — AI Studio", canvasWidth - sidePad, canvasHeight - 15);
+  ctx.fillText("Osmox COC — AI Studio", canvasWidth - sidePad, canvasHeight - 15);
 
   const link = document.createElement("a");
   link.download = `${layoutName}-TH${townHallLevel}-3D.png`;

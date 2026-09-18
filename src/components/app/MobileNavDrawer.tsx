@@ -49,9 +49,23 @@ export function MobileNavDrawer({ isOpen, activeTab, onClose, onSelectTab }: Mob
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mobile-nav-drawer-head">
-          <span className="mobile-nav-brand">
-            <ShieldCheck className="w-[18px] h-[18px]" />
-            <strong>{t("app.brandName")}</strong>
+          <span className="mobile-nav-brand" style={{ display: "flex", alignItems: "center" }}>
+            <img 
+              src="/logo-text.png" 
+              alt={t("app.brandName")} 
+              style={{ height: "20px", objectFit: "contain" }} 
+              onError={(e) => {
+                const target = e.target;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.style.display = 'flex';
+                }
+              }} 
+            />
+            <span style={{ display: "none", alignItems: "center", gap: "6px" }}>
+              <ShieldCheck className="w-[18px] h-[18px]" />
+              <strong>{t("app.brandName")}</strong>
+            </span>
           </span>
           <button type="button" className="mobile-nav-close-btn" onClick={onClose} aria-label="Đóng menu">
             <X className="w-5 h-5" />

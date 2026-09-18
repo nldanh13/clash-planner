@@ -14,7 +14,6 @@ import { upgradeItems } from "./upgradeData";
 // a footer link; Base Planner pulls in its own canvas rendering, generator
 // and export code) — split them into their own chunks so everyone else's
 // initial load doesn't pay for code they may never run.
-const AdminPanel = lazy(() => import("./components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
 const BasePlannerTab = lazy(() => import("./components/BasePlannerTab"));
 const GuideTab = lazy(() => import("./components/app/GuideTab").then((m) => ({ default: m.GuideTab })));
 
@@ -32,7 +31,7 @@ import { HomeTab } from "./components/app/HomeTab";
 import { MobileNavDrawer } from "./components/app/MobileNavDrawer";
 import { useTranslation } from "./i18n";
 
-export type Tab = "home" | "overview" | "planner" | "roadmap" | "guide" | "base-planner" | "admin";
+export type Tab = "home" | "overview" | "planner" | "roadmap" | "guide" | "base-planner";
 
 const plannerItems = upgradeItems.filter(item => item.kind !== "wall");
 const byUnlock = (a: any, b: any) => a.unlockTownHall - b.unlockTownHall || a.name.localeCompare(b.name);
@@ -215,11 +214,25 @@ export default function App() {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="brand" onClick={() => handleTabChange("home")} style={{ cursor: "pointer" }}>
-            <span className="crest"><ShieldCheck /></span>
-            <div>
-              <strong>{t("app.brandName")}</strong>
-              <small>{t("app.brandTagline")}</small>
+          <div className="brand" onClick={() => handleTabChange("home")} style={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
+            <img 
+              src="/logo-text.png" 
+              alt={t("app.brandName")} 
+              className="h-7 sm:h-8 object-contain"
+              onError={(e) => {
+                const target = e.target;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  target.nextElementSibling.style.display = 'flex';
+                }
+              }} 
+            />
+            <div style={{ display: "none", alignItems: "center", gap: "8px" }}>
+              <span className="crest"><ShieldCheck /></span>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <strong>{t("app.brandName")}</strong>
+                <small>{t("app.brandTagline")}</small>
+              </div>
             </div>
           </div>
 
@@ -368,11 +381,6 @@ export default function App() {
             <GuideTab />
           </Suspense>
         )}
-        {tab === "admin" && (
-          <Suspense fallback={<TabLoadingFallback />}>
-            <AdminPanel />
-          </Suspense>
-        )}
         {tab === "base-planner" && (
           <Suspense fallback={<TabLoadingFallback />}>
             <BasePlannerTab
@@ -383,23 +391,7 @@ export default function App() {
         )}
       </div>
 
-      {tab !== "base-planner" && (
-        <footer>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px" }}>
-              <span>{t("app.footer.dataSource")}</span>
-              <span>{t("app.footer.manualProgressNote")}</span>
-              <button
-                onClick={() => handleTabChange("admin")}
-                style={{ background: "transparent", border: "none", color: "var(--gold)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px" }}
-              >
-                <ShieldCheck size={12} /> {t("app.footer.admin")}
-              </button>
-            </div>
-            <span>{t("app.footer.disclaimer")}</span>
-          </div>
-        </footer>
-      )}
+      
     </main>
   );
 }
